@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>회원가입 | 성장</title>
+
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <div class="auth-wrap">
+
+    <h1 class="auth-title">성경나눔장소</h1>
+
+    <div class="auth-card">
+      <h2>회원가입</h2>
+
+  <form id="registerForm">
+    <input type="text" id="username" placeholder="이름" required /><br />
+    <select id="gender" required>
+      <option value="">성별</option>
+      <option value="M">남</option>
+      <option value="F">여</option>
+    </select>
+    <input type="date" id="birthDate" required />
+    <input type="text" id="church" placeholder="출석 교회" required />
+
+    <input type="email" id="email" placeholder="이메일" required /><br />
+    <input type="password" id="password" placeholder="비밀번호" required /><br />
+
+    <input type="text" id="signupSource" placeholder="가입 경로 (선택)" />
+
+    <button type="submit">가입하기</button>
+  </form>
+
+<p class="auth-link">
+ <a href="/login.html">로그인</a>
+</p>
+    </div>
+  </div>
+  
+
+  <script src="/js/auth.js"></script>
+</body>
+</html>

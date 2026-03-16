@@ -1,0 +1,90 @@
+/* 전체 가운데 정렬 */
+.med-wrap {
+  padding: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+/* 16:9 카드 */
+.med-card {
+  width: min(1200px, 100%);
+  aspect-ratio: 16 / 9;
+  border: 1px solid #e6e6e6;
+  border-radius: 14px;
+  background: #fff;
+  padding: 16px;
+  overflow: hidden;
+}
+
+/* 2:1:1 그리드 */
+.med-grid {
+  height: 100%;
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 12px;
+}
+
+/* 각 칸 공통 */
+.med-col {
+  overflow: hidden;
+}
+
+/* 작성 칸에서 폼이 화면을 채우게 */
+.med-write form {
+  height: calc(100% - 50px);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.med-write #title {
+  margin-bottom: 5px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.med-write input {
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+}
+
+.med-write textarea {
+  flex: 1;
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  resize: none;
+}
+
+.med-write button {
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: #ffcd38;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.med-write button:hover {
+  background: #ffdd67;
+}
+
+
+/* 오른쪽 2칸은 일단 자리표시 */
+
+.med-col h3 {
+  margin: 0px;
+}
+.med-placeholder {
+  margin-top: 10px;
+  height: calc(100% - 40px);
+  border-radius: 10px;
+  border: 1px dashed #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  padding: 10px;
+  text-align: center;
+}

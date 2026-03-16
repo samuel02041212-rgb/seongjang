@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="/css/style.css">
+  <title>성장 | 말씀묵상</title>
+  <link rel="stylesheet" href="/css/meditation.css">
+</head>
+
+
+<body>
+  <div id="header" class="meditation"></div>
+
+  <h1 style="text-align: center;">말씀묵상</h1>
+
+  <main class="med-wrap">
+  <section class="med-card">
+    <div class="med-grid">
+
+      <!-- 1) 묵상 작성(2) -->
+      <div class="med-col med-write">
+
+        <input id="title" placeholder="제목" required />
+
+        <form id="postForm">
+          <input id="bibleRef" placeholder="말씀 범위" />
+          <textarea id="content" placeholder="묵상 내용을 입력하세요" required></textarea>
+          <label style="display:block; margin-top:10px;">사진 업로드</label>
+          <input type="file" id="postImages" accept="image/*" multiple />
+
+
+          <button type="submit">등록</button>
+        </form>
+      </div>
+
+      <!-- 2) 성경 영역(1) -->
+      <aside class="med-col med-bible">
+        <h3>성경</h3>
+        <div class="med-placeholder">나중에 성경 뷰가 들어올 자리</div>
+      </aside>
+
+      <!-- 3) 주석 영역(1) -->
+      <aside class="med-col med-notes">
+        <h3>주석</h3>
+        <div class="med-placeholder">나중에 주석/자료가 들어올 자리</div>
+      </aside>
+
+    </div>
+  </section>
+</main>
+
+
+  <script>
+
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get('edit');
+
+    if (editId) {
+  fetch(`/api/posts/${editId}`)
+    .then(res => res.json())
+    .then(post => {
+      document.getElementById('title').value = post.title || '';
+      document.getElementById('content').value = post.content || '';
+      document.getElementById('bibleRef').value = post.bibleRef || '';
+    });
+}
+
+    // 헤더 불러오기 + 페이지별 색 적용
+    fetch('/partials/header.html')
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById('header').innerHTML = html;
+
+        const header = document.querySelector('#header header');
+        header.className = document.getElementById('header').className;
+      });
+
+    // 유저 이름 표시
+    fetch('/api/me')
+      .then(res => res.json())
+      .then(user => {
+        if (user) {
+          document.getElementById('userName').innerText = user.username + '님';
+        }
+        // ========관리자 탭==========
+        if (user.role === 'admin') {
+        const adminTab = document.getElementById('adminTab');
+        if (adminTab) adminTab.style.display = 'inline-flex';
+      }
+      });
+
+    // 로그아웃 (헤더가 나중에 생겨서 이벤트 위임)
+    document.addEventListener('click', (e) => {
+      if (e.target.id === 'logoutBtn') {
+        fetch('/logout', { method: 'POST' })
+          .then(() => window.location.href = '/login.html');
+      }
+    });
+
+    // 글 등록
+    document.getElementById('postForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const title = document.getElementById('title').value;
+const bibleRef = document.getElementById('bibleRef').value;
+const content = document.getElementById('content').value;
+
+const fd = new FormData();
+fd.append('title', title);
+fd.append('bibleRef', bibleRef);
+fd.append('content', content);
+
+const files = document.getElementById('postImages')?.files;
+if (files && files.length) {
+  for (const file of files) {
+    fd.append('images', file); // ✅ 서버 upload.array('images', ...)와 이름 맞춤
+  }
+}
+
+fetch('/api/posts', { method: 'POST', body: fd })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) window.location.href = '/main';
+    else alert('등록 실패');
+  });
+
+
+
+    });
+  </script>
+</body>
+</html>
+

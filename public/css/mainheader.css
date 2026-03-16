@@ -1,0 +1,47 @@
+
+
+/* ==========헤더============ */
+#main-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 30px;
+  background-color: rgb(255, 255, 255);
+  padding: 10px 20px;
+  border-bottom: 1px solid #ccc;
+}
+#main-header .logo_title {
+  padding-right: 10px;
+  font-size: 25px;
+  text-decoration: none;
+  color: #000;
+}
+#main-header .logo img {
+  height: 32px;
+}
+#main-header .header-left {
+  display: flex;
+  align-items: end;
+}
+#main-header .header-left .nav-icon {
+  display: flex;
+  align-items: end;
+  height: 30px;
+}
+
+#main-header .header-left .nav-icon img {
+  align-items: end;
+  width: 20px;
+  height: 20px;
+}
+#main-header .header-left a {
+  padding-left: 20px;
+}
+#main-header .header-right {
+  display: flex;
+  justify-content: right;
+  flex-grow: 1;
+}
+#main-header #userName {
+  padding-right: 10px;
+}

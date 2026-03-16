@@ -1,0 +1,45 @@
+
+/* 서브 내비 전체 바 */
+.subnav {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  box-sizing: border-box;
+
+  margin: 12px auto 0px;
+  padding: 10px 12px;
+
+  background: #fff;
+  border: 1px solid #e6e6e6;
+  border-bottom: 0px;
+  border-radius: 14px 14px 0px 0px;
+}
+
+/* 탭 */
+.subnav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 8px 12px;
+  border-radius: 999px;
+  text-decoration: none;
+  color: #111;
+  border: 1px solid transparent;
+
+  transition: transform 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+}
+
+.subnav-link:hover {
+  background: #fff6d6;
+  border-color: #ffe08a;
+  transform: translateY(-1px);
+}
+
+/* 활성 탭(현재 페이지) */
+.subnav-link.active {
+  background: #ffcd38;
+  border-color: #ffcd38;
+  font-weight: bold;
+}
+
