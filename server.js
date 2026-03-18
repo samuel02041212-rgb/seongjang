@@ -1,7 +1,8 @@
 /**
  * server.js — 성장(성경 나눔 공간) 메인 서버
- * Express 기반: 인증, 게시글, 소그룹, 관리자 API 및 페이지 라우트 제공
+ * Express + Socket.IO: 인증, 게시글, 소그룹, 채팅, 관리자 API
  */
+const http = require('http');
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
@@ -10,12 +11,16 @@ const session = require('express-session');
 const bcrypt = require('bcrypt');
 const multer = require('multer');
 const mongoose = require('mongoose');
+const { Server: SocketIOServer } = require('socket.io');
 
 const connectDB = require('./config/db');
 const User = require('./models/user');
 const Post = require('./models/post');
+const Comment = require('./models/comment');
 const Group = require('./models/group');
 const Membership = require('./models/membership');
+const ChatMessage = require('./models/chatMessage');
+const UserChatMeta = require('./models/userChatMeta');
 
 const requireAdmin = require('./middlewares/requireAdmin');
 
@@ -232,17 +237,20 @@ app.post('/api/posts', requireLogin, upload.array('images', 10), async (req, res
   }
 });
 
-// 게시글 목록 (최신 50개)
+// 게시글 목록 (최신 50개). 공감 수·내가 공감했는지 포함
 app.get('/api/posts', requireLogin, async (req, res) => {
   try {
     const posts = await Post.find().sort({ createdAt: -1 }).limit(50);
+    const myId = req.session.userId;
 
-    // 구버전 호환: imageUrl -> imageUrls
     const normalized = posts.map(p => {
       const obj = p.toObject();
       if ((!obj.imageUrls || obj.imageUrls.length === 0) && obj.imageUrl) {
         obj.imageUrls = [obj.imageUrl];
       }
+      const likedBy = obj.likedBy || [];
+      obj.likeCount = likedBy.length;
+      obj.isLikedByMe = likedBy.some(id => id && id.toString() === myId);
       return obj;
     });
 
@@ -299,6 +307,78 @@ app.put('/api/posts/:id', requireLogin, async (req, res) => {
   }
 });
 
+// 공감 토글 (누르면 추가, 다시 누르면 해제)
+app.post('/api/posts/:id/like', requireLogin, async (req, res) => {
+  try {
+    const postId = req.params.id;
+    const userId = req.session.userId;
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
+      return res.status(400).json({ ok: false });
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) return res.status(404).json({ ok: false });
+
+    const likedBy = post.likedBy || [];
+    const idStr = userId.toString();
+    const has = likedBy.some(id => id && id.toString() === idStr);
+
+    if (has) {
+      post.likedBy = likedBy.filter(id => id.toString() !== idStr);
+    } else {
+      post.likedBy = [...likedBy, new mongoose.Types.ObjectId(userId)];
+    }
+    await post.save();
+
+    res.json({ ok: true, liked: !has, likeCount: post.likedBy.length });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
+  }
+});
+
+// 댓글 목록
+app.get('/api/posts/:id/comments', requireLogin, async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json([]);
+    }
+    const comments = await Comment.find({ postId: req.params.id })
+      .sort({ createdAt: 1 });
+    res.json(comments);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json([]);
+  }
+});
+
+// 댓글 작성
+app.post('/api/posts/:id/comments', requireLogin, async (req, res) => {
+  const { content } = req.body;
+  if (!content || !String(content).trim()) {
+    return res.status(400).json({ ok: false });
+  }
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ ok: false });
+    }
+    const post = await Post.findById(req.params.id);
+    if (!post) return res.status(404).json({ ok: false });
+
+    const comment = new Comment({
+      postId: req.params.id,
+      authorId: req.session.userId,
+      authorName: req.session.username,
+      content: String(content).trim()
+    });
+    await comment.save();
+    res.status(201).json({ ok: true, comment });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
+  }
+});
+
 // ================== API: 소그룹 (현재는 내 그룹 목록만) ==================
 app.get('/api/my-groups', requireLogin, async (req, res) => {
   try {
@@ -316,6 +396,203 @@ app.get('/api/my-groups', requireLogin, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json([]);
+  }
+});
+
+// ================== 채팅: roomId 헬퍼 ==================
+function getRoomId(id1, id2) {
+  const a = String(id1);
+  const b = String(id2);
+  return a < b ? a + '_' + b : b + '_' + a;
+}
+
+// ================== 채팅 API ==================
+const socketTokens = new Map(); // token -> userId (단기)
+
+app.get('/api/chat/socket-token', requireLogin, (req, res) => {
+  const token = require('crypto').randomBytes(24).toString('hex');
+  socketTokens.set(token, req.session.userId);
+  setTimeout(() => socketTokens.delete(token), 60000);
+  res.json({ token });
+});
+
+app.get('/api/chat/rooms', requireLogin, async (req, res) => {
+  try {
+    const me = req.session.userId;
+    const messages = await ChatMessage.find({
+      $or: [{ senderId: me }, { receiverId: me }]
+    }).sort({ createdAt: -1 });
+
+    const otherIds = new Set();
+    messages.forEach(m => {
+      const other = m.senderId.toString() === me ? m.receiverId : m.senderId;
+      otherIds.add(other.toString());
+    });
+
+    const metas = await UserChatMeta.find({ userId: me });
+    const metaByOther = {};
+    metas.forEach(m => {
+      metaByOther[m.otherUserId.toString()] = m;
+    });
+
+    const users = await User.find({ _id: { $in: Array.from(otherIds) } })
+      .select('_id username');
+    const userMap = {};
+    users.forEach(u => { userMap[u._id.toString()] = u; });
+
+    const lastByRoom = {};
+    messages.forEach(m => {
+      const other = m.senderId.toString() === me ? m.receiverId.toString() : m.senderId.toString();
+      if (!lastByRoom[other]) lastByRoom[other] = m;
+    });
+
+    const rooms = [];
+    for (const otherId of otherIds) {
+      const meta = metaByOther[otherId] || {};
+      const lastMsg = lastByRoom[otherId];
+      const lastOpened = meta.lastOpenedAt || new Date(0);
+      const unread = await ChatMessage.countDocuments({
+        senderId: new mongoose.Types.ObjectId(otherId),
+        receiverId: new mongoose.Types.ObjectId(me),
+        createdAt: { $gt: lastOpened }
+      });
+      rooms.push({
+        roomId: getRoomId(me, otherId),
+        otherUser: userMap[otherId] ? { _id: userMap[otherId]._id, username: userMap[otherId].username } : { _id: otherId, username: '?' },
+        lastMessage: lastMsg ? { content: lastMsg.content, createdAt: lastMsg.createdAt } : null,
+        unreadCount: unread,
+        pinned: !!meta.pinnedAt,
+        pinnedAt: meta.pinnedAt || null
+      });
+    }
+
+    rooms.sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      if (a.pinned && b.pinned) return (b.pinnedAt || 0) - (a.pinnedAt || 0);
+      const at = a.lastMessage ? a.lastMessage.createdAt : 0;
+      const bt = b.lastMessage ? b.lastMessage.createdAt : 0;
+      return new Date(bt) - new Date(at);
+    });
+    res.json(rooms);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json([]);
+  }
+});
+
+app.get('/api/chat/users/search', requireLogin, async (req, res) => {
+  try {
+    const q = (req.query.q || '').trim().toLowerCase();
+    const me = req.session.userId;
+    const filter = { isApproved: true, _id: { $ne: me } };
+    if (q) {
+      filter.$or = [
+        { username: new RegExp(q, 'i') },
+        { email: new RegExp(q, 'i') }
+      ];
+    }
+    const users = await User.find(filter).select('_id username').limit(20);
+    res.json(users);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json([]);
+  }
+});
+
+app.post('/api/chat/rooms', requireLogin, async (req, res) => {
+  try {
+    const otherId = req.body.otherUserId;
+    if (!otherId) return res.status(400).json({ ok: false });
+    const me = req.session.userId;
+    const roomId = getRoomId(me, otherId);
+    res.json({ ok: true, roomId });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
+  }
+});
+
+app.get('/api/chat/rooms/:roomId/messages', requireLogin, async (req, res) => {
+  try {
+    const me = req.session.userId;
+    const roomId = req.params.roomId;
+    const parts = roomId.split('_');
+    if (parts.length !== 2 || (parts[0] !== me && parts[1] !== me)) {
+      return res.status(403).json([]);
+    }
+    const messages = await ChatMessage.find({
+      $or: [
+        { senderId: new mongoose.Types.ObjectId(parts[0]), receiverId: new mongoose.Types.ObjectId(parts[1]) },
+        { senderId: new mongoose.Types.ObjectId(parts[1]), receiverId: new mongoose.Types.ObjectId(parts[0]) }
+      ]
+    }).sort({ createdAt: 1 }).limit(200).lean();
+    res.json(messages);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json([]);
+  }
+});
+
+app.post('/api/chat/rooms/:roomId/open', requireLogin, async (req, res) => {
+  try {
+    const me = req.session.userId;
+    const roomId = req.params.roomId;
+    const parts = roomId.split('_');
+    if (parts.length !== 2 || (parts[0] !== me && parts[1] !== me)) {
+      return res.status(403).json({ ok: false });
+    }
+    const otherId = parts[0] === me ? parts[1] : parts[0];
+    await UserChatMeta.findOneAndUpdate(
+      { userId: new mongoose.Types.ObjectId(me), otherUserId: new mongoose.Types.ObjectId(otherId) },
+      { $set: { lastOpenedAt: new Date() } },
+      { upsert: true }
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
+  }
+});
+
+app.post('/api/chat/rooms/:roomId/pin', requireLogin, async (req, res) => {
+  try {
+    const me = req.session.userId;
+    const roomId = req.params.roomId;
+    const parts = roomId.split('_');
+    if (parts.length !== 2 || (parts[0] !== me && parts[1] !== me)) {
+      return res.status(403).json({ ok: false });
+    }
+    const otherId = parts[0] === me ? parts[1] : parts[0];
+    await UserChatMeta.findOneAndUpdate(
+      { userId: new mongoose.Types.ObjectId(me), otherUserId: new mongoose.Types.ObjectId(otherId) },
+      { $set: { pinnedAt: new Date() } },
+      { upsert: true }
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
+  }
+});
+
+app.delete('/api/chat/rooms/:roomId/pin', requireLogin, async (req, res) => {
+  try {
+    const me = req.session.userId;
+    const roomId = req.params.roomId;
+    const parts = roomId.split('_');
+    if (parts.length !== 2 || (parts[0] !== me && parts[1] !== me)) {
+      return res.status(403).json({ ok: false });
+    }
+    const otherId = parts[0] === me ? parts[1] : parts[0];
+    await UserChatMeta.findOneAndUpdate(
+      { userId: new mongoose.Types.ObjectId(me), otherUserId: new mongoose.Types.ObjectId(otherId) },
+      { $set: { pinnedAt: null } }
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
   }
 });
 
@@ -389,7 +666,62 @@ app.delete('/api/admin/posts/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// ================== HTTP 서버 + Socket.IO ==================
+const server = http.createServer(app);
+const io = new SocketIOServer(server);
+
+const onlineUsers = new Set(); // userId strings
+
+io.on('connection', (socket) => {
+  let userId = null;
+
+  socket.on('auth', (token) => {
+    userId = socketTokens.get(token);
+    if (!userId) return socket.disconnect(true);
+    socketTokens.delete(token);
+    userId = String(userId);
+    socket.join('user:' + userId);
+    onlineUsers.add(userId);
+    io.emit('user:online', userId);
+  });
+
+  socket.on('disconnect', () => {
+    if (userId) {
+      onlineUsers.delete(userId);
+      io.emit('user:offline', userId);
+    }
+  });
+
+  socket.on('chat:message', async (data) => {
+    if (!userId || !data || !data.roomId || !data.content) return;
+    const parts = String(data.roomId).split('_');
+    if (parts.length !== 2) return;
+    const me = userId;
+    const other = parts[0] === me ? parts[1] : parts[0];
+    if (parts[0] !== me && parts[1] !== me) return;
+    const content = String(data.content).trim();
+    if (!content) return;
+    try {
+      const msg = new ChatMessage({
+        senderId: new mongoose.Types.ObjectId(me),
+        receiverId: new mongoose.Types.ObjectId(other),
+        content
+      });
+      await msg.save();
+      const payload = { _id: msg._id, senderId: me, receiverId: other, content: msg.content, createdAt: msg.createdAt };
+      io.to('user:' + me).emit('chat:new_message', payload);
+      io.to('user:' + other).emit('chat:new_message', payload);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+});
+
+app.get('/api/chat/online', requireLogin, (req, res) => {
+  res.json(Array.from(onlineUsers));
+});
+
 // ================== 서버 시작 ==================
-app.listen(3000, () => {
+server.listen(3000, () => {
   console.log('http://localhost:3000');
 });

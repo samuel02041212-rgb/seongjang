@@ -5,6 +5,7 @@
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/mypage.css">
   <link rel="stylesheet" href="/css/feed.css">
+  <link rel="stylesheet" href="/css/chat.css">
   <title>성장 | 소그룹 마이페이지</title>
 </head>
 <body>
@@ -93,93 +94,151 @@
       const grid = document.getElementById('myPostsGrid');
       if (!grid) return console.error('myPostsGrid 없음');
 
-      const modal = document.getElementById('postModal');
-      const modalBody = document.getElementById('modalBody');
-      const modalClose = document.getElementById('modalClose');
-      const modalX = document.getElementById('modalX');
-
       let cachedPosts = [];
 
-      function openModal(html) {
-        if (!modal || !modalBody) return console.error('모달 요소(id) 없음');
-        modalBody.innerHTML = html;
-        modal.style.display = 'block';
+      function escapeHtml(str) {
+        return String(str == null ? '' : str)
+          .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
       }
 
-      function closeModal() {
-        if (modal) modal.style.display = 'none';
+      // 메인 피드와 동일: 게시글 상세 + 댓글 모달
+      let currentPostId = null;
+      const $ = (id) => document.getElementById(id);
+
+      function openPostDetailModal(post, showEditButton) {
+        currentPostId = post._id;
+        const imgs = (Array.isArray(post.imageUrls) && post.imageUrls.length) ? post.imageUrls : (post.imageUrl ? [post.imageUrl] : []);
+        const body = $('postDetailBody');
+        body.innerHTML = `
+          <article class="feed-post" style="aspect-ratio:auto; overflow:visible;">
+            <div class="post-header">
+              <div><b class="post-title">${escapeHtml(post.title || '')}</b></div>
+              <div><small class="post-meta">${escapeHtml(post.authorName || '')} · ${new Date(post.createdAt).toLocaleString()}</small></div>
+            </div>
+            ${post.bibleRef ? `<div class="post-bible"><small>📖 ${escapeHtml(post.bibleRef)}</small></div>` : ''}
+            ${imgs.length ? `<div class="post-media"><div class="thumb"><img src="${imgs[0]}" alt="이미지" style="max-height:300px;"></div></div>` : ''}
+            <div class="post-content" style="max-height:none; overflow:visible; white-space:pre-wrap;">${escapeHtml(post.content || '')}</div>
+            ${showEditButton ? `<div style="text-align:right; margin-top:12px;"><button type="button" class="edit-btn post-detail-edit" data-id="${post._id}">수정</button></div>` : ''}
+          </article>
+        `;
+        $('postDetailModal').classList.add('show');
+        loadCommentsMypage(currentPostId);
       }
 
-      if (modalClose) modalClose.addEventListener('click', closeModal);
-      if (modalX) modalX.addEventListener('click', closeModal);
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeModal();
+      function closePostDetailModal() {
+        $('postDetailModal').classList.remove('show');
+        currentPostId = null;
+        if ($('commentInputMypage')) $('commentInputMypage').value = '';
+      }
+
+      function loadCommentsMypage(postId) {
+        fetch('/api/posts/' + postId + '/comments')
+          .then(res => res.json())
+          .then(comments => {
+            const list = $('commentListMypage');
+            const countEl = $('commentCountMypage');
+            if (countEl) countEl.textContent = comments.length;
+            if (!list) return;
+            if (!comments.length) {
+              list.innerHTML = '<p style="color:#999; font-size:13px;">아직 댓글이 없어요.</p>';
+              return;
+            }
+            list.innerHTML = comments.map(c => `
+              <div class="comment-item">
+                <span class="comment-author">${escapeHtml(c.authorName || '')}</span>
+                <span class="comment-time">${new Date(c.createdAt).toLocaleString()}</span>
+                <div style="margin-top:4px;">${escapeHtml(c.content || '')}</div>
+              </div>
+            `).join('');
+          })
+          .catch(function() {
+            if ($('commentCountMypage')) $('commentCountMypage').textContent = '0';
+            if ($('commentListMypage')) $('commentListMypage').innerHTML = '';
+          });
+      }
+
+      if ($('postDetailModalClose')) $('postDetailModalClose').addEventListener('click', closePostDetailModal);
+      if ($('postDetailModalX')) $('postDetailModalX').addEventListener('click', closePostDetailModal);
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closePostDetailModal();
       });
 
-      grid.addEventListener('click', (e) => {
+      function submitCommentMypage() {
+        if (!currentPostId) return;
+        var content = ($('commentInputMypage') && $('commentInputMypage').value || '').trim();
+        if (!content) return;
+        fetch('/api/posts/' + currentPostId + '/comments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: content })
+        })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (data.ok) {
+              if ($('commentInputMypage')) $('commentInputMypage').value = '';
+              loadCommentsMypage(currentPostId);
+            }
+          });
+      }
+      if ($('commentSubmitMypage')) $('commentSubmitMypage').addEventListener('click', submitCommentMypage);
+      if ($('commentInputMypage')) {
+        $('commentInputMypage').addEventListener('keydown', function(e) {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            submitCommentMypage();
+          }
+        });
+      }
+
+      document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('post-detail-edit') && e.target.dataset.id) {
+          window.location.href = '/meditation?edit=' + e.target.dataset.id;
+        }
+      });
+
+      grid.addEventListener('click', function(e) {
         const item = e.target.closest('.grid-item');
         if (!item) return;
         const id = item.dataset.id;
-        const post = cachedPosts.find(p => String(p._id) === String(id));
+        const post = cachedPosts.find(function(p) { return String(p._id) === String(id); });
         if (!post) return;
-        openModal(`
-          <article class="feed-post">
-            <div class="post-top">
-              <div class="post-title">${escapeHtml(post.title || '(제목 없음)')}</div>
-              <div class="post-meta">
-                <span class="post-author">${escapeHtml(post.authorName || '')}</span>
-                <span class="post-time">${new Date(post.createdAt).toLocaleString()}</span>
-              </div>
-            </div>
-            ${post.bibleRef ? `<div class="post-bible"><small>📖 ${escapeHtml(post.bibleRef)}</small></div>` : ''}
-            <div class="post-content">${escapeHtml(post.content || '')}</div>
-            <div style="text-align:right; margin-top:12px;">
-              <button class="edit-btn" data-id="${post._id}">수정</button>
-            </div>
-          </article>
-        `);
+        openPostDetailModal(post, true);
       });
 
       fetch('/api/my-posts')
-        .then(res => res.json())
-        .then(posts => {
+        .then(function(res) { return res.json(); })
+        .then(function(posts) {
           cachedPosts = Array.isArray(posts) ? posts : [];
           if (cachedPosts.length === 0) {
             grid.innerHTML = '<p>아직 내가 쓴 글이 없어요.</p>';
             return;
           }
-          grid.innerHTML = cachedPosts.map(p => `
-            <div class="grid-item" data-id="${p._id}">
-              <div class="grid-title">${escapeHtml(p.title || '(제목 없음)')}</div>
-            </div>
-          `).join('');
+          grid.innerHTML = cachedPosts.map(function(p) {
+            return '<div class="grid-item" data-id="' + p._id + '"><div class="grid-title">' + escapeHtml(p.title || '(제목 없음)') + '</div></div>';
+          }).join('');
         })
-        .catch(err => {
+        .catch(function(err) {
           console.error(err);
           grid.innerHTML = '<p>내 게시글을 불러오지 못했어요.</p>';
         });
-
-      function escapeHtml(str) {
-        return String(str)
-          .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
-          .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
-      }
-    });
-
-    // 수정 버튼 클릭 시 말씀묵상 페이지로 edit 쿼리 전달
-    document.addEventListener('click', (e) => {
-      if (!e.target.classList.contains('edit-btn')) return;
-      const id = e.target.dataset.id;
-      window.location.href = `/meditation?edit=${id}`;
     });
   </script>
 
-  <!-- 게시글 상세 모달 -->
-  <div id="postModal" class="modal" style="display:none;">
-    <div class="modal-backdrop" id="modalClose"></div>
-    <div class="modal-panel">
-      <button class="modal-x" id="modalX">×</button>
-      <div id="modalBody"></div>
+  <!-- 게시글 상세 + 댓글 모달 (메인 피드와 동일 구조) -->
+  <div id="postDetailModal" class="post-detail-modal">
+    <div class="post-detail-backdrop" id="postDetailModalClose"></div>
+    <div class="post-detail-panel">
+      <button type="button" class="modal-close" id="postDetailModalX" aria-label="닫기">×</button>
+      <div class="post-detail-body" id="postDetailBody"></div>
+      <div class="comments-section">
+        <h4>댓글 <span id="commentCountMypage">0</span>개</h4>
+        <div class="comment-list" id="commentListMypage"></div>
+        <div class="comment-form">
+          <textarea id="commentInputMypage" placeholder="댓글을 입력하세요"></textarea>
+          <button type="button" id="commentSubmitMypage">등록</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -201,5 +260,6 @@
   </div>
 
   <script src="/js/mypage.js"></script>
+  <script src="/js/chat.js"></script>
 </body>
 </html>

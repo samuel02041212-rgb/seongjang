@@ -4,37 +4,8 @@
   <meta charset="UTF-8" />
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/feed.css">
+  <link rel="stylesheet" href="/css/chat.css">
   <title>성장 | 전체피드</title>
-  <!-- 피드 카드: 썸네일 비율 유지, 본문 더보기/접기 -->
-  <style>
-    .post-media { margin: 10px 0; display:flex; justify-content:center; }
-    .post-media .thumb {
-      width: min(420px, 100%);
-      border: 1px solid #eee;
-      border-radius: 12px;
-      overflow: hidden;
-      background: #fafafa;
-      position: relative;
-    }
-    .post-media img {
-      width: 100%;
-      height: 200px;
-      object-fit: contain;
-      display: block;
-      cursor: pointer;
-    }
-    .post-media .count {
-      position:absolute;
-      right:10px; bottom:10px;
-      background: rgba(0,0,0,.55);
-      color:#fff;
-      font-size:12px;
-      padding:4px 8px;
-      border-radius:999px;
-    }
-    .post-content { overflow:hidden; max-height: 130px; white-space: pre-wrap; }
-    .feed-post.expanded .post-content { max-height: none; }
-  </style>
 </head>
 <body>
   <div id="header" class="feed"></div>
@@ -47,20 +18,32 @@
     </div>
   </main>
 
-  <!-- 게시글 이미지 확대 모달: 썸네일 클릭 시 열림, 이전/다음으로 여러 장 탐색 -->
+  <!-- 게시글 이미지 확대 모달 -->
   <div id="imgModal" style="display:none; position:fixed; inset:0; z-index:9999;">
     <div id="imgModalBg" style="position:absolute; inset:0; background:rgba(0,0,0,.55);"></div>
     <div style="position:relative; height:100%; display:flex; align-items:center; justify-content:center; padding:18px;">
-      <button id="imgModalClose"
-        style="position:absolute; top:14px; right:14px; width:42px; height:42px; border-radius:999px; border:0; background:rgba(0,0,0,.55); color:#fff; font-size:22px; cursor:pointer;">×</button>
-      <button id="imgPrev"
-        style="position:absolute; left:14px; top:50%; transform:translateY(-50%); width:44px; height:44px; border-radius:999px; border:0; background:rgba(0,0,0,.45); color:#fff; font-size:22px; cursor:pointer;">‹</button>
-      <button id="imgNext"
-        style="position:absolute; right:14px; top:50%; transform:translateY(-50%); width:44px; height:44px; border-radius:999px; border:0; background:rgba(0,0,0,.45); color:#fff; font-size:22px; cursor:pointer;">›</button>
-      <img id="imgModalImg" src="" alt="이미지"
-        style="max-width:80vw; max-height:80vh; border-radius:14px; background:#fff; object-fit:contain;" />
-      <div id="imgIndex"
-        style="position:absolute; bottom:14px; background:rgba(0,0,0,.55); color:#fff; padding:6px 10px; border-radius:999px; font-size:12px;">1 / 1</div>
+      <button id="imgModalClose" style="position:absolute; top:14px; right:14px; width:42px; height:42px; border-radius:999px; border:0; background:rgba(0,0,0,.55); color:#fff; font-size:22px; cursor:pointer;">×</button>
+      <button id="imgPrev" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); width:44px; height:44px; border-radius:999px; border:0; background:rgba(0,0,0,.45); color:#fff; font-size:22px; cursor:pointer;">‹</button>
+      <button id="imgNext" style="position:absolute; right:14px; top:50%; transform:translateY(-50%); width:44px; height:44px; border-radius:999px; border:0; background:rgba(0,0,0,.45); color:#fff; font-size:22px; cursor:pointer;">›</button>
+      <img id="imgModalImg" src="" alt="이미지" style="max-width:80vw; max-height:80vh; border-radius:14px; background:#fff; object-fit:contain;" />
+      <div id="imgIndex" style="position:absolute; bottom:14px; background:rgba(0,0,0,.55); color:#fff; padding:6px 10px; border-radius:999px; font-size:12px;">1 / 1</div>
+    </div>
+  </div>
+
+  <!-- 게시글 상세 + 댓글 모달 -->
+  <div id="postDetailModal" class="post-detail-modal">
+    <div class="post-detail-backdrop" id="postDetailModalClose"></div>
+    <div class="post-detail-panel">
+      <button type="button" class="modal-close" id="postDetailModalX" aria-label="닫기">×</button>
+      <div class="post-detail-body" id="postDetailBody"></div>
+      <div class="comments-section">
+        <h4>댓글 <span id="commentCount">0</span>개</h4>
+        <div class="comment-list" id="commentList"></div>
+        <div class="comment-form">
+          <textarea id="commentInput" placeholder="댓글을 입력하세요"></textarea>
+          <button type="button" id="commentSubmit">등록</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -73,7 +56,7 @@
         .replaceAll('"','&quot;').replaceAll("'","&#039;");
     }
 
-    // 헤더 로드 + feed 클래스 적용, /api/me로 유저명·관리자 탭 표시
+    // 헤더 + 유저정보
     fetch('/partials/header.html')
       .then(res => res.text())
       .then(async (html) => {
@@ -94,39 +77,11 @@
 
     document.addEventListener('click', (e) => {
       if (e.target && e.target.id === 'logoutBtn') {
-        fetch('/logout', { method: 'POST' })
-          .then(() => window.location.href = '/login.html');
+        fetch('/logout', { method: 'POST' }).then(() => window.location.href = '/login.html');
       }
     });
 
-    // 더보기/생략: 본문이 잘리면 버튼 표시, 클릭 시 expanded 토글
-    function applyReadMore() {
-      document.querySelectorAll('.feed-post').forEach(card => {
-        const content = card.querySelector('.post-content');
-        const btn = card.querySelector('.post-toggle');
-        if (!content || !btn) return;
-        if (card.classList.contains('expanded')) {
-          btn.style.display = 'inline-flex';
-          btn.textContent = '생략';
-          return;
-        }
-        if (content.scrollHeight > content.clientHeight + 2) {
-          btn.style.display = 'inline-flex';
-          btn.textContent = '더보기';
-        } else {
-          btn.style.display = 'none';
-        }
-      });
-    }
-    document.addEventListener('click', (e) => {
-      const btn = e.target.closest('.post-toggle');
-      if (!btn) return;
-      const card = btn.closest('.feed-post');
-      card.classList.toggle('expanded');
-      applyReadMore();
-    });
-
-    // 이미지 모달: 썸네일 클릭 시 해당 글의 imageUrls 목록으로 열기
+    // 이미지 모달
     let __modalList = [];
     let __modalIdx = 0;
     window.__postImages = {};
@@ -161,26 +116,113 @@
         if (list.length) openImgModal(list, 0);
         return;
       }
-      if (e.target.id === 'imgModalBg' || e.target.id === 'imgModalClose') {
-        closeImgModal();
-        return;
-      }
-      if (e.target.id === 'imgPrev') {
-        __modalIdx = (__modalIdx - 1 + __modalList.length) % __modalList.length;
-        renderImgModal();
-        return;
-      }
-      if (e.target.id === 'imgNext') {
-        __modalIdx = (__modalIdx + 1) % __modalList.length;
-        renderImgModal();
-        return;
-      }
+      if (e.target.id === 'imgModalBg' || e.target.id === 'imgModalClose') closeImgModal();
+      else if (e.target.id === 'imgPrev') { __modalIdx = (__modalIdx - 1 + __modalList.length) % __modalList.length; renderImgModal(); }
+      else if (e.target.id === 'imgNext') { __modalIdx = (__modalIdx + 1) % __modalList.length; renderImgModal(); }
     });
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeImgModal();
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeImgModal(); });
+
+    // 피드 데이터 (공감/댓글 수 갱신용)
+    let __feedPosts = {};
+
+    // 공감 토글
+    async function toggleLike(postId, btnEl, countEl) {
+      const res = await fetch(`/api/posts/${postId}/like`, { method: 'POST' });
+      const data = await res.json();
+      if (!data.ok) return;
+      const post = __feedPosts[postId];
+      if (post) {
+        post.isLikedByMe = data.liked;
+        post.likeCount = data.likeCount;
+      }
+      if (countEl) countEl.textContent = data.likeCount;
+      if (btnEl) btnEl.classList.toggle('liked', data.liked);
+    }
+
+    // 게시글 상세 모달: 열기
+    let __currentPostId = null;
+    function openPostDetailModal(post) {
+      __currentPostId = post._id;
+      const imgs = (Array.isArray(post.imageUrls) && post.imageUrls.length) ? post.imageUrls : (post.imageUrl ? [post.imageUrl] : []);
+      const body = $('postDetailBody');
+      body.innerHTML = `
+        <article class="feed-post" style="aspect-ratio:auto; overflow:visible;">
+          <div class="post-header">
+            <div><b class="post-title">${escapeHtml(post.title || '')}</b></div>
+            <div><small class="post-meta">${escapeHtml(post.authorName || '')} · ${new Date(post.createdAt).toLocaleString()}</small></div>
+          </div>
+          ${post.bibleRef ? `<div class="post-bible"><small>📖 ${escapeHtml(post.bibleRef)}</small></div>` : ''}
+          ${imgs.length ? `<div class="post-media"><div class="thumb"><img src="${imgs[0]}" class="post-thumb" data-postid="${post._id}" alt="이미지" style="max-height:300px;"></div></div>` : ''}
+          <div class="post-content" style="max-height:none; overflow:visible; white-space:pre-wrap;">${escapeHtml(post.content || '')}</div>
+        </article>
+      `;
+      $('postDetailModal').classList.add('show');
+      loadComments(post._id);
+    }
+
+    function closePostDetailModal() {
+      $('postDetailModal').classList.remove('show');
+      __currentPostId = null;
+      $('commentInput').value = '';
+    }
+
+    $('postDetailModalClose').addEventListener('click', closePostDetailModal);
+    $('postDetailModalX').addEventListener('click', closePostDetailModal);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePostDetailModal(); });
+
+    function loadComments(postId) {
+      fetch(`/api/posts/${postId}/comments`)
+        .then(res => res.json())
+        .then(comments => {
+          const list = $('commentList');
+          const countEl = $('commentCount');
+          countEl.textContent = comments.length;
+          if (!comments.length) {
+            list.innerHTML = '<p style="color:#999; font-size:13px;">아직 댓글이 없어요.</p>';
+          } else {
+            list.innerHTML = comments.map(c => `
+              <div class="comment-item">
+                <span class="comment-author">${escapeHtml(c.authorName || '')}</span>
+                <span class="comment-time">${new Date(c.createdAt).toLocaleString()}</span>
+                <div style="margin-top:4px;">${escapeHtml(c.content || '')}</div>
+              </div>
+            `).join('');
+          }
+          var card = document.querySelector(`.feed-post[data-post-id="${postId}"]`);
+          if (card) {
+            var cnt = card.querySelector('.comment-count');
+            if (cnt) cnt.textContent = comments.length;
+          }
+        })
+        .catch(() => { $('commentCount').textContent = '0'; $('commentList').innerHTML = ''; });
+    }
+
+    function submitComment() {
+      if (!__currentPostId) return;
+      const content = $('commentInput').value.trim();
+      if (!content) return;
+      fetch(`/api/posts/${__currentPostId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.ok) {
+            $('commentInput').value = '';
+            loadComments(__currentPostId);
+          }
+        });
+    }
+    $('commentSubmit').addEventListener('click', submitComment);
+    $('commentInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        submitComment();
+      }
     });
 
-    // 피드 로드: /api/posts → 카드 렌더 (구버전 imageUrl 호환)
+    // 피드 렌더
     fetch('/api/posts')
       .then(res => res.json())
       .then(posts => {
@@ -190,12 +232,12 @@
           return;
         }
         feed.innerHTML = posts.map(p => {
-          const imgs = (Array.isArray(p.imageUrls) && p.imageUrls.length)
-            ? p.imageUrls
-            : (p.imageUrl ? [p.imageUrl] : []);
+          const imgs = (Array.isArray(p.imageUrls) && p.imageUrls.length) ? p.imageUrls : (p.imageUrl ? [p.imageUrl] : []);
           window.__postImages[p._id] = imgs;
+          __feedPosts[p._id] = p;
+          const likeClass = p.isLikedByMe ? 'action-btn liked' : 'action-btn';
           return `
-            <article class="feed-post">
+            <article class="feed-post" data-post-id="${p._id}">
               <div class="post-header">
                 <div><b class="post-title">${escapeHtml(p.title || '')}</b></div>
                 <div><small class="post-meta">${escapeHtml(p.authorName || '')} · ${new Date(p.createdAt).toLocaleString()}</small></div>
@@ -210,17 +252,38 @@
                 </div>
               ` : ''}
               <div class="post-content">${escapeHtml(p.content || '')}</div>
-              <button class="post-toggle" style="display:none;">더보기</button>
+              <div class="post-actions">
+                <button type="button" class="${likeClass}" data-like="${p._id}" aria-label="공감">
+                  <span class="like-icon">♥</span> <span class="like-count">${p.likeCount != null ? p.likeCount : 0}</span>
+                </button>
+                <button type="button" class="action-btn" data-comment="${p._id}" aria-label="댓글">
+                  💬 <span class="comment-count">0</span>
+                </button>
+              </div>
             </article>
           `;
         }).join('');
-        applyReadMore();
-        setTimeout(applyReadMore, 200);
+
+        // 카드 클릭: 아무 곳이나 누르면 상세 모달 열림. 공감 버튼만 따로 처리
+        feed.addEventListener('click', (e) => {
+          var card = e.target.closest('.feed-post');
+          if (!card) return;
+          var postId = card.dataset.postId;
+          if (!postId || !__feedPosts[postId]) return;
+          if (e.target.closest('.action-btn[data-like]')) {
+            e.preventDefault();
+            var likeBtn = card.querySelector('[data-like]');
+            toggleLike(postId, likeBtn, likeBtn && likeBtn.querySelector('.like-count'));
+            return;
+          }
+          openPostDetailModal(__feedPosts[postId]);
+        });
       })
       .catch((e) => {
         console.error(e);
         $('feed').innerHTML = '<p>피드를 불러오지 못했습니다.</p>';
       });
   </script>
+  <script src="/js/chat.js"></script>
 </body>
 </html>
