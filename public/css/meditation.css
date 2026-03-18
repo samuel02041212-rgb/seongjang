@@ -1,11 +1,14 @@
-/* 전체 가운데 정렬 */
+/**
+ * public/css/meditation.css
+ * 말씀묵상 페이지(meditation.html) 전용.
+ * 3단 그리드(작성 | 성경 | 주석), 작성 폼 레이아웃.
+ */
 .med-wrap {
   padding: 16px;
   display: flex;
   justify-content: center;
 }
 
-/* 16:9 카드 */
 .med-card {
   width: min(1200px, 100%);
   aspect-ratio: 16 / 9;
@@ -16,7 +19,7 @@
   overflow: hidden;
 }
 
-/* 2:1:1 그리드 */
+/* 2:1:1 비율 3단 그리드 */
 .med-grid {
   height: 100%;
   display: grid;
@@ -24,12 +27,11 @@
   gap: 12px;
 }
 
-/* 각 칸 공통 */
 .med-col {
   overflow: hidden;
 }
 
-/* 작성 칸에서 폼이 화면을 채우게 */
+/* 작성 영역: 폼이 남은 높이 채움 */
 .med-write form {
   height: calc(100% - 50px);
   display: flex;
@@ -70,12 +72,11 @@
   background: #ffdd67;
 }
 
-
-/* 오른쪽 2칸은 일단 자리표시 */
-
 .med-col h3 {
-  margin: 0px;
+  margin: 0;
 }
+
+/* 오른쪽 성경/주석 영역 placeholder */
 .med-placeholder {
   margin-top: 10px;
   height: calc(100% - 40px);

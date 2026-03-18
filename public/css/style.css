@@ -1,18 +1,19 @@
+/**
+ * public/css/style.css
+ * 공통 스타일: 전역 리셋, 로그인/회원가입 폼(auth-wrap, auth-card).
+ * 여러 페이지에서 공통으로 링크됨.
+ */
 
 * {
   box-sizing: border-box;
 }
-
 
 body {
   margin: 0;
   font-family: Arial, sans-serif;
 }
 
-
-
-/* ============로그인/회원가입============ */
-
+/* ============ 로그인/회원가입 공통 ============ */
 .auth-wrap {
   min-height: 100vh;
   display: flex;
@@ -37,8 +38,9 @@ body {
   padding: 20px;
 }
 
-.auth-card input, select {
-  width: 100%;          /* 박스 가득 */
+.auth-card input,
+.auth-card select {
+  width: 100%;
   padding: 12px;
   margin-top: 5px;
   border: 1px solid #ccc;
@@ -57,6 +59,7 @@ body {
   font-size: 15px;
   cursor: pointer;
 }
+
 .auth-card button:hover {
   background-color: #ffdd67;
 }
@@ -72,7 +75,3 @@ body {
   text-decoration: none;
   font-weight: bold;
 }
-
-
-
-

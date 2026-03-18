@@ -1,3 +1,8 @@
+/**
+ * models/user.js
+ * 사용자(회원) 스키마.
+ * 로그인/회원가입, 관리자 승인, 프로필 정보를 담는다.
+ */
 const mongoose = require('mongoose');
 
 const UserSchema = new mongoose.Schema({
@@ -20,10 +25,5 @@ const UserSchema = new mongoose.Schema({
   statusMessage: { type: String, default: '' },
   profileImageUrl: { type: String, default: '/images/default-profile.png' }
 });
-
-
-
-
-
 
 module.exports = mongoose.model('User', UserSchema);

@@ -1,3 +1,8 @@
+/**
+ * models/group.js
+ * 소그룹 스키마.
+ * 그룹 이름과 URL용 slug(예: uniongroup)를 저장한다.
+ */
 const mongoose = require('mongoose');
 
 const GroupSchema = new mongoose.Schema({

@@ -3,62 +3,51 @@
 <head>
   <meta charset="UTF-8" />
   <link rel="stylesheet" href="/css/style.css">
-  <title>성장 | 소그룹 마이페이지</title>
   <link rel="stylesheet" href="/css/mypage.css">
   <link rel="stylesheet" href="/css/feed.css">
+  <title>성장 | 소그룹 마이페이지</title>
 </head>
-
-
-  <!-- 소그룹 컨텍스트: 헤더 색 고정 -->
+<body>
+  <!-- 소그룹 컨텍스트: 헤더에 group 클래스로 색 적용 -->
   <div id="header" class="group"></div>
 
-
-<!-- ============소그룹 화면-============ -->
-
   <main class="mypage-wrap">
-     <!-- 소그룹 전용 서브 내비 -->
-<div id="groupSubNav"></div>
+    <!-- 소그룹 전용 서브 내비: 마이페이지 / 내 소그룹 링크 -->
+    <div id="groupSubNav"></div>
 
-  <section class="mypage-card">
-
-    <div class="profile-top">
-      <div class="profile-img">
-        <img src="/images/default-profile.png" alt="프로필" />
+    <section class="mypage-card">
+      <div class="profile-top">
+        <div class="profile-img">
+          <img src="/images/default-profile.png" alt="프로필" />
+        </div>
+        <div class="profile-meta">
+          <div class="username" id="profileName">사용자명</div>
+          <div class="status" id="profileStatus">상태메세지</div>
+        </div>
+        <div class="profile-actions">
+          <button type="button" id="openProfileEdit">프로필 수정</button>
+        </div>
       </div>
 
-      <div class="profile-meta">
-        <div class="username" id="profileName">사용자명</div>
-        <div class="status" id="profileStatus">상태메세지</div>
+      <div class="tabbar">
+        <button class="active" id="tabPosts">내 게시글</button>
+        <button id="tabCalendar">달력</button>
       </div>
 
-      <div class="profile-actions">
-        <button type="button" id="openProfileEdit">프로필 수정</button>
+      <div id="panelPosts">
+        <div class="grid" id="myPostsGrid">불러오는 중...</div>
       </div>
-    </div>
 
-    <div class="tabbar">
-      <button class="active" id="tabPosts">내 게시글</button>
-      <button id="tabCalendar">달력</button>
-    </div>
-
-    <!-- 게시글 탭 -->
-    <div id="panelPosts">
-      <div class="grid" id="myPostsGrid">불러오는 중...</div>
-    </div>
-
-    <!-- 달력 탭(자리만) -->
-    <div id="panelCalendar" style="display:none;">
-      <div class="grid-item" style="aspect-ratio:auto; height:240px;">
-        달력(추후 구현)
+      <div id="panelCalendar" style="display:none;">
+        <div class="grid-item" style="aspect-ratio:auto; height:240px;">
+          달력(추후 구현)
+        </div>
       </div>
-    </div>
+    </section>
+  </main>
 
-  </section>
-</main>
-
-<!-- ===========헤더============ -->
   <script>
-    // 공통 헤더 로드 + 그룹 색 적용
+    // 헤더 로드 + group 클래스 적용
     fetch('/partials/header.html')
       .then(r => r.text())
       .then(html => {
@@ -67,187 +56,150 @@
         header.className = document.getElementById('header').className;
       });
 
-     // 유저 이름 표시
-  fetch('/api/me')
-    .then(res => res.json())
-    .then(user => {
-      if (user) {
-        const el = document.getElementById('userName');
-        if (el) el.innerText = user.username + '님';
-      }
-// ========관리자 탭==========
-      if (user.role === 'admin') {
-        const adminTab = document.getElementById('adminTab');
-        if (adminTab) adminTab.style.display = 'inline-flex';
-      }
-    });
+    fetch('/api/me')
+      .then(res => res.json())
+      .then(user => {
+        if (user) {
+          const el = document.getElementById('userName');
+          if (el) el.innerText = user.username + '님';
+        }
+        if (user && user.role === 'admin') {
+          const adminTab = document.getElementById('adminTab');
+          if (adminTab) adminTab.style.display = 'inline-flex';
+        }
+      });
 
-    // 로그아웃
     document.addEventListener('click', (e) => {
       if (e.target.id === 'logoutBtn') {
         fetch('/logout', { method: 'POST' })
           .then(() => location.href = '/login.html');
       }
-      
     });
-
   </script>
 
-
-<!-- =================서브내비============= -->
- <script>
-fetch('/partials/group_subnav.html')
-  .then(r => r.text())
-  .then(html => {
-    document.getElementById('groupSubNav').innerHTML = html;
-
-    el.querySelector('[data-page="mypage"]')?.classList.add('active');
-  });
-</script>
+  <!-- 서브 내비 로드 후, 현재 페이지(mypage) 링크에 active 클래스 -->
+  <script>
+    fetch('/partials/group_subnav.html')
+      .then(r => r.text())
+      .then(html => {
+        const container = document.getElementById('groupSubNav');
+        container.innerHTML = html;
+        container.querySelector('[data-page="mypage"]')?.classList.add('active');
+      });
+  </script>
 
   <script>
-    
-    // 내 게시글 불러오기
-document.addEventListener('DOMContentLoaded', () => {
-  const grid = document.getElementById('myPostsGrid');
-  if (!grid) return console.error('myPostsGrid 없음');
+    document.addEventListener('DOMContentLoaded', () => {
+      const grid = document.getElementById('myPostsGrid');
+      if (!grid) return console.error('myPostsGrid 없음');
 
-  const modal = document.getElementById('postModal');
-  const modalBody = document.getElementById('modalBody');
-  const modalClose = document.getElementById('modalClose');
-  const modalX = document.getElementById('modalX');
+      const modal = document.getElementById('postModal');
+      const modalBody = document.getElementById('modalBody');
+      const modalClose = document.getElementById('modalClose');
+      const modalX = document.getElementById('modalX');
 
-  let cachedPosts = [];
+      let cachedPosts = [];
 
-  function openModal(html) {
-    if (!modal || !modalBody) return console.error('모달 요소(id) 없음');
-    modalBody.innerHTML = html;
-    modal.style.display = 'block';
-  }
-
-  function closeModal() {
-    if (modal) modal.style.display = 'none';
-  }
-
-  if (modalClose) modalClose.addEventListener('click', closeModal);
-  if (modalX) modalX.addEventListener('click', closeModal);
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeModal();
-  });
-
-  // 클릭 이벤트는 "그리드 컨테이너"에 한 번만 붙이면 됨 (이벤트 위임)
-  grid.addEventListener('click', (e) => {
-    const item = e.target.closest('.grid-item');
-    if (!item) return;
-
-    const id = item.dataset.id;
-    const post = cachedPosts.find(p => String(p._id) === String(id));
-    if (!post) return;
-
-    openModal(`
-      <article class="feed-post">
-        <div class="post-top">
-          <div class="post-title">${escapeHtml(post.title || '(제목 없음)')}</div>
-          <div class="post-meta">
-            <span class="post-author">${escapeHtml(post.authorName || '')}</span>
-            <span class="post-time">${new Date(post.createdAt).toLocaleString()}</span>
-          </div>
-        </div>
-
-        ${post.bibleRef ? `<div class="post-bible"><small>📖 ${escapeHtml(post.bibleRef)}</small></div>` : ''}
-
-        <div class="post-content">${escapeHtml(post.content || '')}</div>
-
-        <!-- 👇 수정 버튼 -->
-    <div style="text-align:right; margin-top:12px;">
-      <button class="edit-btn" data-id="${post._id}">수정</button>
-    </div>
-
-      </article>
-    `);
-  });
-
-  // 내 게시글 불러오기
-  fetch('/api/my-posts')
-    .then(res => res.json())
-    .then(posts => {
-      cachedPosts = Array.isArray(posts) ? posts : [];
-
-      if (cachedPosts.length === 0) {
-        grid.innerHTML = '<p>아직 내가 쓴 글이 없어요.</p>';
-        return;
+      function openModal(html) {
+        if (!modal || !modalBody) return console.error('모달 요소(id) 없음');
+        modalBody.innerHTML = html;
+        modal.style.display = 'block';
       }
 
-      grid.innerHTML = cachedPosts.map(p => `
-        <div class="grid-item" data-id="${p._id}">
-          <div class="grid-title">${escapeHtml(p.title || '(제목 없음)')}</div>
-        </div>
-      `).join('');
-    })
-    .catch(err => {
-      console.error(err);
-      grid.innerHTML = '<p>내 게시글을 불러오지 못했어요.</p>';
+      function closeModal() {
+        if (modal) modal.style.display = 'none';
+      }
+
+      if (modalClose) modalClose.addEventListener('click', closeModal);
+      if (modalX) modalX.addEventListener('click', closeModal);
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeModal();
+      });
+
+      grid.addEventListener('click', (e) => {
+        const item = e.target.closest('.grid-item');
+        if (!item) return;
+        const id = item.dataset.id;
+        const post = cachedPosts.find(p => String(p._id) === String(id));
+        if (!post) return;
+        openModal(`
+          <article class="feed-post">
+            <div class="post-top">
+              <div class="post-title">${escapeHtml(post.title || '(제목 없음)')}</div>
+              <div class="post-meta">
+                <span class="post-author">${escapeHtml(post.authorName || '')}</span>
+                <span class="post-time">${new Date(post.createdAt).toLocaleString()}</span>
+              </div>
+            </div>
+            ${post.bibleRef ? `<div class="post-bible"><small>📖 ${escapeHtml(post.bibleRef)}</small></div>` : ''}
+            <div class="post-content">${escapeHtml(post.content || '')}</div>
+            <div style="text-align:right; margin-top:12px;">
+              <button class="edit-btn" data-id="${post._id}">수정</button>
+            </div>
+          </article>
+        `);
+      });
+
+      fetch('/api/my-posts')
+        .then(res => res.json())
+        .then(posts => {
+          cachedPosts = Array.isArray(posts) ? posts : [];
+          if (cachedPosts.length === 0) {
+            grid.innerHTML = '<p>아직 내가 쓴 글이 없어요.</p>';
+            return;
+          }
+          grid.innerHTML = cachedPosts.map(p => `
+            <div class="grid-item" data-id="${p._id}">
+              <div class="grid-title">${escapeHtml(p.title || '(제목 없음)')}</div>
+            </div>
+          `).join('');
+        })
+        .catch(err => {
+          console.error(err);
+          grid.innerHTML = '<p>내 게시글을 불러오지 못했어요.</p>';
+        });
+
+      function escapeHtml(str) {
+        return String(str)
+          .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+      }
     });
 
-  function escapeHtml(str) {
-    return String(str)
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#039;');
-  }
-});
-
-document.addEventListener('click', (e) => {
-  if (!e.target.classList.contains('edit-btn')) return;
-
-  const id = e.target.dataset.id;
-  // 게시글 id를 쿼리스트링으로 전달
-  window.location.href = `/meditation.html?edit=${id}`;
-});
-
+    // 수정 버튼 클릭 시 말씀묵상 페이지로 edit 쿼리 전달
+    document.addEventListener('click', (e) => {
+      if (!e.target.classList.contains('edit-btn')) return;
+      const id = e.target.dataset.id;
+      window.location.href = `/meditation?edit=${id}`;
+    });
   </script>
 
-<!-- ===================게시글 모달=============== -->
-<div id="postModal" class="modal" style="display:none;">
-  <div class="modal-backdrop" id="modalClose"></div>
-
-  <div class="modal-panel">
-    <button class="modal-x" id="modalX">×</button>
-    <div id="modalBody"></div>
-  </div>
-</div>
-
-<!-- =====================유저 정보 수정 모달============ -->
-<div id="profileModal" class="modal" style="display:none;">
-  <div class="modal-backdrop" id="profileModalClose"></div>
-
-  <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="profileModalTitle">
-    <button class="modal-x" id="profileModalX" type="button">×</button>
-
-    <h3 id="profileModalTitle" style="margin-top:0;">프로필 수정</h3>
-
-    <label for="statusInput" style="display:block; margin:10px 0 6px;">상태 메세지</label>
-    <input
-      id="statusInput"
-      type="text"
-      style="width:100%; box-sizing:border-box; padding:10px; border:1px solid #ccc; border-radius:8px;"
-    />
-
-    <label for="profileFile" style="display:block; margin:12px 0 6px;">프로필 사진</label>
-    <input id="profileFile" type="file" accept="image/*" />
-
-    <div style="text-align:right; margin-top:14px;">
-      <!-- ✅ submit 방지 + 클릭시 기본동작 차단 -->
-      <button id="saveProfileBtn" type="button" class="edit-btn">저장</button>
+  <!-- 게시글 상세 모달 -->
+  <div id="postModal" class="modal" style="display:none;">
+    <div class="modal-backdrop" id="modalClose"></div>
+    <div class="modal-panel">
+      <button class="modal-x" id="modalX">×</button>
+      <div id="modalBody"></div>
     </div>
   </div>
-</div>
 
-<script src="/js/mypage.js"></script>
+  <!-- 프로필 수정 모달: 상태메시지 + 프로필 사진 (mypage.js에서 처리) -->
+  <div id="profileModal" class="modal" style="display:none;">
+    <div class="modal-backdrop" id="profileModalClose"></div>
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="profileModalTitle">
+      <button class="modal-x" id="profileModalX" type="button">×</button>
+      <h3 id="profileModalTitle" style="margin-top:0;">프로필 수정</h3>
+      <label for="statusInput" style="display:block; margin:10px 0 6px;">상태 메세지</label>
+      <input id="statusInput" type="text"
+        style="width:100%; box-sizing:border-box; padding:10px; border:1px solid #ccc; border-radius:8px;" />
+      <label for="profileFile" style="display:block; margin:12px 0 6px;">프로필 사진</label>
+      <input id="profileFile" type="file" accept="image/*" />
+      <div style="text-align:right; margin-top:14px;">
+        <button id="saveProfileBtn" type="button" class="edit-btn">저장</button>
+      </div>
+    </div>
+  </div>
 
-
+  <script src="/js/mypage.js"></script>
 </body>
 </html>
-

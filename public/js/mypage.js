@@ -1,21 +1,22 @@
+/**
+ * public/js/mypage.js
+ * 소그룹 마이페이지 전용: 프로필 표시, 프로필 수정 모달(상태메시지 + 프로필 사진 업로드).
+ * DOMContentLoaded 후 /api/me 로 정보 로드, 저장 시 PUT /api/me + POST /api/me/profile-image.
+ */
 document.addEventListener('DOMContentLoaded', () => {
-  // --- 프로필 표시 요소 ---
   const nameEl = document.getElementById('profileName');
   const statusEl = document.getElementById('profileStatus');
   const imgEl = document.querySelector('.profile-img img');
 
-  // --- 모달 요소 ---
   const modal = document.getElementById('profileModal');
   const openBtn = document.getElementById('openProfileEdit');
   const closeBg = document.getElementById('profileModalClose');
   const closeX = document.getElementById('profileModalX');
 
-  // --- 모달 내부 입력 ---
   const statusInput = document.getElementById('statusInput');
   const fileInput = document.getElementById('profileFile');
   const saveBtn = document.getElementById('saveProfileBtn');
 
-  // 모달이 HTML에 없으면(아직 안 붙였으면) 여기서 바로 안내
   if (!modal) {
     console.error('profileModal 요소가 없습니다. (모달 HTML이 마이페이지에 있어야 함)');
   }
@@ -30,7 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
     modal.style.display = 'none';
   }
 
-  // --- 모달 열기/닫기 이벤트 ---
   if (openBtn) openBtn.addEventListener('click', openModal);
   if (closeBg) closeBg.addEventListener('click', closeModal);
   if (closeX) closeX.addEventListener('click', closeModal);
@@ -38,8 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Escape') closeModal();
   });
 
-  // --- 1) 내 정보 로드 ---
-  // 기존에 너가 쓰던 /me를 그대로 사용
+  // 내 정보 로드 → 이름/상태메시지/프로필 이미지 반영
   fetch('/api/me')
     .then(async (res) => {
       if (!res.ok) throw new Error('GET /api/me 실패: ' + res.status);
@@ -47,27 +46,21 @@ document.addEventListener('DOMContentLoaded', () => {
     })
     .then((me) => {
       if (!me) return;
-
       if (nameEl) nameEl.innerText = me.username || '';
       if (statusEl) statusEl.innerText = me.statusMessage || '상태 메세지를 설정해보세요';
-
       if (imgEl) {
         imgEl.src = (me.profileImageUrl || '/images/default-profile.png') + '?t=' + Date.now();
       }
-
       if (statusInput) statusInput.value = me.statusMessage || '';
     })
-    .catch((err) => {
-      console.error(err);
-    });
+    .catch((err) => console.error(err));
 
-  // --- 2) 저장(상태메시지 + 사진 업로드) ---
+  // 저장: (A) 상태메시지 PUT (B) 사진 있으면 FormData로 업로드 (C) 화면 반영 후 모달 닫기
   if (saveBtn) {
     saveBtn.addEventListener('click', async (e) => {
       e.preventDefault();
-  e.stopPropagation();
+      e.stopPropagation();
 
-      // (A) 상태메시지 저장
       const statusMessage = (statusInput?.value || '').trim();
 
       try {
@@ -81,12 +74,11 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('상태메시지 저장 실패:', err);
       }
 
-      // (B) 사진 업로드(선택)
       const file = fileInput?.files?.[0];
       if (file) {
         try {
           const fd = new FormData();
-          fd.append('image', file); // 서버: upload.single('image') 기준
+          fd.append('image', file);
 
           const r2 = await fetch('/api/me/profile-image', {
             method: 'POST',
@@ -99,9 +91,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('사진업로드 JSON 아님:', r2.status, t.slice(0, 120));
           } else {
             const data = await r2.json();
-            console.log('사진업로드 응답:', data);
-
-            // 업로드 성공 시 화면 반영 + 캐시 방지
             if (data?.profileImageUrl) {
               const imgEl2 = document.querySelector('.profile-img img');
               if (imgEl2) imgEl2.src = data.profileImageUrl + '?t=' + Date.now();
@@ -112,11 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      // (C) 화면에 상태메시지 반영
       if (statusEl) statusEl.innerText = statusMessage || '상태 메세지를 설정해보세요';
-
-      console.log('SAVE CLICKED');
-
       closeModal();
     });
   } else {

@@ -1,9 +1,12 @@
+<!--
+  소그룹 페이지용 서브 내비.
+  마이페이지 링크 + "내 소그룹" 링크들(id="myGroupLinks")은 JS에서 /api/my-groups로 채운다.
+  data-page="mypage" 는 현재 페이지 표시(active)용.
+-->
 <link rel="stylesheet" href="/css/group.css">
 
-  <nav class="subnav"> 
-    <a href="/group/mypage" class="subnav-link" data-page="mypage">마이페이지</a> |
-    <span>내 소그룹:</span>
-    <span id="myGroupLinks"></span>
-  </nav>
-
-
+<nav class="subnav">
+  <a href="/group/mypage" class="subnav-link" data-page="mypage">마이페이지</a> |
+  <span>내 소그룹:</span>
+  <span id="myGroupLinks"></span>
+</nav>

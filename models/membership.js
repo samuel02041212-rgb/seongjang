@@ -1,3 +1,8 @@
+/**
+ * models/membership.js
+ * 사용자-소그룹 가입 정보 스키마.
+ * 어떤 유저가 어떤 그룹에 속하는지, 역할(member/admin)을 저장한다.
+ */
 const mongoose = require('mongoose');
 
 const MembershipSchema = new mongoose.Schema({

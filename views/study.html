@@ -6,52 +6,41 @@
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-
-  <!-- 헤더 / 네비게이션 -->
+  <!-- 성경연구 페이지: 현재는 준비 중. 헤더만 로드하고 study 클래스 적용 -->
   <div id="header" class="study"></div>
 
-  <!-- 페이지 내용 -->
   <h1 style="text-align: center;">coming soon..</h1>
 
-<script>
-  fetch('/partials/header.html')
-    .then(res => res.text())
-    .then(html => {
-      document.getElementById('header').innerHTML = html;
+  <script>
+    fetch('/partials/header.html')
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById('header').innerHTML = html;
+        const header = document.querySelector('#header header');
+        header.className = document.getElementById('header').className;
+      });
 
-      // 핵심 한 줄
-      const header = document.querySelector('#header header');
-      header.className = document.getElementById('header').className;
-    });
+    fetch('/api/me')
+      .then(res => res.json())
+      .then(user => {
+        if (user) {
+          document.getElementById('userName').innerText = user.username + '님';
+        }
+        if (user && user.role === 'admin') {
+          const adminTab = document.getElementById('adminTab');
+          if (adminTab) adminTab.style.display = 'inline-flex';
+        }
+      });
+  </script>
 
-  // 로그인한 유저 정보 가져오기
-  fetch('/api/me')
-    .then(res => res.json())
-    .then(user => {
-      if (user) {
-        document.getElementById('userName').innerText =
-          user.username + '님';
+  <script>
+    document.addEventListener('click', (e) => {
+      if (e.target.id === 'logoutBtn') {
+        fetch('/logout', { method: 'POST' })
+          .then(res => res.text())
+          .then(() => { window.location.href = '/login.html'; });
       }
-      // ========관리자 탭==========
-      if (user.role === 'admin') {
-        const adminTab = document.getElementById('adminTab');
-        if (adminTab) adminTab.style.display = 'inline-flex';
-      }
     });
-</script>
-
-<script>
-  document.addEventListener('click', (e) => {
-    if (e.target.id === 'logoutBtn') {
-      fetch('/logout', { method: 'POST' })
-        .then(res => res.text())
-        .then(() => {
-          window.location.href = '/login.html';
-        });
-    }
-  });
-</script>
-
+  </script>
 </body>
 </html>
-

@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>관리자 | 성장</title>
+  <!-- 관리자 전용 인라인 스타일: 3단 그리드(사용자/게시글/가입요청), 카드·버튼·리스트 -->
   <style>
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:0; background:#f6f7f8; }
     .wrap { max-width: 1200px; margin: 18px auto; padding: 0 12px; }
@@ -35,11 +36,10 @@
     <h2>
       관리자
       <a href="/main" style="font-size: 15px;">돌아가기</a>
-    </h2> 
-    
+    </h2>
 
     <div class="grid">
-      <!-- 1) 사용자 목록 -->
+      <!-- 1) 사용자 목록: 검색·새로고침, 미승인 시 승인 버튼 -->
       <section class="card">
         <h3>사용자</h3>
         <div class="toolbar">
@@ -49,7 +49,7 @@
         <div id="users" class="list"></div>
       </section>
 
-      <!-- 2) 게시글 목록 -->
+      <!-- 2) 게시글 목록: 검색·새로고침, 삭제 버튼 -->
       <section class="card">
         <h3>게시글</h3>
         <div class="toolbar">
@@ -59,7 +59,7 @@
         <div id="posts" class="list"></div>
       </section>
 
-      <!-- 3) 가입 요청 -->
+      <!-- 3) 가입 요청: 승인 대기 유저만, 승인/거절 버튼 -->
       <section class="card">
         <h3>회원가입 요청</h3>
         <div class="toolbar">
@@ -72,9 +72,10 @@
   </div>
 
 <script>
-  // ====== 공통 ======
+  // ====== 공통 유틸 ======
   const $ = (id) => document.getElementById(id);
 
+  /** HTML 이스케이프 (XSS 방지) */
   function esc(str) {
     return String(str ?? '')
       .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
@@ -92,13 +93,12 @@
     return null;
   }
 
-  // ====== 1) 사용자 ======
+  // ====== 1) 사용자 목록 ======
   let allUsers = [];
 
   async function loadUsers() {
     const box = $('users');
     box.innerHTML = '<div class="empty">불러오는 중...</div>';
-
     const res = await fetch('/api/admin/users');
     if (!res.ok) {
       box.innerHTML = '<div class="empty">사용자 목록 불러오기 실패</div>';
@@ -115,13 +115,11 @@
       const b = (u.email || '').toLowerCase();
       return !q || a.includes(q) || b.includes(q);
     });
-
     const box = $('users');
     if (!filtered.length) {
       box.innerHTML = '<div class="empty">사용자가 없습니다.</div>';
       return;
     }
-
     box.innerHTML = filtered.map(u => `
       <div class="item">
         <div>
@@ -129,31 +127,25 @@
           <div class="meta">${esc(u.email || '')}</div>
           <div class="meta">승인: ${u.isApproved ? '✅' : '⏳'} · 가입: ${fmtDate(u.createdAt)}</div>
           <div class="meta">
-  ${u.church ? esc(u.church) : ''} 
-  ${u.gender ? ' · ' + esc(u.gender) : ''} 
+  ${u.church ? esc(u.church) : ''}
+  ${u.gender ? ' · ' + esc(u.gender) : ''}
   ${u.birthDate ? ' · ' + new Date(u.birthDate).toLocaleDateString() : ''}
   ${u.signupSource ? ' · 가입경로: ' + esc(u.signupSource) : ''}
 </div>
-
         </div>
         <div class="btns">
-          ${
-            u.isApproved
-              ? ''
-              : `<button class="small" data-act="approveUser" data-id="${u._id}">승인</button>`
-          }
+          ${u.isApproved ? '' : `<button class="small" data-act="approveUser" data-id="${u._id}">승인</button>`}
         </div>
       </div>
     `).join('');
   }
 
-  // ====== 2) 게시글 ======
+  // ====== 2) 게시글 목록 ======
   let allPosts = [];
 
   async function loadPosts() {
     const box = $('posts');
     box.innerHTML = '<div class="empty">불러오는 중...</div>';
-
     const res = await fetch('/api/admin/posts');
     if (!res.ok) {
       box.innerHTML = '<div class="empty">게시글 목록 불러오기 실패</div>';
@@ -171,13 +163,11 @@
       const c = (p.content || '').toLowerCase();
       return !q || a.includes(q) || b.includes(q) || c.includes(q);
     });
-
     const box = $('posts');
     if (!filtered.length) {
       box.innerHTML = '<div class="empty">게시글이 없습니다.</div>';
       return;
     }
-
     box.innerHTML = filtered.map(p => `
       <div class="item">
         <div style="min-width:0;">
@@ -196,13 +186,12 @@
     `).join('');
   }
 
-  // ====== 3) 가입 요청 ======
+  // ====== 3) 가입 요청(승인 대기) ======
   let pendingUsers = [];
 
   async function loadPending() {
     const box = $('pending');
     box.innerHTML = '<div class="empty">불러오는 중...</div>';
-
     const res = await fetch('/api/admin/pending-users');
     if (!res.ok) {
       box.innerHTML = '<div class="empty">가입 요청 불러오기 실패</div>';
@@ -219,15 +208,14 @@
       box.innerHTML = '<div class="empty">승인 대기 사용자가 없습니다.</div>';
       return;
     }
-
     box.innerHTML = pendingUsers.map(u => `
       <div class="item">
         <div>
           <div><b>${esc(u.username || '')}</b></div>
           <div class="meta">${esc(u.email || '')}</div>
           <div class="meta">
-            ${u.church ? esc(u.church) : ''} 
-            ${u.gender ? ' · ' + esc(u.gender) : ''} 
+            ${u.church ? esc(u.church) : ''}
+            ${u.gender ? ' · ' + esc(u.gender) : ''}
             ${u.birthDate ? ' · ' + new Date(u.birthDate).toLocaleDateString() : ''}
           </div>
           ${u.signupSource ? `<div class="meta">가입경로: ${esc(u.signupSource)}</div>` : ''}
@@ -241,11 +229,10 @@
     `).join('');
   }
 
-  // ====== 액션 핸들러 ======
+  // ====== 버튼 클릭: 승인/거절/삭제 ======
   document.addEventListener('click', async (e) => {
     const btn = e.target.closest('button[data-act]');
     if (!btn) return;
-
     const act = btn.dataset.act;
     const id = btn.dataset.id;
 
@@ -256,7 +243,6 @@
       await loadUsers();
       return;
     }
-
     if (act === 'rejectUser') {
       if (!confirm('정말 거절(삭제)할까요?')) return;
       const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
@@ -265,25 +251,21 @@
       await loadUsers();
       return;
     }
-
     if (act === 'deletePost') {
       if (!confirm('게시글을 삭제할까요?')) return;
       const res = await fetch(`/api/admin/posts/${id}`, { method: 'DELETE' });
       if (!res.ok) return alert('삭제 실패');
       await loadPosts();
-      return;
     }
   });
 
-  // ====== 검색/새로고침 ======
+  // ====== 검색 입력 / 새로고침 버튼 ======
   $('userSearch').addEventListener('input', renderUsers);
   $('postSearch').addEventListener('input', renderPosts);
-
   $('refreshUsers').addEventListener('click', loadUsers);
   $('refreshPosts').addEventListener('click', loadPosts);
   $('refreshPending').addEventListener('click', loadPending);
 
-  // 초기 로드
   loadUsers();
   loadPosts();
   loadPending();

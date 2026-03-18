@@ -11,13 +11,12 @@
 
   <main style="padding:16px;">
     <h1>연합성장 소그룹 피드</h1>
-    <p style="margin-top:4px; opacity:0.8;">(예시) 지금은 bibleRef에 “연합성장”이 들어간 글만 표시돼요.</p>
-
+    <p style="margin-top:4px; opacity:0.8;">(예시) 지금은 bibleRef에 "연합성장"이 들어간 글만 표시돼요.</p>
     <div id="feed">불러오는 중...</div>
   </main>
 
   <script>
-    // 공통 헤더 + 그룹 색 유지
+    // 헤더 + group 클래스
     fetch('/partials/header.html')
       .then(r => r.text())
       .then(html => {
@@ -26,27 +25,25 @@
         header.className = document.getElementById('header').className;
       });
 
-    // 소그룹 서브내비 로드
+    // 소그룹 서브 내비 로드
     fetch('/partials/group_subnav.html')
       .then(r => r.text())
       .then(html => {
         document.getElementById('groupSubNav').innerHTML = html;
       });
 
-    // 유저 이름 표시
+    // 유저 이름 + 관리자 탭 (u 사용으로 버그 수정)
     fetch('/api/me').then(r => r.json()).then(u => {
       if (u) {
         const el = document.getElementById('userName');
         if (el) el.innerText = u.username + '님';
       }
-      // ========관리자 탭==========
-      if (user.role === 'admin') {
+      if (u && u.role === 'admin') {
         const adminTab = document.getElementById('adminTab');
         if (adminTab) adminTab.style.display = 'inline-flex';
       }
     });
 
-    // 로그아웃
     document.addEventListener('click', (e) => {
       if (e.target.id === 'logoutBtn') {
         fetch('/logout', { method: 'POST' })
@@ -54,34 +51,29 @@
       }
     });
 
-    // 서브내비에 "내 소그룹" 링크 채우기
+    // 서브 내비에 "내 소그룹" 링크 채우기
     fetch('/api/my-groups')
       .then(r => r.json())
       .then(groups => {
         const box = document.getElementById('myGroupLinks');
         if (!box) return;
-
         box.innerHTML = groups.map(g =>
           `<a href="/group/${g.slug}">${g.name}</a>`
         ).join(' | ');
       });
 
-    // 연합성장 소그룹 피드 불러오기 (임시 필터)
+    // 연합성장 피드: 전체 글 중 bibleRef에 "연합성장" 포함된 것만 표시 (임시 규칙)
     fetch('/api/posts')
       .then(r => r.json())
       .then(posts => {
         const feed = document.getElementById('feed');
-
-        // ✅ 임시 규칙: bibleRef에 "연합성장"이 포함된 글만 소그룹 글로 표시
         const filtered = (posts || []).filter(p =>
           (p.bibleRef || '').includes('연합성장')
         );
-
         if (!filtered.length) {
           feed.innerHTML = '<p>연합성장 소그룹 글이 아직 없어요.</p>';
           return;
         }
-
         feed.innerHTML = filtered.map(p => `
           <article style="border:1px solid #ddd; border-radius:10px; padding:12px; margin:12px 0;">
             <div style="display:flex; justify-content:space-between; gap:12px;">
@@ -99,11 +91,8 @@
 
     function escapeHtml(str) {
       return String(str)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
+        .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
     }
   </script>
 </body>

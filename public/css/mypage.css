@@ -1,3 +1,8 @@
+/**
+ * public/css/mypage.css
+ * 소그룹 마이페이지(group_mypage.html) 전용.
+ * 프로필 상단, 탭바(내 게시글/달력), 그리드 카드, 모달.
+ */
 .mypage-wrap {
   width: min(1100px, calc(100% - 24px));
   margin: 0 auto;
@@ -6,7 +11,7 @@
 .mypage-card {
   box-sizing: border-box;
   border: 1px solid #e6e6e6;
-  border-radius: 0px 0px 14px 14px;
+  border-radius: 0 0 14px 14px;
   background: #fff;
   padding: 18px;
 }
@@ -73,14 +78,15 @@
   font-weight: bold;
 }
 
+/* 내 게시글 그리드: 5열, 정사각형 카드 */
 .grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr); /* 한 줄 5개 */
-  gap: 8px; /* 간격 살짝 줄이기 */
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
 }
 
 .grid-item {
-  aspect-ratio: 1 / 1; /* 정사각형 */
+  aspect-ratio: 1 / 1;
   border: 1px solid #eee;
   border-radius: 10px;
   background: #fff;
@@ -93,19 +99,13 @@
   font-size: 12px;
   text-decoration: none;
   color: #000;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   cursor: pointer;
 }
 
 .grid-item:hover {
   transform: translateY(-3px);
-  box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
 }
 
 .grid-title {
@@ -113,12 +113,16 @@
   line-height: 1.3;
 }
 
-/* 반응형 */
 @media (max-width: 900px) {
-  .grid { grid-template-columns: repeat(3, 1fr); }
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
+
 @media (max-width: 520px) {
-  .grid { grid-template-columns: repeat(2, 1fr); }
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .grid-item img {
@@ -127,8 +131,7 @@
   object-fit: cover;
 }
 
-/* 모달 */
-
+/* 모달: 게시글 상세 / 프로필 수정 */
 .modal {
   position: fixed;
   inset: 0;
@@ -138,7 +141,7 @@
 .modal-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(0,0,0,0.35);
+  background: rgba(0, 0, 0, 0.35);
 }
 
 .modal-panel {
@@ -149,6 +152,8 @@
   border-radius: 14px;
   border: 1px solid #e6e6e6;
   padding: 16px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
 }
 
 .modal-x {
@@ -169,11 +174,12 @@
   cursor: pointer;
   font-weight: bold;
 }
+
 .edit-btn:hover {
   background: #ffdd67;
 }
 
-/* 모달 안에서는 그라데이션(페이드) 끄기 */
+/* 모달 안 피드 카드: 그라데이션/접기 비활성화 */
 #postModal .feed-post::after {
   display: none !important;
 }
@@ -185,9 +191,4 @@
 
 #postModal .post-content {
   overflow: visible;
-}
-
-.modal-panel {
-  max-height: calc(100vh - 120px);
-  overflow-y: auto;
 }

@@ -1,4 +1,7 @@
-// server.js
+/**
+ * server.js — 성장(성경 나눔 공간) 메인 서버
+ * Express 기반: 인증, 게시글, 소그룹, 관리자 API 및 페이지 라우트 제공
+ */
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
@@ -30,14 +33,14 @@ app.use(express.static('public'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 세션
+// 세션 (로그인 유지)
 app.use(session({
   secret: 'seongjang-secret-key', // TODO: 배포 전에 .env로 옮기기
   resave: false,
   saveUninitialized: false
 }));
 
-// 업로드 폴더(프로필 이미지) 정적 서빙
+// 업로드 폴더(프로필/게시글 이미지) 정적 서빙
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ================== 헬스 체크 ==================
@@ -45,22 +48,20 @@ app.get('/', (req, res) => {
   res.send('성경나눔장소 성장 서버 실행 중');
 });
 
-// ================== 공통: 로그인 필요 ==================
+// ================== 공통: 로그인 필요 미들웨어 ==================
 function requireLogin(req, res, next) {
   if (!req.session?.userId) {
-    // API 요청이면 JSON
     if (req.path.startsWith('/api')) {
       return res.status(401).json({ ok: false, reason: 'not_logged_in' });
     }
-    // 페이지 요청이면 로그인 페이지로
     return res.redirect('/login.html');
   }
   next();
 }
 
-// ================== AUTH: 회원가입/로그인/로그아웃 ==================
+// ================== AUTH: 회원가입 / 로그인 / 로그아웃 ==================
 
-// 📌 회원가입: 기본은 승인대기(isApproved=false)로 들어감 (User 스키마 default에 의해)
+// 회원가입 — 기본은 승인대기(isApproved=false)
 app.post('/register', async (req, res) => {
   const { username, gender, birthDate, church, email, password, signupSource } = req.body;
 
@@ -75,7 +76,6 @@ app.post('/register', async (req, res) => {
       email,
       password: hashedPassword,
       signupSource: signupSource || ''
-      // role, isApproved, approvedAt 은 스키마 default 사용
     });
 
     await user.save();
@@ -86,6 +86,7 @@ app.post('/register', async (req, res) => {
   }
 });
 
+// 로그인 — 이메일/비밀번호 검증, 미승인 시 403
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -97,12 +98,10 @@ app.post('/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.send('비밀번호 틀림');
 
-    // ✅ 승인 전이면 로그인 차단
     if (!user.isApproved) {
       return res.status(403).send('관리자 승인 대기 중입니다.');
     }
 
-    // ✅ 세션 저장
     req.session.userId = user._id.toString();
     req.session.username = user.username;
 
@@ -113,11 +112,12 @@ app.post('/login', async (req, res) => {
   }
 });
 
+// 로그아웃 — 세션 삭제
 app.post('/logout', (req, res) => {
   req.session.destroy(() => res.send('로그아웃'));
 });
 
-// ================== PAGE ROUTES ==================
+// ================== 페이지 라우트 (로그인 필요 페이지) ==================
 app.get('/admin', requireAdmin, (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'admin.html'));
 });
@@ -130,7 +130,6 @@ app.get('/meditation', requireLogin, (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'meditation.html'));
 });
 
-// 예전 링크 호환용(있으면 유지)
 app.get('/meditation.html', requireLogin, (req, res) => {
   res.redirect('/meditation');
 });
@@ -147,8 +146,16 @@ app.get('/group/uniongroup', requireLogin, (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'group_uniongroup.html'));
 });
 
-// ================== API: 내 정보(관리자 탭/마이페이지에서 사용) ==================
-// ✅ 여기서 role을 내려줘야 관리자 탭이 보임
+// 로그인/회원가입 페이지 (공개)
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/login.html'));
+});
+
+app.get('/register', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/register.html'));
+});
+
+// ================== API: 내 정보 (프로필, 관리자 탭 노출용) ==================
 app.get('/api/me', requireLogin, async (req, res) => {
   try {
     const user = await User.findById(req.session.userId)
@@ -201,8 +208,7 @@ app.post('/api/me/profile-image', requireLogin, upload.single('image'), async (r
 });
 
 // ================== API: 게시글 ==================
-// 📌 게시글 작성(텍스트 + 선택 이미지 1장)
-// 📌 게시글 작성(텍스트 + 이미지 여러 장)
+// 게시글 작성 (텍스트 + 이미지 최대 10장)
 app.post('/api/posts', requireLogin, upload.array('images', 10), async (req, res) => {
   const { title, content, bibleRef } = req.body;
 
@@ -226,31 +232,28 @@ app.post('/api/posts', requireLogin, upload.array('images', 10), async (req, res
   }
 });
 
-
-
+// 게시글 목록 (최신 50개)
 app.get('/api/posts', requireLogin, async (req, res) => {
   try {
     const posts = await Post.find().sort({ createdAt: -1 }).limit(50);
 
-// 구버전 호환: imageUrl -> imageUrls
-const normalized = posts.map(p => {
-  const obj = p.toObject();
-  if ((!obj.imageUrls || obj.imageUrls.length === 0) && obj.imageUrl) {
-    obj.imageUrls = [obj.imageUrl];
-  }
-  return obj;
-});
+    // 구버전 호환: imageUrl -> imageUrls
+    const normalized = posts.map(p => {
+      const obj = p.toObject();
+      if ((!obj.imageUrls || obj.imageUrls.length === 0) && obj.imageUrl) {
+        obj.imageUrls = [obj.imageUrl];
+      }
+      return obj;
+    });
 
-res.json(normalized);
-
-  } 
-    catch (err) {
+    res.json(normalized);
+  } catch (err) {
     console.error(err);
     res.status(500).json([]);
   }
 });
 
-// 내 글
+// 내 글만 조회
 app.get('/api/my-posts', requireLogin, async (req, res) => {
   try {
     const posts = await Post.find({ authorId: req.session.userId })
@@ -263,7 +266,7 @@ app.get('/api/my-posts', requireLogin, async (req, res) => {
   }
 });
 
-// 글 단건 조회(수정용)
+// 글 단건 조회 (수정 폼용)
 app.get('/api/posts/:id', requireLogin, async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -280,7 +283,7 @@ app.get('/api/posts/:id', requireLogin, async (req, res) => {
   }
 });
 
-// 글 수정
+// 글 수정 (본인 글만)
 app.put('/api/posts/:id', requireLogin, async (req, res) => {
   const { title, content, bibleRef } = req.body;
 
@@ -296,7 +299,7 @@ app.put('/api/posts/:id', requireLogin, async (req, res) => {
   }
 });
 
-// ================== API: 소그룹(현재는 조회만) ==================
+// ================== API: 소그룹 (현재는 내 그룹 목록만) ==================
 app.get('/api/my-groups', requireLogin, async (req, res) => {
   try {
     const memberships = await Membership.find({ userId: req.session.userId })
@@ -317,7 +320,6 @@ app.get('/api/my-groups', requireLogin, async (req, res) => {
 });
 
 // ================== ADMIN API ==================
-// 전체 유저 목록
 app.get('/api/admin/users', requireAdmin, async (req, res) => {
   try {
     const users = await User.find()
@@ -330,7 +332,6 @@ app.get('/api/admin/users', requireAdmin, async (req, res) => {
   }
 });
 
-// 승인 대기 유저
 app.get('/api/admin/pending-users', requireAdmin, async (req, res) => {
   try {
     const users = await User.find({ isApproved: false })
@@ -343,7 +344,6 @@ app.get('/api/admin/pending-users', requireAdmin, async (req, res) => {
   }
 });
 
-// 승인
 app.post('/api/admin/users/:id/approve', requireAdmin, async (req, res) => {
   try {
     await User.updateOne(
@@ -357,7 +357,6 @@ app.post('/api/admin/users/:id/approve', requireAdmin, async (req, res) => {
   }
 });
 
-// 거절(삭제)
 app.delete('/api/admin/users/:id', requireAdmin, async (req, res) => {
   try {
     await User.deleteOne({ _id: req.params.id, isApproved: false });
@@ -368,7 +367,6 @@ app.delete('/api/admin/users/:id', requireAdmin, async (req, res) => {
   }
 });
 
-// 게시글 목록
 app.get('/api/admin/posts', requireAdmin, async (req, res) => {
   try {
     const posts = await Post.find()
@@ -381,7 +379,6 @@ app.get('/api/admin/posts', requireAdmin, async (req, res) => {
   }
 });
 
-// 게시글 삭제
 app.delete('/api/admin/posts/:id', requireAdmin, async (req, res) => {
   try {
     await Post.deleteOne({ _id: req.params.id });

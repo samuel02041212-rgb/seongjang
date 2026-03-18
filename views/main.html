@@ -5,9 +5,8 @@
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/feed.css">
   <title>성장 | 전체피드</title>
-
+  <!-- 피드 카드: 썸네일 비율 유지, 본문 더보기/접기 -->
   <style>
-    /* 썸네일: "작은 카드" 느낌 + 비율 유지(안 잘림) */
     .post-media { margin: 10px 0; display:flex; justify-content:center; }
     .post-media .thumb {
       width: min(420px, 100%);
@@ -19,8 +18,8 @@
     }
     .post-media img {
       width: 100%;
-      height: 200px;         /* ✅ 작게 보이게 (160~220 조절 가능) */
-      object-fit: contain;   /* ✅ 안 잘림 */
+      height: 200px;
+      object-fit: contain;
       display: block;
       cursor: pointer;
     }
@@ -33,13 +32,10 @@
       padding:4px 8px;
       border-radius:999px;
     }
-
-    /* 본문: 더보기 대상 */
     .post-content { overflow:hidden; max-height: 130px; white-space: pre-wrap; }
     .feed-post.expanded .post-content { max-height: none; }
   </style>
 </head>
-
 <body>
   <div id="header" class="feed"></div>
 
@@ -51,65 +47,44 @@
     </div>
   </main>
 
-  <!-- ==========게시글 이미지 모달============= -->
+  <!-- 게시글 이미지 확대 모달: 썸네일 클릭 시 열림, 이전/다음으로 여러 장 탐색 -->
   <div id="imgModal" style="display:none; position:fixed; inset:0; z-index:9999;">
     <div id="imgModalBg" style="position:absolute; inset:0; background:rgba(0,0,0,.55);"></div>
-
     <div style="position:relative; height:100%; display:flex; align-items:center; justify-content:center; padding:18px;">
       <button id="imgModalClose"
-        style="position:absolute; top:14px; right:14px; width:42px; height:42px; border-radius:999px; border:0; background:rgba(0,0,0,.55); color:#fff; font-size:22px; cursor:pointer;">
-        ×
-      </button>
-
+        style="position:absolute; top:14px; right:14px; width:42px; height:42px; border-radius:999px; border:0; background:rgba(0,0,0,.55); color:#fff; font-size:22px; cursor:pointer;">×</button>
       <button id="imgPrev"
-        style="position:absolute; left:14px; top:50%; transform:translateY(-50%); width:44px; height:44px; border-radius:999px; border:0; background:rgba(0,0,0,.45); color:#fff; font-size:22px; cursor:pointer;">
-        ‹
-      </button>
+        style="position:absolute; left:14px; top:50%; transform:translateY(-50%); width:44px; height:44px; border-radius:999px; border:0; background:rgba(0,0,0,.45); color:#fff; font-size:22px; cursor:pointer;">‹</button>
       <button id="imgNext"
-        style="position:absolute; right:14px; top:50%; transform:translateY(-50%); width:44px; height:44px; border-radius:999px; border:0; background:rgba(0,0,0,.45); color:#fff; font-size:22px; cursor:pointer;">
-        ›
-      </button>
-
+        style="position:absolute; right:14px; top:50%; transform:translateY(-50%); width:44px; height:44px; border-radius:999px; border:0; background:rgba(0,0,0,.45); color:#fff; font-size:22px; cursor:pointer;">›</button>
       <img id="imgModalImg" src="" alt="이미지"
         style="max-width:80vw; max-height:80vh; border-radius:14px; background:#fff; object-fit:contain;" />
-
       <div id="imgIndex"
-        style="position:absolute; bottom:14px; background:rgba(0,0,0,.55); color:#fff; padding:6px 10px; border-radius:999px; font-size:12px;">
-        1 / 1
-      </div>
+        style="position:absolute; bottom:14px; background:rgba(0,0,0,.55); color:#fff; padding:6px 10px; border-radius:999px; font-size:12px;">1 / 1</div>
     </div>
   </div>
 
   <script>
-    // ================== 유틸 ==================
     const $ = (id) => document.getElementById(id);
 
     function escapeHtml(str) {
       return String(str ?? '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
+        .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+        .replaceAll('"','&quot;').replaceAll("'","&#039;");
     }
 
-    // ================== 헤더 + 유저정보 ==================
-    // 헤더를 먼저 붙이고, 그 다음에 /api/me를 불러야 adminTab/userName이 존재함
+    // 헤더 로드 + feed 클래스 적용, /api/me로 유저명·관리자 탭 표시
     fetch('/partials/header.html')
       .then(res => res.text())
       .then(async (html) => {
         $('header').innerHTML = html;
-
         const headerEl = document.querySelector('#header header');
         if (headerEl) headerEl.className = $('header').className;
-
         const meRes = await fetch('/api/me');
         const user = await meRes.json();
         if (!user) return;
-
         const nameEl = $('userName');
         if (nameEl) nameEl.innerText = (user.username || '') + '님';
-
         if (user.role === 'admin') {
           const adminTab = $('adminTab');
           if (adminTab) adminTab.style.display = 'inline-flex';
@@ -117,7 +92,6 @@
       })
       .catch(console.error);
 
-    // 로그아웃(이벤트 위임)
     document.addEventListener('click', (e) => {
       if (e.target && e.target.id === 'logoutBtn') {
         fetch('/logout', { method: 'POST' })
@@ -125,19 +99,17 @@
       }
     });
 
-    // ================== 더보기 ==================
+    // 더보기/생략: 본문이 잘리면 버튼 표시, 클릭 시 expanded 토글
     function applyReadMore() {
       document.querySelectorAll('.feed-post').forEach(card => {
         const content = card.querySelector('.post-content');
         const btn = card.querySelector('.post-toggle');
         if (!content || !btn) return;
-
         if (card.classList.contains('expanded')) {
           btn.style.display = 'inline-flex';
           btn.textContent = '생략';
           return;
         }
-
         if (content.scrollHeight > content.clientHeight + 2) {
           btn.style.display = 'inline-flex';
           btn.textContent = '더보기';
@@ -146,50 +118,41 @@
         }
       });
     }
-
     document.addEventListener('click', (e) => {
       const btn = e.target.closest('.post-toggle');
       if (!btn) return;
-
       const card = btn.closest('.feed-post');
       card.classList.toggle('expanded');
       applyReadMore();
     });
 
-    // ================== 이미지 모달 ==================
+    // 이미지 모달: 썸네일 클릭 시 해당 글의 imageUrls 목록으로 열기
     let __modalList = [];
     let __modalIdx = 0;
-    window.__postImages = {}; // postId -> [urls]
-
+    window.__postImages = {};
     function renderImgModal() {
       const img = $('imgModalImg');
       const idxEl = $('imgIndex');
       const prevBtn = $('imgPrev');
       const nextBtn = $('imgNext');
-
       if (!__modalList.length) return;
-
       img.src = __modalList[__modalIdx];
       idxEl.textContent = `${__modalIdx + 1} / ${__modalList.length}`;
-
       prevBtn.style.display = (__modalList.length > 1) ? 'block' : 'none';
       nextBtn.style.display = (__modalList.length > 1) ? 'block' : 'none';
     }
-
     function openImgModal(list, idx) {
       __modalList = list || [];
       __modalIdx = Math.max(0, Math.min(idx || 0, __modalList.length - 1));
       $('imgModal').style.display = 'block';
       renderImgModal();
     }
-
     function closeImgModal() {
       $('imgModal').style.display = 'none';
       $('imgModalImg').src = '';
       __modalList = [];
       __modalIdx = 0;
     }
-
     document.addEventListener('click', (e) => {
       const thumb = e.target.closest('.post-thumb');
       if (thumb) {
@@ -198,58 +161,46 @@
         if (list.length) openImgModal(list, 0);
         return;
       }
-
       if (e.target.id === 'imgModalBg' || e.target.id === 'imgModalClose') {
         closeImgModal();
         return;
       }
-
       if (e.target.id === 'imgPrev') {
         __modalIdx = (__modalIdx - 1 + __modalList.length) % __modalList.length;
         renderImgModal();
         return;
       }
-
       if (e.target.id === 'imgNext') {
         __modalIdx = (__modalIdx + 1) % __modalList.length;
         renderImgModal();
         return;
       }
     });
-
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeImgModal();
     });
 
-    // ================== 피드 로드 ==================
+    // 피드 로드: /api/posts → 카드 렌더 (구버전 imageUrl 호환)
     fetch('/api/posts')
       .then(res => res.json())
       .then(posts => {
         const feed = $('feed');
-
         if (!posts || posts.length === 0) {
           feed.innerHTML = '<p>아직 게시글이 없습니다. 첫 글을 써보자!</p>';
           return;
         }
-
         feed.innerHTML = posts.map(p => {
-          // ✅ 구버전(imageUrl) + 신버전(imageUrls) 둘 다 지원
           const imgs = (Array.isArray(p.imageUrls) && p.imageUrls.length)
             ? p.imageUrls
             : (p.imageUrl ? [p.imageUrl] : []);
-
-          // 모달용 저장
           window.__postImages[p._id] = imgs;
-
           return `
             <article class="feed-post">
               <div class="post-header">
                 <div><b class="post-title">${escapeHtml(p.title || '')}</b></div>
                 <div><small class="post-meta">${escapeHtml(p.authorName || '')} · ${new Date(p.createdAt).toLocaleString()}</small></div>
               </div>
-
               ${p.bibleRef ? `<div class="post-bible"><small>📖 ${escapeHtml(p.bibleRef)}</small></div>` : ''}
-
               ${imgs.length ? `
                 <div class="post-media">
                   <div class="thumb">
@@ -258,14 +209,11 @@
                   </div>
                 </div>
               ` : ''}
-
               <div class="post-content">${escapeHtml(p.content || '')}</div>
               <button class="post-toggle" style="display:none;">더보기</button>
             </article>
           `;
         }).join('');
-
-        // ✅ 렌더 이후 더보기 계산(이미지 로딩 영향으로 한번 더)
         applyReadMore();
         setTimeout(applyReadMore, 200);
       })
