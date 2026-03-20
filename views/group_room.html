@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/group.css">
+  <link rel="stylesheet" href="/css/feed.css">
+  <link rel="stylesheet" href="/css/chat.css">
+  <title>성장 | 소그룹</title>
+</head>
+<body>
+  <script src="/js/group-last-path.js"></script>
+  <div id="header" class="group"></div>
+
+  <div id="pjax-container">
+  <div id="groupSubNav"></div>
+
+  <main class="group-room-wrap">
+    <div class="group-room-head">
+      <div class="group-room-head-text">
+        <h1 id="roomTitle" class="group-room-title">소그룹</h1>
+        <p id="roomMeta" class="group-room-meta"></p>
+      </div>
+      <a href="/meditation" id="groupRoomWriteLink" class="group-room-write-btn" data-no-pjax="true">
+        <span aria-hidden="true">✏️</span> 글쓰기
+      </a>
+      <script>
+        (function () {
+          var parts = location.pathname.split('/').filter(Boolean);
+          var slug = parts[parts.length - 1] || '';
+          if (!slug) return;
+          var a = document.getElementById('groupRoomWriteLink');
+          if (!a) return;
+          var ret = '/group/' + slug;
+          a.setAttribute('href', '/meditation?return=' + encodeURIComponent(ret));
+        })();
+      </script>
+    </div>
+    <div id="feed" class="group-room-feed">
+      <p style="color:#666;">불러오는 중...</p>
+    </div>
+  </main>
+
+  <!-- 게시글 상세 + 댓글 모달 -->
+  <div id="postDetailModal" class="post-detail-modal">
+    <div class="post-detail-backdrop" id="postDetailModalClose"></div>
+    <div class="post-detail-panel">
+      <button type="button" class="modal-close" id="postDetailModalX" aria-label="닫기">×</button>
+      <div class="post-detail-body" id="postDetailBody"></div>
+      <div class="comments-section">
+        <h4>댓글 <span id="commentCount">0</span>개</h4>
+        <div class="comment-list" id="commentList"></div>
+        <div class="comment-form">
+          <textarea id="commentInput" placeholder="댓글을 입력하세요"></textarea>
+          <button type="button" id="commentSubmit">등록</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const parts = window.location.pathname.split('/').filter(Boolean);
+      const slug = parts[parts.length - 1] || '';
+      if (window.GroupLastPath) {
+        GroupLastPath.remember();
+        GroupLastPath.apply();
+      }
+
+      const returnPath = slug ? '/group/' + slug : '';
+      const writeLink = document.getElementById('groupRoomWriteLink');
+      if (writeLink && returnPath) {
+        writeLink.setAttribute('href', '/meditation?return=' + encodeURIComponent(returnPath));
+      }
+
+      if (!document.querySelector('#header header')) {
+        fetch('/partials/header.html')
+          .then(r => r.text())
+          .then(html => {
+            document.getElementById('header').innerHTML = html;
+            const header = document.querySelector('#header header');
+            if (header) header.className = document.getElementById('header').className;
+            if (window.GroupLastPath) GroupLastPath.apply();
+          });
+      }
+
+      fetch('/partials/group_subnav.html')
+        .then(r => r.text())
+        .then(html => {
+          const container = document.getElementById('groupSubNav');
+          container.innerHTML = html;
+          document.body.classList.add('has-group-subnav');
+          const subnav = container.querySelector('#group-subnav');
+          const toggle = container.querySelector('#groupSubnavToggle');
+          const groupSubnavStorageKey = 'group.subnav.collapsed';
+          function setCollapsed(isCollapsed) {
+            if (!subnav) return;
+            subnav.classList.toggle('collapsed', isCollapsed);
+            try {
+              localStorage.setItem(groupSubnavStorageKey, isCollapsed ? '1' : '0');
+            } catch (_) {}
+          }
+          let initialCollapsed = false;
+          try {
+            initialCollapsed = localStorage.getItem(groupSubnavStorageKey) === '1';
+          } catch (_) {}
+          setCollapsed(initialCollapsed);
+          if (toggle) {
+            toggle.addEventListener('click', function() {
+              setCollapsed(!subnav.classList.contains('collapsed'));
+            });
+          }
+          document.dispatchEvent(new CustomEvent('groupSubnavMounted', { detail: { container } }));
+        });
+
+      fetch('/api/me').then(r => r.json()).then(u => {
+        if (u) {
+          const el = document.getElementById('userName');
+          if (el) el.innerText = u.username + '님';
+        }
+        if (u && u.role === 'admin') {
+          const adminTab = document.getElementById('adminTab');
+          if (adminTab) adminTab.style.display = 'inline-flex';
+        }
+      });
+
+      document.addEventListener('click', (e) => {
+        if (e.target.id === 'logoutBtn') {
+          fetch('/logout', { method: 'POST' })
+            .then(() => location.href = '/login.html');
+        }
+      });
+
+      fetch('/api/groups/room/' + encodeURIComponent(slug))
+        .then(r => r.json())
+        .then(data => {
+          if (!data || !data.ok) return;
+          document.getElementById('roomTitle').textContent = data.name || '소그룹';
+          document.title = '성장 | ' + (data.name || '소그룹');
+          const bits = [];
+          if (data.church) bits.push(data.church);
+          if (data.bibleVerse) bits.push('📖 ' + data.bibleVerse);
+          document.getElementById('roomMeta').textContent = bits.join(' · ') || '';
+        })
+        .catch(function() {});
+      // 소그룹 피드: 멤버가 작성한 글만 표시
+      const $ = (id) => document.getElementById(id);
+      function escapeHtml(str) {
+        return String(str ?? '')
+          .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+          .replaceAll('"','&quot;').replaceAll("'","&#039;");
+      }
+
+      let __feedPosts = {};
+      function toggleLike(postId, btnEl, countEl) {
+        return fetch(`/api/posts/${postId}/like`, { method: 'POST' })
+          .then(res => res.json())
+          .then(data => {
+            if (!data.ok) return;
+            const post = __feedPosts[postId];
+            if (post) {
+              post.isLikedByMe = data.liked;
+              post.likeCount = data.likeCount;
+            }
+            if (countEl) countEl.textContent = data.likeCount;
+            if (btnEl) btnEl.classList.toggle('liked', data.liked);
+          });
+      }
+
+      let __currentPostId = null;
+      function openPostDetailModal(post) {
+        __currentPostId = post._id;
+        const imgs = (Array.isArray(post.imageUrls) && post.imageUrls.length) ? post.imageUrls : [];
+        const body = $('postDetailBody');
+        body.innerHTML = `
+          <article class="feed-post" style="aspect-ratio:auto; overflow:visible;">
+            <div class="post-header">
+              <div><b class="post-title">${escapeHtml(post.title || '')}</b></div>
+              <div><small class="post-meta">${escapeHtml(post.authorName || '')} · ${new Date(post.createdAt).toLocaleString()}</small></div>
+            </div>
+            ${post.bibleRef ? `<div class="post-bible"><small>📖 ${escapeHtml(post.bibleRef)}</small></div>` : ''}
+            ${imgs.length ? `<div class="post-media"><div class="thumb"><img src="${imgs[0]}" alt="이미지" style="max-height:300px;"></div></div>` : ''}
+            <div class="post-content" style="max-height:none; overflow:visible; white-space:pre-wrap;">${escapeHtml(post.content || '')}</div>
+          </article>
+        `;
+        $('postDetailModal').classList.add('show');
+        loadComments(post._id);
+      }
+
+      function closePostDetailModal() {
+        $('postDetailModal').classList.remove('show');
+        __currentPostId = null;
+        $('commentInput').value = '';
+      }
+
+      function loadComments(postId) {
+        fetch(`/api/posts/${postId}/comments`)
+          .then(res => res.json())
+          .then(comments => {
+            const list = $('commentList');
+            const countEl = $('commentCount');
+            countEl.textContent = comments.length;
+            if (!comments.length) {
+              list.innerHTML = '<p style="color:#999; font-size:13px;">아직 댓글이 없어요.</p>';
+            } else {
+              list.innerHTML = comments.map(c => `
+                <div class="comment-item">
+                  <span class="comment-author">${escapeHtml(c.authorName || '')}</span>
+                  <span class="comment-time">${new Date(c.createdAt).toLocaleString()}</span>
+                  <div style="margin-top:4px;">${escapeHtml(c.content || '')}</div>
+                </div>
+              `).join('');
+            }
+            const card = document.querySelector(`.feed-post[data-post-id="${postId}"]`);
+            if (card) {
+              const cnt = card.querySelector('.comment-count');
+              if (cnt) cnt.textContent = comments.length;
+            }
+          })
+          .catch(() => {
+            $('commentCount').textContent = '0';
+            $('commentList').innerHTML = '';
+          });
+      }
+
+      function submitComment() {
+        if (!__currentPostId) return;
+        const content = $('commentInput').value.trim();
+        if (!content) return;
+        fetch(`/api/posts/${__currentPostId}/comments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content })
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.ok) {
+              $('commentInput').value = '';
+              loadComments(__currentPostId);
+            }
+          });
+      }
+
+      // modal events
+      if ($('postDetailModalClose')) $('postDetailModalClose').addEventListener('click', closePostDetailModal);
+      if ($('postDetailModalX')) $('postDetailModalX').addEventListener('click', closePostDetailModal);
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePostDetailModal(); });
+      if ($('commentSubmit')) $('commentSubmit').addEventListener('click', submitComment);
+      if ($('commentInput')) {
+        $('commentInput').addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitComment(); }
+        });
+      }
+
+      // render feed
+      fetch('/api/groups/room/' + encodeURIComponent(slug) + '/posts')
+        .then(res => res.json())
+        .then(posts => {
+          const feed = $('feed');
+          if (!posts || posts.length === 0) {
+            feed.innerHTML = '<p>아직 게시글이 없어요.</p>';
+            return;
+          }
+          feed.innerHTML = posts.map(p => {
+            const likeClass = p.isLikedByMe ? 'action-btn liked' : 'action-btn';
+            return `
+              <article class="feed-post" data-post-id="${p._id}">
+                <div class="post-header">
+                  <div><b class="post-title">${escapeHtml(p.title || '')}</b></div>
+                  <div><small class="post-meta">${escapeHtml(p.authorName || '')} · ${new Date(p.createdAt).toLocaleString()}</small></div>
+                </div>
+                ${p.bibleRef ? `<div class="post-bible"><small>📖 ${escapeHtml(p.bibleRef)}</small></div>` : ''}
+                ${p.imageUrls && p.imageUrls.length ? `
+                  <div class="post-media">
+                    <div class="thumb">
+                      <img src="${p.imageUrls[0]}" alt="이미지" class="post-thumb" style="max-height:300px;">
+                    </div>
+                  </div>
+                ` : ''}
+                <div class="post-content">${escapeHtml(p.content || '')}</div>
+                <div class="post-actions">
+                  <button type="button" class="${likeClass}" data-like="${p._id}" aria-label="공감">
+                    <span class="like-icon">♥</span> <span class="like-count">${p.likeCount != null ? p.likeCount : 0}</span>
+                  </button>
+                  <button type="button" class="action-btn" data-comment="${p._id}" aria-label="댓글">
+                    💬 <span class="comment-count">0</span>
+                  </button>
+                </div>
+              </article>
+            `;
+          }).join('');
+
+          posts.forEach(p => { __feedPosts[p._id] = p; });
+
+          feed.addEventListener('click', (e) => {
+            const card = e.target.closest('.feed-post');
+            if (!card) return;
+            const postId = card.dataset.postId;
+            if (!postId || !__feedPosts[postId]) return;
+            if (e.target.closest('.action-btn[data-like]')) {
+              e.preventDefault();
+              const likeBtn = card.querySelector('[data-like]');
+              const cnt = likeBtn && likeBtn.querySelector('.like-count');
+              toggleLike(postId, likeBtn, cnt);
+              return;
+            }
+            openPostDetailModal(__feedPosts[postId]);
+          });
+        })
+        .catch(() => { $('feed').innerHTML = '<p>피드를 불러오지 못했어요.</p>'; });
+    })();
+  </script>
+  <script src="/js/group-panel.js"></script>
+  </div><!-- #pjax-container -->
+  <script src="/js/chat.js"></script>
+  <script src="/js/pjax.js"></script>
+</body>
+</html>

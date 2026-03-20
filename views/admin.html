@@ -29,6 +29,42 @@
     .empty { padding:14px 12px; color:#666; }
     @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } .list{ max-height: 40vh; } }
     pre { white-space: pre-wrap; margin: 8px 0 0; font-size: 13px; background:#fafafa; border:1px solid #eee; padding:8px; border-radius:10px; }
+    .tabs { display:flex; gap:8px; align-items:center; margin: 10px 0 14px; }
+    .tab { padding:8px 12px; border:1px solid #ddd; border-radius:999px; background:#fff; cursor:pointer; }
+    .tab.active { background:#ffcd38; border-color:#ffcd38; font-weight:700; }
+    .panel { display:none; }
+    .panel.show { display:block; }
+    /* schedule/calendar */
+    .calWrap { display:grid; grid-template-columns: 1.2fr 0.8fr; gap:12px; }
+    .calCard { background:#fff; border:1px solid #e6e6e6; border-radius:12px; overflow:hidden; }
+    .calToolbar { display:flex; gap:8px; align-items:center; padding:10px 12px; border-bottom:1px solid #eee; background:#fafafa; }
+    .calTitle { font-weight:800; }
+    .calBtn { padding:7px 9px; border:1px solid #ddd; border-radius:10px; background:#fff; cursor:pointer; }
+    .calBtn:hover { background:#f2f2f2; }
+    .calBtn.primary { background:#ffcd38; border-color:#ffcd38; font-weight:800; }
+    .calGrid { display:grid; grid-template-columns: repeat(7, 1fr); }
+    .dow { padding:10px 0; text-align:center; font-size:12px; color:#666; border-bottom:1px solid #f3f3f3; background:#fff; }
+    .cell { min-height:86px; border-right:1px solid #f3f3f3; border-bottom:1px solid #f3f3f3; padding:8px; box-sizing:border-box; cursor:pointer; }
+    .cell:nth-child(7n) { border-right:0; }
+    .cell.muted { background:#fcfcfc; color:#aaa; }
+    .cell:hover { background:#f9fafb; }
+    .cell.selected { outline: 2px solid #ffcd38; outline-offset: -2px; }
+    .daynum { font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .pill2 { font-size:11px; padding:3px 7px; border:1px solid #ddd; border-radius:999px; color:#444; background:#fff; }
+    .dotrow { display:flex; gap:4px; flex-wrap:wrap; margin-top:6px; }
+    .dot { width:7px; height:7px; border-radius:50%; background:#bbb; }
+    .list2 { max-height: calc(100vh - 260px); overflow:auto; }
+    .it2 { padding:10px 12px; border-bottom:1px solid #f0f0f0; display:flex; justify-content:space-between; gap:10px; }
+    .it2:last-child { border-bottom:0; }
+    .meta2 { font-size:12px; color:#666; margin-top:3px; }
+    .row2 { display:flex; gap:8px; align-items:center; }
+    .cDot { width:10px; height:10px; border-radius:50%; }
+    /* modal (reuse style from mypage minimal) */
+    .modal { position:fixed; inset:0; z-index:9999; }
+    .modal-backdrop { position:absolute; inset:0; background:rgba(0,0,0,0.4); }
+    .modal-panel { position:relative; width:min(560px, calc(100% - 24px)); margin: 8vh auto; background:#fff; border-radius:14px; padding:16px; border:1px solid #e6e6e6; }
+    .modal-x { position:absolute; top:10px; right:12px; border:none; background:transparent; font-size:22px; cursor:pointer; }
+    @media (max-width: 980px) { .calWrap { grid-template-columns: 1fr; } .list2{ max-height: 40vh; } }
   </style>
   <link rel="stylesheet" href="/css/chat.css">
 </head>
@@ -39,7 +75,14 @@
       <a href="/main" style="font-size: 15px;">돌아가기</a>
     </h2>
 
-    <div class="grid">
+    <div class="tabs">
+      <button class="tab active" id="tabManage">관리</button>
+      <button class="tab" id="tabSchedule">달력/일정</button>
+      <button class="tab" id="tabGroup">소그룹</button>
+    </div>
+
+    <div class="panel show" id="panelManage">
+      <div class="grid">
       <!-- 1) 사용자 목록: 검색·새로고침, 미승인 시 승인 버튼 -->
       <section class="card">
         <h3>사용자</h3>
@@ -69,6 +112,88 @@
         </div>
         <div id="pending" class="list"></div>
       </section>
+    </div>
+    </div>
+
+    <div class="panel" id="panelSchedule">
+      <div class="calWrap">
+        <section class="calCard">
+          <div class="calToolbar">
+            <button class="calBtn" id="aPrev">‹</button>
+            <div class="calTitle" id="aCalTitle">YYYY.MM</div>
+            <button class="calBtn" id="aNext">›</button>
+            <div style="flex:1"></div>
+            <button class="calBtn" id="aToday">오늘</button>
+            <button class="calBtn primary" id="aAdd">일정 추가</button>
+          </div>
+          <div class="calGrid" id="aCalGrid"></div>
+        </section>
+        <section class="calCard">
+          <h3 style="margin:0; padding:12px; border-bottom:1px solid #eee; font-size:15px;">선택한 날짜 일정</h3>
+          <div class="toolbar">
+            <span class="pill2" id="aDayTitle">YYYY.MM.DD</span>
+            <span class="pill2" id="aDayCount">0개</span>
+            <div style="flex:1"></div>
+            <button class="calBtn" id="aRefresh">새로고침</button>
+          </div>
+          <div class="list2" id="aDayList"></div>
+          <div class="empty" style="border-top:1px solid #eee;">* 여기서 등록한 일정은 모든 승인된 사용자에게 표시됩니다.</div>
+        </section>
+      </div>
+    </div>
+
+    <div class="panel" id="panelGroup">
+      <section class="card">
+        <h3>소그룹 개설 요청</h3>
+        <div class="toolbar">
+          <span class="pill" id="groupReqCount">0건</span>
+          <button id="refreshGroupReq" class="small">새로고침</button>
+        </div>
+        <div id="groupCreationRequests" class="list"></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 관리자 일정 모달 -->
+  <div id="adminSchedModal" class="modal" style="display:none;">
+    <div class="modal-backdrop" id="adminSchedClose"></div>
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="adminSchedTitle">
+      <button class="modal-x" id="adminSchedX" type="button">×</button>
+      <h3 id="adminSchedTitle" style="margin-top:0;">공용 일정</h3>
+      <input type="hidden" id="adminSchedId" />
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:220px;">
+          <label style="display:block; margin:10px 0 6px;">제목</label>
+          <input id="adminTitle" type="text" style="width:100%; box-sizing:border-box; padding:10px; border:1px solid #ccc; border-radius:8px;" />
+        </div>
+        <div style="width:140px; min-width:140px;">
+          <label style="display:block; margin:10px 0 6px;">색상</label>
+          <input id="adminColor" type="color" value="#ffcd38" style="width:100%; height:42px; padding:0; border:1px solid #ccc; border-radius:8px;" />
+        </div>
+      </div>
+      <label style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+        <input id="adminAllDay" type="checkbox" />
+        하루 종일
+      </label>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:220px;">
+          <label style="display:block; margin:10px 0 6px;">시작</label>
+          <input id="adminStart" type="datetime-local" style="width:100%; box-sizing:border-box; padding:10px; border:1px solid #ccc; border-radius:8px;" />
+        </div>
+        <div style="flex:1; min-width:220px;">
+          <label style="display:block; margin:10px 0 6px;">끝</label>
+          <input id="adminEnd" type="datetime-local" style="width:100%; box-sizing:border-box; padding:10px; border:1px solid #ccc; border-radius:8px;" />
+        </div>
+      </div>
+      <label style="display:block; margin:10px 0 6px;">메모</label>
+      <textarea id="adminDesc" rows="4" style="width:100%; box-sizing:border-box; padding:10px; border:1px solid #ccc; border-radius:8px; resize:vertical;"></textarea>
+      <div style="display:flex; justify-content:space-between; gap:10px; margin-top:14px;">
+        <button id="adminDelete" type="button" class="danger" style="display:none;">삭제</button>
+        <div style="margin-left:auto; display:flex; gap:8px;">
+          <button id="adminCancel" type="button">취소</button>
+          <button id="adminSave" type="button" class="calBtn primary">저장</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -257,6 +382,23 @@
       const res = await fetch(`/api/admin/posts/${id}`, { method: 'DELETE' });
       if (!res.ok) return alert('삭제 실패');
       await loadPosts();
+      return;
+    }
+    if (act === 'approveGroupReq') {
+      const res = await fetch(`/api/admin/group-creation-requests/${id}/approve`, { method: 'POST' });
+      const data = await safeJson(res);
+      if (!res.ok || !data?.ok) return alert('승인 실패');
+      alert(data.slug ? `승인 완료. 소그룹 주소: /group/${data.slug}` : '승인 완료');
+      await loadGroupCreationRequests();
+      return;
+    }
+    if (act === 'rejectGroupReq') {
+      if (!confirm('이 개설 요청을 거절할까요?')) return;
+      const res = await fetch(`/api/admin/group-creation-requests/${id}/reject`, { method: 'POST' });
+      const data = await safeJson(res);
+      if (!res.ok || !data?.ok) return alert('처리 실패');
+      await loadGroupCreationRequests();
+      return;
     }
   });
 
@@ -270,6 +412,259 @@
   loadUsers();
   loadPosts();
   loadPending();
+
+  // ====== Tabs ======
+  const tabManage = $('tabManage');
+  const tabSchedule = $('tabSchedule');
+  const tabGroup = $('tabGroup');
+  const panelManage = $('panelManage');
+  const panelSchedule = $('panelSchedule');
+  const panelGroup = $('panelGroup');
+  function setTab(which) {
+    tabManage.classList.toggle('active', which === 'manage');
+    tabSchedule.classList.toggle('active', which === 'schedule');
+    tabGroup.classList.toggle('active', which === 'group');
+    panelManage.classList.toggle('show', which === 'manage');
+    panelSchedule.classList.toggle('show', which === 'schedule');
+    panelGroup.classList.toggle('show', which === 'group');
+  }
+  tabManage.addEventListener('click', () => setTab('manage'));
+  tabSchedule.addEventListener('click', async () => {
+    setTab('schedule');
+    if (!window.__adminSchedLoaded) {
+      window.__adminSchedLoaded = true;
+      await reloadAdminSchedule();
+    }
+  });
+  tabGroup.addEventListener('click', async () => {
+    setTab('group');
+    await loadGroupCreationRequests();
+  });
+
+  // ====== 소그룹 개설 요청 ======
+  async function loadGroupCreationRequests() {
+    const box = $('groupCreationRequests');
+    const cnt = $('groupReqCount');
+    box.innerHTML = '<div class="empty">불러오는 중...</div>';
+    const res = await fetch('/api/admin/group-creation-requests');
+    if (!res.ok) {
+      box.innerHTML = '<div class="empty">불러오기 실패</div>';
+      return;
+    }
+    const list = await res.json();
+    if (cnt) cnt.textContent = list.length + '건';
+    if (!list.length) {
+      box.innerHTML = '<div class="empty">대기 중인 요청이 없습니다.</div>';
+      return;
+    }
+    box.innerHTML = list.map(r => `
+      <div class="item">
+        <div style="min-width:0;">
+          <div><b>${esc(r.name || '')}</b></div>
+          <div class="meta">요청자: ${r.requester ? esc(r.requester.username || '') + ' · ' + esc(r.requester.email || '') : '?'}</div>
+          <div class="meta">교회: ${esc(r.church || '')}</div>
+          <div class="meta">대표 말씀: ${esc(r.bibleVerse || '')}</div>
+          <div class="meta">요청일: ${fmtDate(r.createdAt)}</div>
+        </div>
+        <div class="btns">
+          <button class="small" data-act="approveGroupReq" data-id="${r._id}">승인</button>
+          <button class="danger small" data-act="rejectGroupReq" data-id="${r._id}">거절</button>
+        </div>
+      </div>
+    `).join('');
+  }
+  $('refreshGroupReq').addEventListener('click', loadGroupCreationRequests);
+
+  // ====== Admin schedule/calendar ======
+  const aGrid = $('aCalGrid');
+  const aCalTitle = $('aCalTitle');
+  const aDayTitle = $('aDayTitle');
+  const aDayCount = $('aDayCount');
+  const aDayList = $('aDayList');
+  const aPrev = $('aPrev');
+  const aNext = $('aNext');
+  const aToday = $('aToday');
+  const aAdd = $('aAdd');
+  const aRefresh = $('aRefresh');
+
+  const mModal = $('adminSchedModal');
+  const mClose = $('adminSchedClose');
+  const mX = $('adminSchedX');
+  const mCancel = $('adminCancel');
+  const mSave = $('adminSave');
+  const mDelete = $('adminDelete');
+  const mId = $('adminSchedId');
+  const mTitle = $('adminTitle');
+  const mColor = $('adminColor');
+  const mAllDay = $('adminAllDay');
+  const mStart = $('adminStart');
+  const mEnd = $('adminEnd');
+  const mDesc = $('adminDesc');
+
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function startOfDay(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
+  function endOfDay(d){ const x=new Date(d); x.setHours(23,59,59,999); return x; }
+  function fmtYMD(d){ const x=new Date(d); return x.getFullYear()+'.'+pad(x.getMonth()+1)+'.'+pad(x.getDate()); }
+  function toLocalInputValue(d){ const x=new Date(d); return x.getFullYear()+'-'+pad(x.getMonth()+1)+'-'+pad(x.getDate())+'T'+pad(x.getHours())+':'+pad(x.getMinutes()); }
+  function fmtHM(d){ try { return new Date(d).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});} catch {return '';} }
+
+  let aViewMonth = new Date(); aViewMonth.setDate(1); aViewMonth.setHours(0,0,0,0);
+  let aSelected = startOfDay(new Date());
+  let aEvents = [];
+
+  async function fetchAdminMonthEvents() {
+    const first = new Date(aViewMonth);
+    const start = startOfDay(new Date(first.getFullYear(), first.getMonth(), 1));
+    const gridStart = new Date(start);
+    gridStart.setDate(gridStart.getDate() - gridStart.getDay());
+    const gridEnd = endOfDay(new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + 42));
+    const qs = new URLSearchParams({ from: gridStart.toISOString(), to: gridEnd.toISOString() });
+    const res = await fetch('/api/admin/schedule?' + qs.toString());
+    aEvents = res.ok ? await res.json() : [];
+  }
+
+  function eventsForDay(d) {
+    const from = startOfDay(d).getTime();
+    const to = endOfDay(d).getTime();
+    return aEvents.filter(ev => {
+      const s = new Date(ev.startAt).getTime();
+      const e = new Date(ev.endAt).getTime();
+      return s <= to && e >= from;
+    });
+  }
+
+  function renderAdminCal() {
+    const y = aViewMonth.getFullYear();
+    const m = aViewMonth.getMonth();
+    aCalTitle.textContent = y + '.' + pad(m + 1);
+    const dow = ['일','월','화','수','목','금','토'];
+    const first = new Date(y, m, 1);
+    const start = new Date(first); start.setDate(start.getDate() - start.getDay());
+    const out = [];
+    for (let i=0;i<7;i++) out.push(`<div class="dow">${dow[i]}</div>`);
+    for (let i=0;i<42;i++) {
+      const d = new Date(start); d.setDate(start.getDate()+i);
+      const inMonth = d.getMonth()===m;
+      const isSel = fmtYMD(d)===fmtYMD(aSelected);
+      const evs = eventsForDay(d);
+      const dots = evs.slice(0, 8).map(ev => `<span class="dot" style="background:${esc(ev.color || '#bbb')}"></span>`).join('');
+      out.push(`
+        <div class="cell ${inMonth?'':'muted'} ${isSel?'selected':''}" data-date="${d.toISOString()}">
+          <div class="daynum"><span>${d.getDate()}</span>${evs.length ? `<span class="pill2">${evs.length}</span>` : ''}</div>
+          <div class="dotrow">${dots}</div>
+        </div>
+      `);
+    }
+    aGrid.innerHTML = out.join('');
+  }
+
+  function renderAdminDay() {
+    aDayTitle.textContent = fmtYMD(aSelected);
+    const list = eventsForDay(aSelected).sort((a,b)=> new Date(a.startAt)-new Date(b.startAt));
+    aDayCount.textContent = list.length + '개';
+    if (!list.length) {
+      aDayList.innerHTML = `<div class="empty">일정이 없습니다.</div>`;
+      return;
+    }
+    aDayList.innerHTML = list.map(ev => {
+      const timeLabel = ev.allDay ? '하루종일' : `${fmtHM(ev.startAt)} ~ ${fmtHM(ev.endAt)}`;
+      return `
+        <div class="it2" data-id="${esc(ev._id)}">
+          <div style="min-width:0;">
+            <div class="row2"><span class="cDot" style="background:${esc(ev.color||'#bbb')}"></span><b>${esc(ev.title||'')}</b></div>
+            <div class="meta2">${esc(timeLabel)}${ev.description ? ' · ' + esc(ev.description) : ''}</div>
+          </div>
+          <div class="btns">
+            <button class="small" data-act="editSched" data-id="${esc(ev._id)}">수정</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function reloadAdminSchedule() {
+    await fetchAdminMonthEvents();
+    renderAdminCal();
+    renderAdminDay();
+  }
+
+  function openAdminModal(mode, ev) {
+    mModal.style.display = 'block';
+    const isEdit = mode === 'edit';
+    mId.value = isEdit ? String(ev._id) : '';
+    mTitle.value = isEdit ? (ev.title || '') : '';
+    mDesc.value = isEdit ? (ev.description || '') : '';
+    mColor.value = isEdit ? (ev.color || '#ffcd38') : '#ffcd38';
+    mAllDay.checked = isEdit ? !!ev.allDay : false;
+    const baseStart = isEdit ? new Date(ev.startAt) : new Date(aSelected);
+    const baseEnd = isEdit ? new Date(ev.endAt) : new Date(aSelected.getTime() + 60*60*1000);
+    mStart.value = toLocalInputValue(baseStart);
+    mEnd.value = toLocalInputValue(baseEnd);
+    mDelete.style.display = isEdit ? '' : 'none';
+  }
+  function closeAdminModal(){ mModal.style.display = 'none'; }
+  mClose.addEventListener('click', closeAdminModal);
+  mX.addEventListener('click', closeAdminModal);
+  mCancel.addEventListener('click', closeAdminModal);
+
+  aPrev.addEventListener('click', async () => { aViewMonth = new Date(aViewMonth.getFullYear(), aViewMonth.getMonth()-1, 1); await reloadAdminSchedule(); });
+  aNext.addEventListener('click', async () => { aViewMonth = new Date(aViewMonth.getFullYear(), aViewMonth.getMonth()+1, 1); await reloadAdminSchedule(); });
+  aToday.addEventListener('click', async () => { aSelected = startOfDay(new Date()); aViewMonth = new Date(aSelected.getFullYear(), aSelected.getMonth(), 1); await reloadAdminSchedule(); });
+  aAdd.addEventListener('click', () => openAdminModal('new'));
+  aRefresh.addEventListener('click', reloadAdminSchedule);
+
+  aGrid.addEventListener('click', (e) => {
+    const cell = e.target.closest('.cell');
+    if (!cell?.dataset?.date) return;
+    aSelected = startOfDay(new Date(cell.dataset.date));
+    renderAdminCal();
+    renderAdminDay();
+  });
+
+  aDayList.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-act="editSched"]');
+    if (!btn?.dataset?.id) return;
+    const ev = aEvents.find(x => String(x._id) === String(btn.dataset.id));
+    if (!ev) return;
+    openAdminModal('edit', ev);
+  });
+
+  mSave.addEventListener('click', async () => {
+    const title = (mTitle.value || '').trim();
+    const s = mStart.value ? new Date(mStart.value) : null;
+    const e2 = mEnd.value ? new Date(mEnd.value) : null;
+    if (!title || !s || !e2 || isNaN(s.getTime()) || isNaN(e2.getTime()) || e2.getTime() < s.getTime()) {
+      return alert('제목/시작/끝을 확인해주세요.');
+    }
+    const payload = {
+      title,
+      description: (mDesc.value || '').trim(),
+      startAt: s.toISOString(),
+      endAt: e2.toISOString(),
+      allDay: !!mAllDay.checked,
+      color: mColor.value || '#ffcd38'
+    };
+    const id = (mId.value || '').trim();
+    const url = id ? ('/api/admin/schedule/' + encodeURIComponent(id)) : '/api/admin/schedule';
+    const res = await fetch(url, {
+      method: id ? 'PUT' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) return alert('저장 실패');
+    closeAdminModal();
+    await reloadAdminSchedule();
+  });
+
+  mDelete.addEventListener('click', async () => {
+    const id = (mId.value || '').trim();
+    if (!id) return;
+    if (!confirm('이 일정을 삭제할까요?')) return;
+    const res = await fetch('/api/admin/schedule/' + encodeURIComponent(id), { method: 'DELETE' });
+    if (!res.ok) return alert('삭제 실패');
+    closeAdminModal();
+    await reloadAdminSchedule();
+  });
 </script>
   <script src="/js/chat.js"></script>
 </body>

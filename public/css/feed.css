@@ -3,24 +3,28 @@
  * 전체 피드(main.html) 및 내 게시글 그리드용.
  * 카드 레이아웃, 썸네일, 공감·댓글, 게시글 상세 모달.
  */
+/* 소그룹 룸(.group-room-wrap)과 동일한 최대 너비로 메인 피드도 정렬 */
 .feed-container {
-  max-width: 720px;
+  width: min(1100px, calc(100% - 24px));
+  max-width: 100%;
   margin: 0 auto;
   padding: 0 16px;
+  box-sizing: border-box;
 }
 
-/* 피드 카드: flex 세로 배치, post-content가 남는 공간 채움 */
+/* 피드 카드: flex 세로 배치, post-content가 남는 공간 채움 (소그룹 피드와 동일 규격) */
 .feed-post {
   aspect-ratio: 16 / 9;
   overflow: hidden;
   border: 1px solid #e6e6e6;
   border-radius: 14px;
-  padding: 16px;
-  margin: 14px 0;
+  padding: 18px 20px;
+  margin: 16px 0;
   background: #fff;
   display: flex;
   flex-direction: column;
   position: relative;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
 }
 
 .post-header {
@@ -128,7 +132,9 @@
 }
 
 .post-media .thumb {
-  width: min(420px, 100%);
+  width: 100%;
+  max-width: min(920px, 100%);
+  margin: 0 auto;
   border: 1px solid #eee;
   border-radius: 12px;
   overflow: hidden;
@@ -137,7 +143,8 @@
 
 .post-media img {
   width: 100%;
-  height: 220px;
+  height: auto;
+  max-height: 300px;
   object-fit: contain;
   display: block;
   cursor: pointer;
@@ -152,11 +159,6 @@
   font-size: 12px;
   padding: 4px 8px;
   border-radius: 999px;
-}
-
-/* 메인 피드 카드: 썸네일 높이 */
-.feed-container .post-media img {
-  height: 200px;
 }
 
 /* 공감·댓글: 카드 맨 밑, 오른쪽 정렬 */

@@ -5,8 +5,73 @@
 -->
 <link rel="stylesheet" href="/css/group.css">
 
-<nav class="subnav">
-  <a href="/group/mypage" class="subnav-link" data-page="mypage">마이페이지</a> |
-  <span>내 소그룹:</span>
-  <span id="myGroupLinks"></span>
+<nav class="subnav" id="group-subnav">
+  <div class="subnav-panel" id="groupSubnavPanel">
+    <div class="subnav-panel-scroll">
+      <a href="/group/mygroups" class="subnav-link" data-page="mygroups">마이페이지</a>
+      <div class="subnav-section-label">내 소그룹</div>
+      <div id="myGroupLinks" class="subnav-group-links"></div>
+
+      <div id="leaderJoinBanner" class="leader-join-banner" style="display:none;"></div>
+    </div>
+
+    <div class="subnav-actions">
+      <button type="button" class="subnav-action-btn" id="btnGroupJoin">소그룹 가입하기</button>
+      <button type="button" class="subnav-action-btn primary" id="btnGroupCreate">소그룹 만들기</button>
+    </div>
+  </div>
+  <button type="button" class="subnav-toggle" id="groupSubnavToggle" aria-label="소그룹 메뉴 열기/닫기">≡</button>
 </nav>
+
+<!-- 소그룹 패널 모달 (fixed, 서브 네비 위에 표시) -->
+<div id="groupModalsRoot" class="group-modals-root" aria-hidden="true">
+  <div id="modalGroupCreate" class="group-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="modalCreateTitle">
+    <div class="group-modal-backdrop" data-close-create></div>
+    <div class="group-modal-panel">
+      <button type="button" class="group-modal-x" data-close-create aria-label="닫기">×</button>
+      <h3 id="modalCreateTitle">소그룹 개설 요청</h3>
+      <p class="group-modal-hint">관리자가 검토 후 승인하면 소그룹이 열립니다.</p>
+      <label class="group-modal-label">소그룹 이름</label>
+      <input type="text" id="createGroupName" class="group-modal-input" maxlength="80" placeholder="예: 다니엘 기도회" />
+      <label class="group-modal-label">소속 교회(공동체)</label>
+      <input type="text" id="createGroupChurch" class="group-modal-input" maxlength="120" placeholder="예: OO교회 청년부" />
+      <label class="group-modal-label">대표 성경구절</label>
+      <textarea id="createGroupBible" class="group-modal-textarea" maxlength="500" rows="3" placeholder="예: 빌립보서 4:6-7"></textarea>
+      <div class="group-modal-actions">
+        <button type="button" class="subnav-action-btn" data-close-create>취소</button>
+        <button type="button" class="subnav-action-btn primary" id="btnSubmitCreateRequest">소그룹 개설 요청하기</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalGroupJoin" class="group-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="modalJoinTitle">
+    <div class="group-modal-backdrop" data-close-join></div>
+    <div class="group-modal-panel">
+      <button type="button" class="group-modal-x" data-close-join aria-label="닫기">×</button>
+      <h3 id="modalJoinTitle">소그룹 가입하기</h3>
+      <label class="group-modal-label">소그룹 검색</label>
+      <input type="text" id="joinGroupSearch" class="group-modal-input" placeholder="이름 또는 주소(slug 일부)" autocomplete="off" />
+      <div id="joinGroupResults" class="join-group-results"></div>
+      <div id="joinSelectedWrap" style="display:none;">
+        <label class="group-modal-label">선택한 소그룹</label>
+        <div id="joinSelectedInfo" class="join-selected-info"></div>
+        <input type="hidden" id="joinSelectedGroupId" />
+        <label class="group-modal-label">가입 요청 메시지 (선택)</label>
+        <textarea id="joinRequestMessage" class="group-modal-textarea" maxlength="500" rows="2" placeholder="간단히 자기소개를 적어주세요"></textarea>
+        <div class="group-modal-actions">
+          <button type="button" class="subnav-action-btn" data-close-join>취소</button>
+          <button type="button" class="subnav-action-btn primary" id="btnSubmitJoinRequest">가입 요청 보내기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalLeaderJoin" class="group-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="modalLeaderTitle">
+    <div class="group-modal-backdrop" data-close-leader></div>
+    <div class="group-modal-panel group-modal-panel-wide">
+      <button type="button" class="group-modal-x" data-close-leader aria-label="닫기">×</button>
+      <h3 id="modalLeaderTitle">가입 요청 처리</h3>
+      <div id="leaderJoinList" class="leader-join-list"></div>
+    </div>
+  </div>
+</div>

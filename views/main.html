@@ -8,8 +8,10 @@
   <title>성장 | 전체피드</title>
 </head>
 <body>
+  <script src="/js/group-last-path.js"></script>
   <div id="header" class="feed"></div>
 
+  <div id="pjax-container">
   <main style="padding: 16px;">
     <div class="feed-container">
       <div id="feed">
@@ -48,6 +50,8 @@
   </div>
 
   <script>
+    (function() {
+    if (window.GroupLastPath) GroupLastPath.apply();
     const $ = (id) => document.getElementById(id);
 
     function escapeHtml(str) {
@@ -56,13 +60,16 @@
         .replaceAll('"','&quot;').replaceAll("'","&#039;");
     }
 
-    // 헤더 + 유저정보
+    // 헤더 + 유저정보 (PJAX 시에는 이미 있으면 스킵)
+    if (!document.querySelector('#header header')) {
     fetch('/partials/header.html')
       .then(res => res.text())
       .then(async (html) => {
-        $('header').innerHTML = html;
+        var headerWrap = document.getElementById('header');
+        if (headerWrap) headerWrap.innerHTML = html;
         const headerEl = document.querySelector('#header header');
         if (headerEl) headerEl.className = $('header').className;
+        if (window.GroupLastPath) GroupLastPath.apply();
         const meRes = await fetch('/api/me');
         const user = await meRes.json();
         if (!user) return;
@@ -74,6 +81,7 @@
         }
       })
       .catch(console.error);
+    }
 
     document.addEventListener('click', (e) => {
       if (e.target && e.target.id === 'logoutBtn') {
@@ -283,7 +291,10 @@
         console.error(e);
         $('feed').innerHTML = '<p>피드를 불러오지 못했습니다.</p>';
       });
+    })();
   </script>
+  </div><!-- #pjax-container -->
   <script src="/js/chat.js"></script>
+  <script src="/js/pjax.js"></script>
 </body>
 </html>

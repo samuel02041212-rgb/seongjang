@@ -8,9 +8,11 @@
   <title>성장 | 말씀묵상</title>
 </head>
 <body>
+  <script src="/js/group-last-path.js"></script>
   <!-- 공통 헤더 (partial 로드 후 meditation 클래스로 색 적용) -->
   <div id="header" class="meditation"></div>
 
+  <div id="pjax-container">
   <h1 style="text-align: center;">말씀묵상</h1>
 
   <main class="med-wrap">
@@ -20,8 +22,19 @@
         <div class="med-col med-write">
           <input id="title" placeholder="제목" required />
           <form id="postForm">
+            <input type="hidden" id="meditationReturnHold" value="" autocomplete="off" />
             <input id="bibleRef" placeholder="말씀 범위" />
             <textarea id="content" placeholder="묵상 내용을 입력하세요" required></textarea>
+
+            <details class="med-group-feed" id="medGroupFeedDetails">
+              <summary class="med-group-feed-summary">
+                <span>소그룹 피드에 표시</span>
+                <span class="med-group-selected-badge" id="medGroupSelectedCount"></span>
+              </summary>
+              <p class="med-main-feed-note">홈(메인) 피드에는 <strong>항상</strong> 올라갑니다. 아래에서 가입한 소그룹 방에만 추가로 노출할 수 있어요.</p>
+              <div id="medGroupFeedList" class="med-group-checklist">불러오는 중…</div>
+            </details>
+
             <label style="display:block; margin-top:10px;">사진 업로드</label>
             <input type="file" id="postImages" accept="image/*" multiple />
             <button type="submit">등록</button>
@@ -44,27 +57,115 @@
   </main>
 
   <script>
+    if (window.GroupLastPath) GroupLastPath.apply();
     // URL ?edit=글id 이면 기존 글 불러와서 폼에 채움 (수정 모드)
     const params = new URLSearchParams(window.location.search);
+    // 소그룹에서 ?return=/group/... 로 왔을 때 PJAX 등으로 주소줄 쿼리가 비는 경우 대비해 폼에 보관
+    (function syncMeditationReturn() {
+      const hold = document.getElementById('meditationReturnHold');
+      if (!hold) return;
+      const raw = params.get('return');
+      const path = window.GroupLastPath && window.GroupLastPath.safeMeditationReturn(raw);
+      hold.value = path || '';
+      try {
+        if (path) {
+          sessionStorage.setItem('meditation.returnAfterPost', path);
+          GroupLastPath.remember(path);
+        } else {
+          sessionStorage.removeItem('meditation.returnAfterPost');
+        }
+      } catch (_) {}
+    })();
     const editId = params.get('edit');
     if (editId) {
-      fetch(`/api/posts/${editId}`)
-        .then(res => res.json())
-        .then(post => {
-          document.getElementById('title').value = post.title || '';
-          document.getElementById('content').value = post.content || '';
-          document.getElementById('bibleRef').value = post.bibleRef || '';
-        });
+      var sb = document.querySelector('#postForm button[type="submit"]');
+      if (sb) sb.textContent = '수정';
     }
 
-    // 헤더 로드 + 페이지별 색(meditation) 적용
-    fetch('/partials/header.html')
-      .then(res => res.text())
-      .then(html => {
-        document.getElementById('header').innerHTML = html;
-        const header = document.querySelector('#header header');
-        header.className = document.getElementById('header').className;
+    function escHtml(str) {
+      return String(str ?? '')
+        .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+    }
+
+    function getPreferredSlugFromReturn() {
+      const hold = document.getElementById('meditationReturnHold');
+      const path = (hold && hold.value) || new URLSearchParams(window.location.search).get('return') || '';
+      if (!window.GroupLastPath || !GroupLastPath.safeMeditationReturn(path)) return '';
+      const m = path.match(/^\/group\/([a-zA-Z0-9_-]+)$/);
+      return m ? m[1] : '';
+    }
+
+    function updateMedGroupSummary() {
+      const n = document.querySelectorAll('input[name="visibleGroupId"]:checked').length;
+      const el = document.getElementById('medGroupSelectedCount');
+      if (el) el.textContent = n ? '(' + n + '곳)' : '';
+    }
+
+    (async function initMedGroupFeedCheckboxes() {
+      const listEl = document.getElementById('medGroupFeedList');
+      if (!listEl) return;
+
+      let post = null;
+      if (editId) {
+        try {
+          const res = await fetch('/api/posts/' + encodeURIComponent(editId));
+          post = await res.json();
+          if (post && post.title != null) {
+            document.getElementById('title').value = post.title || '';
+            document.getElementById('content').value = post.content || '';
+            document.getElementById('bibleRef').value = post.bibleRef || '';
+          }
+        } catch (_) {}
+      }
+
+      const preferSlug = getPreferredSlugFromReturn();
+      const selectedIds = new Set();
+      if (post && Array.isArray(post.visibleGroupIds)) {
+        post.visibleGroupIds.forEach(function (id) {
+          if (id) selectedIds.add(String(id));
+        });
+      }
+
+      let groups = [];
+      try {
+        const r = await fetch('/api/my-groups');
+        groups = await r.json();
+      } catch (_) {}
+
+      if (!groups || !groups.length) {
+        listEl.innerHTML = '<p class="med-group-empty">가입한 소그룹이 없습니다. 이 글은 홈 피드에만 표시됩니다.</p>';
+        updateMedGroupSummary();
+        return;
+      }
+
+      listEl.innerHTML = groups.map(function (g) {
+        var id = String(g._id);
+        var byEdit = selectedIds.has(id);
+        var bySlug = preferSlug && g.slug === preferSlug;
+        var checked = (byEdit || bySlug) ? ' checked' : '';
+        return '<label class="med-group-item"><input type="checkbox" name="visibleGroupId" value="' + escHtml(id) + '"' + checked + '> <span>' + escHtml(g.name || '') + '</span></label>';
+      }).join('');
+
+      listEl.querySelectorAll('input[name="visibleGroupId"]').forEach(function (cb) {
+        cb.addEventListener('change', updateMedGroupSummary);
       });
+      updateMedGroupSummary();
+      var det = document.getElementById('medGroupFeedDetails');
+      if (det && (preferSlug || selectedIds.size)) det.open = true;
+    })();
+
+    // 헤더 로드 (PJAX 시 이미 있으면 스킵)
+    if (!document.querySelector('#header header')) {
+      fetch('/partials/header.html')
+        .then(res => res.text())
+        .then(html => {
+          document.getElementById('header').innerHTML = html;
+          const header = document.querySelector('#header header');
+          if (header) header.className = document.getElementById('header').className;
+          if (window.GroupLastPath) GroupLastPath.apply();
+        });
+    }
 
     // 로그인 유저 이름 표시, 관리자면 관리자 탭 노출
     fetch('/api/me')
@@ -87,17 +188,75 @@
       }
     });
 
-    // 묵상글 등록: FormData로 제목/말씀범위/내용/이미지들 전송
+    function collectVisibleGroupIds() {
+      return Array.prototype.slice.call(document.querySelectorAll('input[name="visibleGroupId"]:checked')).map(function (cb) {
+        return cb.value;
+      });
+    }
+
+    function finishMeditationSave(data, fallbackMsg) {
+      if (!data.ok) {
+        alert(fallbackMsg || '처리 실패');
+        return;
+      }
+      var next = '/main';
+      if (data.redirect && typeof data.redirect === 'string') {
+        next = data.redirect;
+      } else {
+        try {
+          var q2 = new URLSearchParams(window.location.search).get('return');
+          var h2 = document.getElementById('meditationReturnHold');
+          var combined = (q2 || (h2 && h2.value) || '').trim();
+          if (window.GroupLastPath && GroupLastPath.safeMeditationReturn(combined)) {
+            next = GroupLastPath.safeMeditationReturn(combined);
+          }
+        } catch (_) {}
+      }
+      try {
+        sessionStorage.removeItem('meditation.returnAfterPost');
+      } catch (_) {}
+      if (window.GroupLastPath && GroupLastPath.safeMeditationReturn(next)) {
+        GroupLastPath.remember(next);
+      }
+      window.location.href = next;
+    }
+
+    // 묵상글 등록 / 수정
     document.getElementById('postForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const title = document.getElementById('title').value;
       const bibleRef = document.getElementById('bibleRef').value;
       const content = document.getElementById('content').value;
+      const selectedIds = collectVisibleGroupIds();
+
+      var qret = new URLSearchParams(window.location.search).get('return');
+      var holdEl = document.getElementById('meditationReturnHold');
+      var hret = holdEl && holdEl.value;
+      var retCombined = (qret || hret || '').trim();
+
+      if (editId) {
+        fetch('/api/posts/' + encodeURIComponent(editId), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title,
+            bibleRef,
+            content,
+            visibleGroupIds: selectedIds,
+            returnTo: retCombined || undefined
+          })
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (data) { finishMeditationSave(data, '수정 실패'); });
+        return;
+      }
 
       const fd = new FormData();
       fd.append('title', title);
       fd.append('bibleRef', bibleRef);
       fd.append('content', content);
+      fd.append('visibleGroupIds', JSON.stringify(selectedIds));
+      if (retCombined) fd.append('returnTo', retCombined);
       const files = document.getElementById('postImages')?.files;
       if (files && files.length) {
         for (const file of files) {
@@ -107,12 +266,11 @@
 
       fetch('/api/posts', { method: 'POST', body: fd })
         .then(r => r.json())
-        .then(data => {
-          if (data.ok) window.location.href = '/main';
-          else alert('등록 실패');
-        });
+        .then(data => { finishMeditationSave(data, '등록 실패'); });
     });
   </script>
+  </div><!-- #pjax-container -->
   <script src="/js/chat.js"></script>
+  <script src="/js/pjax.js"></script>
 </body>
 </html>

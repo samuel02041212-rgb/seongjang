@@ -7,7 +7,10 @@
   <title>성장 | 연합성장 소그룹</title>
 </head>
 <body>
-  <div id="header" class="group"></div>
+  <script src="/js/group-last-path.js"></script>
+    <div id="header" class="group"></div>
+
+  <div id="pjax-container">
   <div id="groupSubNav"></div>
 
   <main style="padding:16px;">
@@ -17,20 +20,53 @@
   </main>
 
   <script>
-    // 헤더 + group 클래스
-    fetch('/partials/header.html')
-      .then(r => r.text())
-      .then(html => {
-        document.getElementById('header').innerHTML = html;
-        const header = document.querySelector('#header header');
-        header.className = document.getElementById('header').className;
-      });
+    if (window.GroupLastPath) {
+      GroupLastPath.remember();
+      GroupLastPath.apply();
+    }
+    // 헤더 (PJAX 시 이미 있으면 스킵)
+    if (!document.querySelector('#header header')) {
+      fetch('/partials/header.html')
+        .then(r => r.text())
+        .then(html => {
+          document.getElementById('header').innerHTML = html;
+          const header = document.querySelector('#header header');
+          if (header) header.className = document.getElementById('header').className;
+          if (window.GroupLastPath) GroupLastPath.apply();
+        });
+    }
 
     // 소그룹 서브 내비 로드
     fetch('/partials/group_subnav.html')
       .then(r => r.text())
       .then(html => {
-        document.getElementById('groupSubNav').innerHTML = html;
+        const container = document.getElementById('groupSubNav');
+        container.innerHTML = html;
+
+        // left subnav layout + toggle
+        document.body.classList.add('has-group-subnav');
+        const subnav = container.querySelector('#group-subnav');
+        const toggle = container.querySelector('#groupSubnavToggle');
+        const groupSubnavStorageKey = 'group.subnav.collapsed';
+        function setCollapsed(isCollapsed) {
+          if (!subnav) return;
+          subnav.classList.toggle('collapsed', isCollapsed);
+          try {
+            localStorage.setItem(groupSubnavStorageKey, isCollapsed ? '1' : '0');
+          } catch (_) {}
+        }
+        let initialCollapsed = false;
+        try {
+          initialCollapsed = localStorage.getItem(groupSubnavStorageKey) === '1';
+        } catch (_) {}
+        setCollapsed(initialCollapsed);
+        if (toggle) {
+          toggle.addEventListener('click', function() {
+            setCollapsed(!subnav.classList.contains('collapsed'));
+          });
+        }
+
+        document.dispatchEvent(new CustomEvent('groupSubnavMounted', { detail: { container } }));
       });
 
     // 유저 이름 + 관리자 탭 (u 사용으로 버그 수정)
@@ -51,17 +87,6 @@
           .then(() => location.href = '/login.html');
       }
     });
-
-    // 서브 내비에 "내 소그룹" 링크 채우기
-    fetch('/api/my-groups')
-      .then(r => r.json())
-      .then(groups => {
-        const box = document.getElementById('myGroupLinks');
-        if (!box) return;
-        box.innerHTML = groups.map(g =>
-          `<a href="/group/${g.slug}">${g.name}</a>`
-        ).join(' | ');
-      });
 
     // 연합성장 피드: 전체 글 중 bibleRef에 "연합성장" 포함된 것만 표시 (임시 규칙)
     fetch('/api/posts')
@@ -96,6 +121,9 @@
         .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
     }
   </script>
+  <script src="/js/group-panel.js"></script>
+  </div><!-- #pjax-container -->
   <script src="/js/chat.js"></script>
+  <script src="/js/pjax.js"></script>
 </body>
 </html>

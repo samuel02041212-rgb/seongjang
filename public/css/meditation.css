@@ -3,40 +3,143 @@
  * 말씀묵상 페이지(meditation.html) 전용.
  * 3단 그리드(작성 | 성경 | 주석), 작성 폼 레이아웃.
  */
+/* 헤더·제목·여백 제외한 영역에 4:3 카드가 들어가도록 (페이지 스크롤 최소화) */
 .med-wrap {
-  padding: 16px;
+  padding: 6px 12px 10px;
   display: flex;
   justify-content: center;
+  align-items: flex-start;
 }
 
+#pjax-container > h1 {
+  margin: 2px 0 6px;
+  font-size: 1.35rem;
+}
+
+/*
+ * 카드 4:3 — 너비를 뷰포트 높이·너비에 맞춰 한 번에 제한하면
+ * 높이(= 너비×3/4)가 화면 밖으로 나가지 않아 페이지 스크롤이 거의 안 난다.
+ */
 .med-card {
-  width: min(1200px, 100%);
-  aspect-ratio: 16 / 9;
+  /* #header + 페이지 h1 + med-wrap 패딩 — 작으면 카드가 커져 세로 스크롤남 */
+  --med-chrome: 132px;
+  width: min(840px, calc(100vw - 20px), calc((100vh - var(--med-chrome)) * 4 / 3));
+  max-width: 100%;
+  aspect-ratio: 4 / 3;
   border: 1px solid #e6e6e6;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #fff;
-  padding: 16px;
+  padding: 10px 12px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
 }
 
-/* 2:1:1 비율 3단 그리드 */
+/* 3단 그리드: 작성 | 성경 | 주석 (2:1:1) */
 .med-grid {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
+  height: auto;
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
 }
 
 .med-col {
   overflow: hidden;
+  min-width: 0;
+}
+
+/* 제목은 폼 밖에 있으므로 세로 플렉스로 남는 높이를 폼에 넘김 */
+.med-write {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.med-write #title {
+  flex-shrink: 0;
 }
 
 /* 작성 영역: 폼이 남은 높이 채움 */
 .med-write form {
-  height: calc(100% - 50px);
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
+}
+
+/* 소그룹 피드 선택 */
+.med-group-feed {
+  margin-top: 4px;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: #fafafa;
+  flex-shrink: 0;
+}
+
+.med-group-feed-summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.med-group-feed-summary::-webkit-details-marker {
+  display: none;
+}
+
+.med-group-selected-badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: #c77800;
+}
+
+.med-main-feed-note {
+  margin: 4px 0 4px;
+  font-size: 11px;
+  color: #555;
+  line-height: 1.45;
+}
+
+.med-group-checklist {
+  max-height: 88px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.med-group-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 8px;
+}
+
+.med-group-item:hover {
+  background: #fff6d6;
+}
+
+.med-group-item input {
+  margin-top: 3px;
+}
+
+.med-group-empty {
+  margin: 0;
+  font-size: 12px;
+  color: #777;
 }
 
 .med-write #title {
@@ -46,21 +149,26 @@
 }
 
 .med-write input {
-  padding: 12px;
+  padding: 8px 10px;
+  font-size: 14px;
   border: 1px solid #ccc;
   border-radius: 8px;
 }
 
 .med-write textarea {
   flex: 1;
-  padding: 12px;
+  min-height: 0;
+  padding: 8px 10px;
+  font-size: 14px;
+  line-height: 1.45;
   border: 1px solid #ccc;
   border-radius: 8px;
   resize: none;
 }
 
 .med-write button {
-  padding: 12px;
+  padding: 9px 12px;
+  flex-shrink: 0;
   border: none;
   border-radius: 8px;
   background: #ffcd38;
@@ -78,14 +186,15 @@
 
 /* 오른쪽 성경/주석 영역 placeholder */
 .med-placeholder {
-  margin-top: 10px;
-  height: calc(100% - 40px);
-  border-radius: 10px;
+  margin-top: 6px;
+  height: calc(100% - 34px);
+  border-radius: 8px;
   border: 1px dashed #ccc;
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0.7;
-  padding: 10px;
+  padding: 8px;
   text-align: center;
+  font-size: 13px;
 }

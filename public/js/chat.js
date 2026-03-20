@@ -7,12 +7,51 @@
   let myUserId = null;
   const onlineUsers = new Set();
   const openWindows = []; // [ { roomId, otherUser, el, openedAt } ] 최대 3개, 인덱스 0이 가장 먼저 연 것
+  const CHAT_UI_STORAGE_KEY = 'chat.ui.collapsed';
+  const CHAT_WINDOWS_STORAGE_PREFIX = 'chat.windows.';
 
   function $(id) { return document.getElementById(id); }
   function escapeHtml(str) {
     return String(str == null ? '' : str)
       .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
       .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+  }
+  function getChatWindowsStorageKey() {
+    return CHAT_WINDOWS_STORAGE_PREFIX + (myUserId || 'guest');
+  }
+  function getStoredCollapsed() {
+    try {
+      return localStorage.getItem(CHAT_UI_STORAGE_KEY) === '1';
+    } catch (_) {
+      return true;
+    }
+  }
+  function setStoredCollapsed(isCollapsed) {
+    try {
+      localStorage.setItem(CHAT_UI_STORAGE_KEY, isCollapsed ? '1' : '0');
+    } catch (_) {}
+  }
+  function saveOpenWindowsState() {
+    if (!myUserId) return;
+    try {
+      const data = openWindows.slice(-MAX_WINDOWS).map(w => ({
+        roomId: w.roomId,
+        otherUser: w.otherUser || {},
+        minimized: !!(w.el && w.el.classList.contains('minimized'))
+      }));
+      localStorage.setItem(getChatWindowsStorageKey(), JSON.stringify(data));
+    } catch (_) {}
+  }
+  function readOpenWindowsState() {
+    if (!myUserId) return [];
+    try {
+      const raw = localStorage.getItem(getChatWindowsStorageKey());
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter(x => x && x.roomId).slice(-MAX_WINDOWS);
+    } catch (_) {
+      return [];
+    }
   }
 
   function injectChat() {
@@ -40,12 +79,32 @@
     const wrap = $('chat-wrap');
     const panel = $('chat-panel');
     const toggle = $('chat-toggle');
+    const container = $('chat-windows-container');
     if (!wrap || !panel) return;
 
-    wrap.classList.add('collapsed');
+    wrap.classList.toggle('collapsed', getStoredCollapsed());
     toggle.addEventListener('click', function() {
       wrap.classList.toggle('collapsed');
+      setStoredCollapsed(wrap.classList.contains('collapsed'));
+      syncWindowsOffset();
+      updateToggleBadgeVisibility();
     });
+
+    // initial placement of windows container relative to panel/toggle
+    function syncWindowsOffset() {
+      const isCollapsed = wrap.classList.contains('collapsed');
+      const rightPx = isCollapsed ? 44 : (280 + 44); // panel width + toggle width
+      if (container) container.style.right = rightPx + 'px';
+    }
+    function updateToggleBadgeVisibility() {
+      const badge = toggle && toggle.querySelector('.chat-toggle-badge');
+      if (!badge) return;
+      const hasValue = (badge.textContent || '').trim() !== '' && badge.textContent !== '0';
+      const isCollapsed = wrap.classList.contains('collapsed');
+      badge.style.display = (isCollapsed && hasValue) ? 'flex' : 'none';
+    }
+    syncWindowsOffset();
+    updateToggleBadgeVisibility();
 
     fetch('/api/me')
       .then(r => r.json())
@@ -57,6 +116,7 @@
           .then(ids => { ids.forEach(id => onlineUsers.add(String(id))); })
           .catch(function() {});
         loadRooms();
+        restoreOpenWindows();
         connectSocket();
         setupSearch();
         setupContextMenu();
@@ -102,10 +162,26 @@
       .then(r => r.json())
       .then(rooms => {
         const list = $('chat-room-list');
+        const toggle = $('chat-toggle');
         if (!list) return;
         if (!rooms.length) {
           list.innerHTML = '<div class="chat-empty-list">채팅한 대화가 없어요.<br>위에서 사용자를 검색해 대화를 시작하세요.</div>';
+          // reset toggle badge
+          if (toggle) {
+            const badgeEl = toggle.querySelector('.chat-toggle-badge');
+            if (badgeEl) {
+              badgeEl.textContent = '';
+              badgeEl.style.display = 'none';
+            }
+          }
           return;
+        }
+        const totalUnread = rooms.reduce((sum, r) => sum + (Number(r.unreadCount) || 0), 0);
+        if (toggle) {
+          const badgeEl = toggle.querySelector('.chat-toggle-badge');
+          if (badgeEl) {
+            badgeEl.textContent = totalUnread > 0 ? String(totalUnread) : '';
+          }
         }
         list.innerHTML = rooms.map(r => {
           const other = r.otherUser || {};
@@ -133,6 +209,16 @@
             openWindow(roomId, otherUser);
           });
         });
+        // show/hide toggle badge depending on collapsed state
+        const wrap = $('chat-wrap');
+        if (toggle) {
+          const badgeEl = toggle.querySelector('.chat-toggle-badge');
+          if (badgeEl) {
+            const hasValue = (badgeEl.textContent || '').trim() !== '' && badgeEl.textContent !== '0';
+            const isCollapsed = wrap && wrap.classList.contains('collapsed');
+            badgeEl.style.display = (isCollapsed && hasValue) ? 'flex' : 'none';
+          }
+        }
       })
       .catch(console.error);
   }
@@ -232,14 +318,25 @@
     return openWindows.some(w => w.roomId === roomId);
   }
 
-  function openWindow(roomId, otherUser) {
+  function restoreOpenWindows() {
+    const stored = readOpenWindowsState();
+    if (!stored.length) return;
+    stored.forEach(item => {
+      openWindow(item.roomId, item.otherUser || {}, { minimized: !!item.minimized, skipPersist: true });
+    });
+    saveOpenWindowsState();
+  }
+
+  function openWindow(roomId, otherUser, options) {
+    const opts = options || {};
     if (isWindowOpen(roomId)) {
       const w = openWindows.find(x => x.roomId === roomId);
       if (w && w.el) {
-        w.el.classList.remove('minimized');
+        if (!opts.minimized) w.el.classList.remove('minimized');
         w.el.scrollIntoView({ block: 'nearest' });
       }
       fetch('/api/chat/rooms/' + encodeURIComponent(roomId) + '/open', { method: 'POST' }).then(function() { loadRooms(); });
+      if (!opts.skipPersist) saveOpenWindowsState();
       return;
     }
     while (openWindows.length >= MAX_WINDOWS) {
@@ -258,7 +355,10 @@
     win.innerHTML = `
       <div class="chat-window-header">
         <span class="chat-window-title"><span class="status-dot ${online ? 'online' : ''}"></span>${name}</span>
-        <button type="button" class="chat-window-minimize" aria-label="최소화">−</button>
+        <div class="chat-window-actions">
+          <button type="button" class="chat-window-minimize" aria-label="최소화">−</button>
+          <button type="button" class="chat-window-close" aria-label="닫기">✕</button>
+        </div>
       </div>
       <div class="chat-window-body"></div>
       <div class="chat-window-footer">
@@ -274,11 +374,24 @@
     const header = win.querySelector('.chat-window-header');
     header.addEventListener('dblclick', function() {
       win.classList.toggle('minimized');
+      saveOpenWindowsState();
     });
     win.querySelector('.chat-window-minimize').addEventListener('click', function(e) {
       e.stopPropagation();
       win.classList.toggle('minimized');
+      saveOpenWindowsState();
     });
+    const closeBtn = win.querySelector('.chat-window-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        // remove from DOM and openWindows
+        const idx = openWindows.findIndex(x => x.roomId === roomId);
+        if (idx >= 0) openWindows.splice(idx, 1);
+        win.remove();
+        saveOpenWindowsState();
+      });
+    }
 
     form.addEventListener('submit', function(e) {
       e.preventDefault();
@@ -294,9 +407,16 @@
       }
     });
 
-    container.appendChild(win);
+    // insert as first child so it appears at far right (row-reverse)
+    if (container.firstChild) {
+      container.insertBefore(win, container.firstChild);
+    } else {
+      container.appendChild(win);
+    }
     const record = { roomId, otherUser, el: win, openedAt: Date.now() };
     openWindows.push(record);
+    if (opts.minimized) win.classList.add('minimized');
+    if (!opts.skipPersist) saveOpenWindowsState();
 
     fetch('/api/chat/rooms/' + encodeURIComponent(roomId) + '/messages')
       .then(r => r.json())

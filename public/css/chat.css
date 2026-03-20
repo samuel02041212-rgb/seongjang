@@ -1,9 +1,10 @@
 /**
  * 채팅: 오른쪽 목록 패널 + 오른쪽 하단 채팅창(최대 3개)
+ * 헤더 아래에만 표시 (mainheader 높이와 맞춤)
  */
 #chat-wrap {
   position: fixed;
-  top: 0;
+  top: 54px; /* 헤더 높이 아래 */
   right: 0;
   bottom: 0;
   z-index: 9000;
@@ -20,7 +21,9 @@
   width: 44px;
   min-width: 44px;
   height: 44px;
-  margin: auto 0;
+  /* align to top instead of vertical center */
+  align-self: flex-start;
+  margin: 12px 0 auto;
   border: 1px solid #ddd;
   border-right: none;
   border-radius: 12px 0 0 12px;
@@ -32,10 +35,29 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  position: relative; /* for badge positioning */
 }
 
 .chat-toggle:hover {
   background: #f8f8f8;
+}
+
+/* toggle icon unread badge */
+.chat-toggle .chat-toggle-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #e0245e;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: none;
+  align-items: center;
+  justify-content: center;
 }
 
 #chat-wrap.collapsed .chat-panel {
@@ -196,7 +218,7 @@
 #chat-windows-container {
   position: fixed;
   bottom: 0;
-  right: 0;
+  right: 44px; /* default aligns with collapsed toggle width */
   z-index: 8999;
   display: flex;
   flex-direction: row-reverse;
@@ -204,6 +226,7 @@
   gap: 8px;
   padding: 0 12px 12px 0;
   max-width: 100vw;
+  transition: right 0.2s ease;
 }
 
 .chat-window {
@@ -263,6 +286,22 @@
   border: none;
   background: none;
   font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  color: #666;
+}
+
+.chat-window-header .chat-window-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chat-window-header .chat-window-close {
+  border: none;
+  background: none;
+  font-size: 16px;
   cursor: pointer;
   padding: 0 4px;
   line-height: 1;

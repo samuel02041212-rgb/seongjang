@@ -7,20 +7,25 @@
   <link rel="stylesheet" href="/css/chat.css">
 </head>
 <body>
+  <script src="/js/group-last-path.js"></script>
   <!-- 성경연구 페이지: 현재는 준비 중. 헤더만 로드하고 study 클래스 적용 -->
   <div id="header" class="study"></div>
 
+  <div id="pjax-container">
   <h1 style="text-align: center;">coming soon..</h1>
 
   <script>
-    fetch('/partials/header.html')
-      .then(res => res.text())
-      .then(html => {
-        document.getElementById('header').innerHTML = html;
-        const header = document.querySelector('#header header');
-        header.className = document.getElementById('header').className;
-      });
-
+    if (window.GroupLastPath) GroupLastPath.apply();
+    if (!document.querySelector('#header header')) {
+      fetch('/partials/header.html')
+        .then(res => res.text())
+        .then(html => {
+          document.getElementById('header').innerHTML = html;
+          const header = document.querySelector('#header header');
+          if (header) header.className = document.getElementById('header').className;
+          if (window.GroupLastPath) GroupLastPath.apply();
+        });
+    }
     fetch('/api/me')
       .then(res => res.json())
       .then(user => {
@@ -43,6 +48,8 @@
       }
     });
   </script>
+  </div><!-- #pjax-container -->
   <script src="/js/chat.js"></script>
+  <script src="/js/pjax.js"></script>
 </body>
 </html>

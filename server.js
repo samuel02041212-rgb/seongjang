@@ -19,8 +19,11 @@ const Post = require('./models/post');
 const Comment = require('./models/comment');
 const Group = require('./models/group');
 const Membership = require('./models/membership');
+const GroupCreationRequest = require('./models/groupCreationRequest');
+const GroupJoinRequest = require('./models/groupJoinRequest');
 const ChatMessage = require('./models/chatMessage');
 const UserChatMeta = require('./models/userChatMeta');
+const ScheduleEvent = require('./models/scheduleEvent');
 
 const requireAdmin = require('./middlewares/requireAdmin');
 
@@ -62,6 +65,49 @@ function requireLogin(req, res, next) {
     return res.redirect('/login.html');
   }
   next();
+}
+
+/** 가입한 소그룹만 visibleGroupIds에 넣기 */
+async function resolveVisibleGroupIdsForUser(raw, userId) {
+  let ids = [];
+  try {
+    if (typeof raw === 'string') {
+      ids = JSON.parse(raw || '[]');
+    } else if (Array.isArray(raw)) ids = raw;
+  } catch (_) {
+    ids = [];
+  }
+  if (!Array.isArray(ids)) ids = [];
+  const authorOid = new mongoose.Types.ObjectId(userId);
+  const valid = [];
+  const seen = new Set();
+  for (const id of ids) {
+    if (!mongoose.Types.ObjectId.isValid(id)) continue;
+    const oid = new mongoose.Types.ObjectId(id);
+    const key = oid.toString();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const m = await Membership.findOne({ userId: authorOid, groupId: oid }).lean();
+    if (m) valid.push(oid);
+  }
+  return valid;
+}
+
+/** 묵상 등록 후 이동용 경로 (오픈 리다이렉트 방지). /group/mygroups, /group/uniongroup, /group/:slug */
+function sanitizeGroupReturnPath(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  let p = raw.trim();
+  try {
+    p = decodeURIComponent(p);
+  } catch (_) {
+    return null;
+  }
+  if (!p.startsWith('/') || p.startsWith('//')) return null;
+  if (p.includes('://') || p.includes('?') || p.includes('#')) return null;
+  const m = p.match(/^\/group\/([a-zA-Z0-9_-]+)$/);
+  if (!m) return null;
+  if (m[1].toLowerCase() === 'mypage') return null;
+  return p;
 }
 
 // ================== AUTH: 회원가입 / 로그인 / 로그아웃 ==================
@@ -144,11 +190,39 @@ app.get('/study', requireLogin, (req, res) => {
 });
 
 app.get('/group/mypage', requireLogin, (req, res) => {
+  return res.redirect('/group/mygroups');
+});
+
+app.get('/group/mygroups', requireLogin, (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'group_mypage.html'));
 });
 
 app.get('/group/uniongroup', requireLogin, (req, res) => {
   res.sendFile(path.join(__dirname, 'views', 'group_uniongroup.html'));
+});
+
+// 일반 소그룹 방 (/group/:slug) — 멤버만 접근
+app.get('/group/:slug', requireLogin, async (req, res) => {
+  try {
+    const slug = req.params.slug;
+    if (slug === 'mypage') return res.redirect('/group/mygroups');
+    const group = await Group.findOne({ slug });
+    if (!group) return res.status(404).send('소그룹을 찾을 수 없어요.');
+    const member = await Membership.findOne({ userId: req.session.userId, groupId: group._id });
+    if (!member) {
+      return res.status(403).send('이 소그룹 멤버가 아니에요. 패널에서 가입 요청 후 대표 승인을 받아주세요.');
+    }
+    const abs = path.join(__dirname, 'views', 'group_room.html');
+    res.sendFile(abs, (err) => {
+      if (err) {
+        console.error('sendFile group_room:', err);
+        if (!res.headersSent) res.status(500).send('파일을 불러오지 못했어요.');
+      }
+    });
+  } catch (e) {
+    console.error(e);
+    if (!res.headersSent) res.status(500).send('오류가 발생했어요.');
+  }
 });
 
 // 로그인/회원가입 페이지 (공개)
@@ -219,18 +293,26 @@ app.post('/api/posts', requireLogin, upload.array('images', 10), async (req, res
 
   try {
     const imageUrls = (req.files || []).map(f => `/uploads/${f.filename}`);
+    const authorOid = new mongoose.Types.ObjectId(req.session.userId);
+    const visibleGroupIds = await resolveVisibleGroupIdsForUser(
+      req.body.visibleGroupIds || '[]',
+      req.session.userId
+    );
 
     const post = new Post({
-      authorId: req.session.userId,
+      authorId: authorOid,
       authorName: req.session.username,
       title,
       content,
       bibleRef: bibleRef || '',
-      imageUrls
+      imageUrls,
+      visibleGroupIds
     });
 
     await post.save();
-    res.json({ ok: true });
+    const redirect = sanitizeGroupReturnPath(req.body.returnTo || '');
+    if (redirect) return res.json({ ok: true, redirect });
+    return res.json({ ok: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ ok: false });
@@ -293,14 +375,28 @@ app.get('/api/posts/:id', requireLogin, async (req, res) => {
 
 // 글 수정 (본인 글만)
 app.put('/api/posts/:id', requireLogin, async (req, res) => {
-  const { title, content, bibleRef } = req.body;
+  const { title, content, bibleRef, visibleGroupIds: rawVis, returnTo } = req.body;
 
   try {
-    await Post.updateOne(
-      { _id: req.params.id, authorId: req.session.userId },
-      { title, content, bibleRef }
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ ok: false });
+    }
+    const authorOid = new mongoose.Types.ObjectId(req.session.userId);
+    const patch = { title, content, bibleRef };
+    if (rawVis !== undefined) {
+      patch.visibleGroupIds = await resolveVisibleGroupIdsForUser(
+        Array.isArray(rawVis) ? JSON.stringify(rawVis) : String(rawVis || '[]'),
+        req.session.userId
+      );
+    }
+    const r = await Post.updateOne(
+      { _id: req.params.id, authorId: authorOid },
+      patch
     );
-    res.json({ ok: true });
+    if (!r.matchedCount) return res.status(404).json({ ok: false });
+    const redirect = sanitizeGroupReturnPath(typeof returnTo === 'string' ? returnTo : '');
+    if (redirect) return res.json({ ok: true, redirect });
+    return res.json({ ok: true });
   } catch (e) {
     console.error(e);
     res.status(500).json({ ok: false });
@@ -389,13 +485,311 @@ app.get('/api/my-groups', requireLogin, async (req, res) => {
       .filter(m => m.groupId)
       .map(m => ({
         name: m.groupId.name,
-        slug: m.groupId.slug
+        slug: m.groupId.slug,
+        _id: m.groupId._id
       }));
 
     res.json(groups);
   } catch (err) {
     console.error(err);
     res.status(500).json([]);
+  }
+});
+
+// 소그룹 방 페이지용 메타 (멤버만)
+app.get('/api/groups/room/:slug', requireLogin, async (req, res) => {
+  try {
+    const g = await Group.findOne({ slug: req.params.slug }).lean();
+    if (!g) return res.status(404).json({ ok: false });
+    const m = await Membership.findOne({ userId: req.session.userId, groupId: g._id });
+    if (!m) return res.status(403).json({ ok: false, reason: 'not_member' });
+    res.json({
+      ok: true,
+      name: g.name,
+      slug: g.slug,
+      church: g.church || '',
+      bibleVerse: g.bibleVerse || ''
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
+  }
+});
+
+// 소그룹 방 피드: 작성 시 이 그룹을 체크해 visibleGroupIds에 넣은 글만 표시
+// (레거시: visibleGroupIds 없음/빈 배열 미저장 시 $exists:false 조건이 멤버의 모든 방에 글을 띄우는 버그가 있어 제거함)
+app.get('/api/groups/room/:slug/posts', requireLogin, async (req, res) => {
+  try {
+    const group = await Group.findOne({ slug: req.params.slug }).lean();
+    if (!group) return res.status(404).json([]);
+
+    const meMembership = await Membership.findOne({
+      userId: req.session.userId,
+      groupId: group._id
+    });
+    if (!meMembership) return res.status(403).json([]);
+
+    const gid = new mongoose.Types.ObjectId(String(group._id));
+    const posts = await Post.find({ visibleGroupIds: gid })
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    const myId = req.session.userId;
+    const normalized = posts.map(p => {
+      const obj = p.toObject();
+      if ((!obj.imageUrls || obj.imageUrls.length === 0) && obj.imageUrl) {
+        obj.imageUrls = [obj.imageUrl];
+      }
+      const likedBy = obj.likedBy || [];
+      obj.likeCount = likedBy.length;
+      obj.isLikedByMe = likedBy.some(id => id && id.toString() === myId);
+      return obj;
+    });
+
+    res.json(normalized);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json([]);
+  }
+});
+
+function generateGroupSlug() {
+  const crypto = require('crypto');
+  return 'sg-' + crypto.randomBytes(8).toString('hex');
+}
+
+// 소그룹 개설 요청 (신청자 → 관리자 검토)
+app.post('/api/group-creation-requests', requireLogin, async (req, res) => {
+  try {
+    const me = req.session.userId;
+    const { name, church, bibleVerse } = req.body || {};
+    const n = String(name || '').trim();
+    const c = String(church || '').trim();
+    const b = String(bibleVerse || '').trim();
+    if (!n || !c || !b) return res.status(400).json({ ok: false, reason: 'missing_fields' });
+
+    const dup = await GroupCreationRequest.findOne({ requesterId: me, status: 'pending' });
+    if (dup) return res.status(409).json({ ok: false, reason: 'already_pending' });
+
+    await GroupCreationRequest.create({
+      requesterId: me,
+      name: n,
+      church: c,
+      bibleVerse: b,
+      status: 'pending'
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
+  }
+});
+
+// 소그룹 검색 (가입 가능한 그룹 목록)
+app.get('/api/groups/search', requireLogin, async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    if (!q) return res.json([]);
+
+    const me = req.session.userId;
+    const myMemberships = await Membership.find({ userId: me }).select('groupId').lean();
+    const myGroupIds = new Set(myMemberships.map(m => String(m.groupId)));
+
+    const filter = {
+      $or: [
+        { name: new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') },
+        { slug: new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') }
+      ]
+    };
+    const groups = await Group.find(filter).limit(30).lean();
+    const out = groups
+      .filter(g => !myGroupIds.has(String(g._id)))
+      .map(g => ({ _id: g._id, name: g.name, slug: g.slug, church: g.church || '', bibleVerse: g.bibleVerse || '' }));
+    res.json(out);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json([]);
+  }
+});
+
+// 소그룹 가입 요청 (대표 승인 대기)
+app.post('/api/groups/join-request', requireLogin, async (req, res) => {
+  try {
+    const me = req.session.userId;
+    const { groupId, message } = req.body || {};
+    if (!groupId) return res.status(400).json({ ok: false });
+
+    const group = await Group.findById(groupId);
+    if (!group) return res.status(404).json({ ok: false });
+
+    const already = await Membership.findOne({ userId: me, groupId });
+    if (already) return res.status(409).json({ ok: false, reason: 'already_member' });
+
+    const dup = await GroupJoinRequest.findOne({ userId: me, groupId, status: 'pending' });
+    if (dup) return res.status(409).json({ ok: false, reason: 'already_pending' });
+
+    await GroupJoinRequest.create({
+      userId: me,
+      groupId,
+      message: String(message || '').trim(),
+      status: 'pending'
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
+  }
+});
+
+// 내가 대표인 소그룹에 대한 가입 대기 요청 목록
+app.get('/api/groups/leader/join-requests', requireLogin, async (req, res) => {
+  try {
+    const me = req.session.userId;
+    const leaderMemberships = await Membership.find({ userId: me, role: 'admin' }).select('groupId').lean();
+    const groupIds = leaderMemberships.map(m => m.groupId);
+
+    const requests = await GroupJoinRequest.find({
+      groupId: { $in: groupIds },
+      status: 'pending'
+    })
+      .populate('groupId', 'name slug')
+      .populate('userId', 'username email')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json(requests.map(r => ({
+      _id: r._id,
+      message: r.message || '',
+      createdAt: r.createdAt,
+      group: r.groupId ? { _id: r.groupId._id, name: r.groupId.name, slug: r.groupId.slug } : null,
+      user: r.userId ? { _id: r.userId._id, username: r.userId.username, email: r.userId.email } : null
+    })));
+  } catch (e) {
+    console.error(e);
+    res.status(500).json([]);
+  }
+});
+
+app.post('/api/groups/join-requests/:id/approve', requireLogin, async (req, res) => {
+  try {
+    const me = req.session.userId;
+    const jr = await GroupJoinRequest.findById(req.params.id);
+    if (!jr || jr.status !== 'pending') return res.status(404).json({ ok: false });
+
+    const isLeader = await Membership.findOne({ userId: me, groupId: jr.groupId, role: 'admin' });
+    if (!isLeader) return res.status(403).json({ ok: false });
+
+    const existing = await Membership.findOne({ userId: jr.userId, groupId: jr.groupId });
+    if (existing) {
+      jr.status = 'rejected';
+      jr.respondedAt = new Date();
+      await jr.save();
+      return res.json({ ok: true, reason: 'already_member' });
+    }
+
+    await Membership.create({ userId: jr.userId, groupId: jr.groupId, role: 'member' });
+    jr.status = 'approved';
+    jr.respondedAt = new Date();
+    await jr.save();
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
+  }
+});
+
+app.post('/api/groups/join-requests/:id/reject', requireLogin, async (req, res) => {
+  try {
+    const me = req.session.userId;
+    const jr = await GroupJoinRequest.findById(req.params.id);
+    if (!jr || jr.status !== 'pending') return res.status(404).json({ ok: false });
+
+    const isLeader = await Membership.findOne({ userId: me, groupId: jr.groupId, role: 'admin' });
+    if (!isLeader) return res.status(403).json({ ok: false });
+
+    jr.status = 'rejected';
+    jr.respondedAt = new Date();
+    await jr.save();
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
+  }
+});
+
+// ----- 관리자: 소그룹 개설 요청 -----
+app.get('/api/admin/group-creation-requests', requireAdmin, async (req, res) => {
+  try {
+    const list = await GroupCreationRequest.find({ status: 'pending' })
+      .populate('requesterId', 'username email')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json(list.map(r => ({
+      _id: r._id,
+      name: r.name,
+      church: r.church,
+      bibleVerse: r.bibleVerse,
+      createdAt: r.createdAt,
+      requester: r.requesterId ? { _id: r.requesterId._id, username: r.requesterId.username, email: r.requesterId.email } : null
+    })));
+  } catch (e) {
+    console.error(e);
+    res.status(500).json([]);
+  }
+});
+
+app.post('/api/admin/group-creation-requests/:id/approve', requireAdmin, async (req, res) => {
+  try {
+    const reqDoc = await GroupCreationRequest.findById(req.params.id);
+    if (!reqDoc || reqDoc.status !== 'pending') return res.status(404).json({ ok: false });
+
+    let slug = generateGroupSlug();
+    let tries = 0;
+    while (await Group.findOne({ slug }) && tries < 10) {
+      slug = generateGroupSlug();
+      tries++;
+    }
+    if (await Group.findOne({ slug })) return res.status(500).json({ ok: false, reason: 'slug' });
+
+    const group = await Group.create({
+      name: reqDoc.name,
+      slug,
+      leaderUserId: reqDoc.requesterId,
+      church: reqDoc.church,
+      bibleVerse: reqDoc.bibleVerse
+    });
+
+    await Membership.create({
+      userId: reqDoc.requesterId,
+      groupId: group._id,
+      role: 'admin'
+    });
+
+    reqDoc.status = 'approved';
+    reqDoc.createdGroupId = group._id;
+    reqDoc.reviewedAt = new Date();
+    await reqDoc.save();
+
+    res.json({ ok: true, groupId: group._id, slug: group.slug });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
+  }
+});
+
+app.post('/api/admin/group-creation-requests/:id/reject', requireAdmin, async (req, res) => {
+  try {
+    const reqDoc = await GroupCreationRequest.findById(req.params.id);
+    if (!reqDoc || reqDoc.status !== 'pending') return res.status(404).json({ ok: false });
+
+    reqDoc.status = 'rejected';
+    reqDoc.reviewedAt = new Date();
+    await reqDoc.save();
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
   }
 });
 
@@ -596,6 +990,218 @@ app.delete('/api/chat/rooms/:roomId/pin', requireLogin, async (req, res) => {
   }
 });
 
+// ================== 일정(달력) API ==================
+function clampRange(from, to) {
+  const f = from ? new Date(from) : null;
+  const t = to ? new Date(to) : null;
+  if (f && isNaN(f.getTime())) return { ok: false };
+  if (t && isNaN(t.getTime())) return { ok: false };
+  // default: +/- 45 days
+  const now = new Date();
+  const fromAt = f || new Date(now.getTime() - 45 * 24 * 3600 * 1000);
+  const toAt = t || new Date(now.getTime() + 45 * 24 * 3600 * 1000);
+  // prevent abuse: max 400 days
+  if (toAt.getTime() - fromAt.getTime() > 400 * 24 * 3600 * 1000) return { ok: false };
+  return { ok: true, fromAt, toAt };
+}
+
+// 일정 조회: 개인 + 관리자(글로벌)
+app.get('/api/schedule', requireLogin, async (req, res) => {
+  try {
+    const me = req.session.userId;
+    const r = clampRange(req.query.from, req.query.to);
+    if (!r.ok) return res.status(400).json([]);
+
+    const fromAt = r.fromAt;
+    const toAt = r.toAt;
+    const query = {
+      $or: [
+        { scope: 'global' },
+        { scope: 'personal', ownerUserId: new mongoose.Types.ObjectId(me) }
+      ],
+      // overlap range: start < to && end > from
+      startAt: { $lt: toAt },
+      endAt: { $gt: fromAt }
+    };
+
+    const events = await ScheduleEvent.find(query)
+      .sort({ startAt: 1 })
+      .lean();
+
+    res.json(events.map(e => ({
+      _id: e._id,
+      scope: e.scope,
+      ownerUserId: e.ownerUserId,
+      title: e.title,
+      description: e.description || '',
+      startAt: e.startAt,
+      endAt: e.endAt,
+      allDay: !!e.allDay,
+      color: e.color || '#ffcd38',
+      createdAt: e.createdAt,
+      updatedAt: e.updatedAt
+    })));
+  } catch (e) {
+    console.error(e);
+    res.status(500).json([]);
+  }
+});
+
+// 개인 일정 생성
+app.post('/api/schedule', requireLogin, async (req, res) => {
+  try {
+    const me = req.session.userId;
+    const { title, description, startAt, endAt, allDay, color } = req.body || {};
+    const s = new Date(startAt);
+    const e = new Date(endAt);
+    if (!title || !startAt || !endAt || isNaN(s.getTime()) || isNaN(e.getTime()) || e.getTime() < s.getTime()) {
+      return res.status(400).json({ ok: false });
+    }
+    const ev = await ScheduleEvent.create({
+      scope: 'personal',
+      ownerUserId: new mongoose.Types.ObjectId(me),
+      title: String(title).trim(),
+      description: String(description || '').trim(),
+      startAt: s,
+      endAt: e,
+      allDay: !!allDay,
+      color: color || '#ffcd38',
+      createdBy: new mongoose.Types.ObjectId(me)
+    });
+    res.json({ ok: true, _id: ev._id });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
+  }
+});
+
+// 개인 일정 수정(본인만) + 글로벌 수정(관리자만)
+app.put('/api/schedule/:id', requireLogin, async (req, res) => {
+  try {
+    const me = req.session.userId;
+    const ev = await ScheduleEvent.findById(req.params.id);
+    if (!ev) return res.status(404).json({ ok: false });
+
+    const meUser = await User.findById(me).select('role').lean();
+    const isAdmin = meUser && meUser.role === 'admin';
+    const isOwner = ev.scope === 'personal' && ev.ownerUserId && ev.ownerUserId.toString() === String(me);
+    if (ev.scope === 'global' && !isAdmin) return res.status(403).json({ ok: false });
+    if (ev.scope === 'personal' && !isOwner) return res.status(403).json({ ok: false });
+
+    const { title, description, startAt, endAt, allDay, color } = req.body || {};
+    if (title != null) ev.title = String(title).trim();
+    if (description != null) ev.description = String(description || '').trim();
+    if (startAt != null) ev.startAt = new Date(startAt);
+    if (endAt != null) ev.endAt = new Date(endAt);
+    if (allDay != null) ev.allDay = !!allDay;
+    if (color != null) ev.color = String(color || '#ffcd38');
+    if (isNaN(ev.startAt.getTime()) || isNaN(ev.endAt.getTime()) || ev.endAt.getTime() < ev.startAt.getTime()) {
+      return res.status(400).json({ ok: false });
+    }
+    await ev.save();
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
+  }
+});
+
+app.delete('/api/schedule/:id', requireLogin, async (req, res) => {
+  try {
+    const me = req.session.userId;
+    const ev = await ScheduleEvent.findById(req.params.id);
+    if (!ev) return res.status(404).json({ ok: false });
+
+    const meUser = await User.findById(me).select('role').lean();
+    const isAdmin = meUser && meUser.role === 'admin';
+    const isOwner = ev.scope === 'personal' && ev.ownerUserId && ev.ownerUserId.toString() === String(me);
+    if (ev.scope === 'global' && !isAdmin) return res.status(403).json({ ok: false });
+    if (ev.scope === 'personal' && !isOwner) return res.status(403).json({ ok: false });
+
+    await ScheduleEvent.deleteOne({ _id: ev._id });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
+  }
+});
+
+// 관리자: 글로벌 일정 CRUD
+app.get('/api/admin/schedule', requireAdmin, async (req, res) => {
+  try {
+    const r = clampRange(req.query.from, req.query.to);
+    if (!r.ok) return res.status(400).json([]);
+    const events = await ScheduleEvent.find({
+      scope: 'global',
+      startAt: { $lt: r.toAt },
+      endAt: { $gt: r.fromAt }
+    }).sort({ startAt: 1 }).lean();
+    res.json(events);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json([]);
+  }
+});
+
+app.post('/api/admin/schedule', requireAdmin, async (req, res) => {
+  try {
+    const { title, description, startAt, endAt, allDay, color } = req.body || {};
+    const s = new Date(startAt);
+    const e = new Date(endAt);
+    if (!title || !startAt || !endAt || isNaN(s.getTime()) || isNaN(e.getTime()) || e.getTime() < s.getTime()) {
+      return res.status(400).json({ ok: false });
+    }
+    const ev = await ScheduleEvent.create({
+      scope: 'global',
+      title: String(title).trim(),
+      description: String(description || '').trim(),
+      startAt: s,
+      endAt: e,
+      allDay: !!allDay,
+      color: color || '#ffcd38',
+      createdBy: new mongoose.Types.ObjectId(req.session.userId)
+    });
+    res.json({ ok: true, _id: ev._id });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
+  }
+});
+
+app.put('/api/admin/schedule/:id', requireAdmin, async (req, res) => {
+  try {
+    const ev = await ScheduleEvent.findById(req.params.id);
+    if (!ev || ev.scope !== 'global') return res.status(404).json({ ok: false });
+    const { title, description, startAt, endAt, allDay, color } = req.body || {};
+    if (title != null) ev.title = String(title).trim();
+    if (description != null) ev.description = String(description || '').trim();
+    if (startAt != null) ev.startAt = new Date(startAt);
+    if (endAt != null) ev.endAt = new Date(endAt);
+    if (allDay != null) ev.allDay = !!allDay;
+    if (color != null) ev.color = String(color || '#ffcd38');
+    if (isNaN(ev.startAt.getTime()) || isNaN(ev.endAt.getTime()) || ev.endAt.getTime() < ev.startAt.getTime()) {
+      return res.status(400).json({ ok: false });
+    }
+    await ev.save();
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
+  }
+});
+
+app.delete('/api/admin/schedule/:id', requireAdmin, async (req, res) => {
+  try {
+    const ev = await ScheduleEvent.findById(req.params.id);
+    if (!ev || ev.scope !== 'global') return res.status(404).json({ ok: false });
+    await ScheduleEvent.deleteOne({ _id: ev._id });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false });
+  }
+});
+
 // ================== ADMIN API ==================
 app.get('/api/admin/users', requireAdmin, async (req, res) => {
   try {
@@ -721,7 +1327,26 @@ app.get('/api/chat/online', requireLogin, (req, res) => {
   res.json(Array.from(onlineUsers));
 });
 
+// Express 5: async 라우트에서 던진 오류 등 처리 — 미처리 시 응답이 끝나지 않아 브라우저에 invalid response 가 날 수 있음
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  if (res.headersSent) return;
+  if (req.path.startsWith('/api')) {
+    return res.status(500).json({ ok: false, reason: 'server_error' });
+  }
+  res.status(500).send('서버 오류가 발생했어요. 잠시 후 다시 시도해 주세요.');
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('unhandledRejection:', reason);
+});
+
 // ================== 서버 시작 ==================
-server.listen(3000, () => {
-  console.log('http://localhost:3000');
+const PORT = Number(process.env.PORT) || 3000;
+server.on('error', (e) => {
+  console.error('HTTP server error:', e.message);
+});
+server.listen(PORT, () => {
+  console.log('브라우저 주소: http://127.0.0.1:' + PORT + ' (반드시 http:// 사용, https 아님)');
 });
