@@ -87,5 +87,6 @@ npx prisma migrate deploy
 
 ## 참고
 
+- 로컬과 운영 **DB·UI 차이·가입/로그인 디버그**는 저장소 루트 **`로컬-운영-맞추기.md`** 를 참고하세요.
 - **Supabase**로 Auth·DB를 옮기는 것은 지금 구조(NextAuth + Prisma + Neon)와 다릅니다. 원하시면 별도 단계에서 설계합니다.
 - 문제가 나면 Vercel **Build Logs** / **Functions** 로그와 브라우저 **Network** 탭의 `/api/*` 응답을 확인하세요.

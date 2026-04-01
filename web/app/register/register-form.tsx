@@ -2,13 +2,63 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+function pad2(n: string): string {
+  return n.length >= 2 ? n : `0${n}`;
+}
 
 export function RegisterForm() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [gender, setGender] = useState<"" | "M" | "F">("");
-  const [birthDate, setBirthDate] = useState("");
+  const maxYear = useMemo(() => new Date().getFullYear() - 10, []);
+  const minYear = 1920;
+  const yearOptions = useMemo(
+    () =>
+      Array.from(
+        { length: maxYear - minYear + 1 },
+        (_, i) => String(maxYear - i),
+      ),
+    [maxYear],
+  );
+
+  const [birthYear, setBirthYear] = useState("");
+  const [birthMonth, setBirthMonth] = useState("");
+  const [birthDay, setBirthDay] = useState("");
+
+  const daysInMonth = useMemo(() => {
+    if (!birthYear || !birthMonth) return 31;
+    const y = Number(birthYear);
+    const m = Number(birthMonth);
+    if (!y || !m) return 31;
+    return new Date(y, m, 0).getDate();
+  }, [birthYear, birthMonth]);
+
+  useEffect(() => {
+    if (!birthDay) return;
+    const d = Number(birthDay);
+    if (d > daysInMonth) setBirthDay(String(daysInMonth));
+  }, [birthYear, birthMonth, daysInMonth, birthDay]);
+
+  const birthDate = useMemo(() => {
+    if (!birthYear || !birthMonth || !birthDay) return "";
+    const y = birthYear;
+    const m = pad2(birthMonth);
+    const d = pad2(birthDay);
+    const iso = `${y}-${m}-${d}`;
+    const dt = new Date(`${iso}T12:00:00`);
+    if (Number.isNaN(dt.getTime())) return "";
+    if (
+      dt.getFullYear() !== Number(y) ||
+      dt.getMonth() + 1 !== Number(birthMonth) ||
+      dt.getDate() !== Number(birthDay)
+    ) {
+      return "";
+    }
+    return iso;
+  }, [birthYear, birthMonth, birthDay]);
+
   const [church, setChurch] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,9 +66,18 @@ export function RegisterForm() {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
+  const dayOptions = useMemo(
+    () => Array.from({ length: daysInMonth }, (_, i) => String(i + 1)),
+    [daysInMonth],
+  );
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    if (!birthDate) {
+      setError("생년월일을 모두 선택해 주세요.");
+      return;
+    }
     setPending(true);
     try {
       const res = await fetch("/api/register", {
@@ -27,7 +86,7 @@ export function RegisterForm() {
         body: JSON.stringify({
           name: name.trim(),
           gender: gender || undefined,
-          birthDate: birthDate.trim(),
+          birthDate,
           church: church.trim(),
           email: email.trim(),
           password,
@@ -103,18 +162,64 @@ export function RegisterForm() {
           </div>
         </fieldset>
         <div>
-          <label htmlFor="reg-birth" className="text-sm font-medium text-ink">
-            생년월일
-          </label>
-          <input
-            id="reg-birth"
-            name="birthDate"
-            type="date"
-            required
-            value={birthDate}
-            onChange={(e) => setBirthDate(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
-          />
+          <span id="reg-birth-label" className="text-sm font-medium text-ink">
+            생년월일 <span className="font-normal text-muted">(년 → 월 → 일)</span>
+          </span>
+          <div
+            className="mt-1 flex flex-wrap gap-2"
+            role="group"
+            aria-labelledby="reg-birth-label"
+          >
+            <select
+              id="reg-birth-year"
+              name="birthYear"
+              required
+              value={birthYear}
+              onChange={(e) => setBirthYear(e.target.value)}
+              className="min-w-[5.5rem] flex-1 rounded-xl border border-line bg-bg px-2 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2 sm:flex-none sm:min-w-[6.5rem]"
+            >
+              <option value="">년</option>
+              {yearOptions.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+            <select
+              id="reg-birth-month"
+              name="birthMonth"
+              required
+              value={birthMonth}
+              onChange={(e) => setBirthMonth(e.target.value)}
+              className="min-w-[4.5rem] flex-1 rounded-xl border border-line bg-bg px-2 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2 sm:flex-none"
+            >
+              <option value="">월</option>
+              {Array.from({ length: 12 }, (_, i) => String(i + 1)).map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+            <select
+              id="reg-birth-day"
+              name="birthDay"
+              required
+              value={birthDay}
+              onChange={(e) => setBirthDay(e.target.value)}
+              className="min-w-[4.5rem] flex-1 rounded-xl border border-line bg-bg px-2 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2 sm:flex-none"
+            >
+              <option value="">일</option>
+              {dayOptions.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="mt-1 text-xs text-muted">
+            브라우저/기기마다 달라지는 달력 대신, 어디서든 같은 순서로 고를 수
+            있게 했습니다.
+          </p>
         </div>
         <div>
           <label htmlFor="reg-church" className="text-sm font-medium text-ink">
