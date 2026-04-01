@@ -10,6 +10,7 @@ export default defineConfig({
     seed: "npx tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    /** 마이그레이션·seed CLI — Direct(비-pooler) 권장. 없으면 DATABASE_URL 폴백. */
+    url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"],
   },
 });

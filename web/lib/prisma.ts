@@ -1,6 +1,9 @@
+import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { neonConfig } from "@neondatabase/serverless";
 import { PrismaClient } from "@/app/generated/prisma/client";
 import { Pool } from "pg";
+import ws from "ws";
 
 const globalForPrisma = globalThis as unknown as {
   pool?: Pool;
@@ -20,12 +23,25 @@ function resolveDatabaseUrl(): string {
   throw new Error("DATABASE_URL is not set");
 }
 
+function isNeonConnectionString(url: string): boolean {
+  return /\.neon\.tech\b/i.test(url) || /neon\.database\./i.test(url);
+}
+
+/**
+ * Neon 서버리스 드라이버(WebSocket) — Vercel 등에서 `pg` 풀만으로는 불안정한 경우가 많음.
+ * @see https://neon.tech/docs/guides/prisma
+ */
+function configureNeonWebSocket(): void {
+  if (typeof globalThis.WebSocket === "undefined") {
+    neonConfig.webSocketConstructor = ws;
+  }
+}
+
 function createPool(connectionString: string): Pool {
   const serverless =
     process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
   return new Pool({
     connectionString,
-    // Vercel(서버리스) + Neon: 연결 수 1·짧은 타임아웃이 안정적
     max: serverless ? 1 : 10,
     connectionTimeoutMillis: serverless ? 15_000 : 10_000,
     idleTimeoutMillis: serverless ? 20_000 : 30_000,
@@ -34,6 +50,13 @@ function createPool(connectionString: string): Pool {
 
 function createPrisma(): PrismaClient {
   const connectionString = resolveDatabaseUrl();
+
+  if (isNeonConnectionString(connectionString)) {
+    configureNeonWebSocket();
+    const adapter = new PrismaNeon({ connectionString });
+    return new PrismaClient({ adapter });
+  }
+
   const pool = globalForPrisma.pool ?? createPool(connectionString);
   if (process.env.NODE_ENV !== "production") globalForPrisma.pool = pool;
   const adapter = new PrismaPg(pool);

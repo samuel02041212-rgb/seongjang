@@ -43,7 +43,7 @@ Vercel 프로젝트 → **Settings → Environment Variables** 에서 **Producti
 | `AUTH_URL` | 배포 URL 예: `https://프로젝트이름.vercel.app` 또는 **커스텀 도메인** `https://www.도메인.com` (**끝에 `/` 없음**) |
 | `REGISTRATION_AUTO_APPROVE` | 팀 테스트 중 가입 즉시 로그인 허용이면 `1`, 관리자 승인만 쓰면 비우기 |
 
-**Neon `DATABASE_URL` 팁:** Vercel에는 **Connection pooling** 문자열(`…-pooler…`)을 쓰는 경우가 많습니다. URL 끝에 `&channel_binding=require` 가 있으면 **지우고** `sslmode=require` 만 두고 시도해 보세요.  
+**Neon `DATABASE_URL` 팁:** Vercel에는 **Connection pooling** 문자열(`…-pooler…`) + `sslmode=require` + 가급적 **`connect_timeout=15`** 를 붙이세요. 앱은 **`@prisma/adapter-neon`** 으로 연결합니다. 로컬에서 `migrate` 만 안 되면 `web/.env` 에 Neon **Direct(비-pooler)** 를 `DIRECT_URL` 로 넣고 `npx prisma migrate deploy` 하세요. URL 끝의 `&channel_binding=require` 는 **지우는 것**이 안전합니다.  
 **가입은 됐는데 프로덕션에서 로그인만 안 될 때:** `REGISTRATION_AUTO_APPROVE` 가 비어 있으면 `registrationApproved` 가 `false` 라 로그인이 막힙니다. 테스트 중이면 `1` 넣고 Redeploy 하거나, 관리자에서 승인하세요.
 
 저장 후 **Deployments**에서 맨 위 배포의 **⋯ → Redeploy** 로 다시 배포하면 변수가 반영됩니다.
