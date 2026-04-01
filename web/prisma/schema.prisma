@@ -1,0 +1,125 @@
+// https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Auth.js Prisma adapter models + optional password for credentials login
+model User {
+  id                    String    @id @default(cuid())
+  name                  String?
+  email                 String    @unique
+  emailVerified         DateTime?
+  image                 String?
+  password              String?
+  /// 관리자 승인 전 가입자는 로그인 불가 (레거시 흐름과 동일)
+  registrationApproved  Boolean   @default(false)
+  /// 여러 명 관리자 확장용 (`/admin` · FAB 노출)
+  isAdmin               Boolean   @default(false)
+  /// 레거시 회원가입: M / F
+  gender                String?
+  birthDate             DateTime?
+  /// 출석 교회
+  church                String    @default("")
+  /// 가입 경로 (선택)
+  signupSource          String    @default("")
+  accounts              Account[]
+  sessions              Session[]
+  posts                 Post[]
+  comments              Comment[]
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+/// 레거시 models/post.js — 메인/그룹 피드 게시글
+model Post {
+  id               String   @id @default(cuid())
+  authorId         String
+  authorName       String
+  title            String   @default("")
+  content          String
+  imageUrls        String[] @default([])
+  bibleRef         String   @default("")
+  likedBy          String[] @default([])
+  visibleGroupIds  String[] @default([])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  author   User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments Comment[]
+
+  @@index([createdAt(sort: Desc)])
+  @@index([visibleGroupIds])
+}
+
+/// 레거시 models/comment.js
+model Comment {
+  id         String   @id @default(cuid())
+  postId     String
+  authorId   String
+  authorName String
+  content    String
+  createdAt  DateTime @default(now())
+
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+/// 관리자 전역 공지 일정 (레거시 ScheduleEvent scope=global)
+model GlobalScheduleEvent {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @default("")
+  startAt     DateTime
+  endAt       DateTime
+  allDay      Boolean  @default(false)
+  color       String   @default("#ffcd38")
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([startAt, endAt])
+}

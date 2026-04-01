@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN "gender" TEXT,
+ADD COLUMN "birthDate" TIMESTAMP(3),
+ADD COLUMN "church" TEXT NOT NULL DEFAULT '',
+ADD COLUMN "signupSource" TEXT NOT NULL DEFAULT '';

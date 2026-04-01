@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+/*
+ * Brand: 메인 액센트 #ffcd38 — 버튼·링크·강조에 사용.
+ * 액센트 위 텍스트는 text-accent-foreground(진한 잉크)로 대비 유지.
+ */
+:root {
+  /* 피드·랜딩 고정 헤더 높이 — `sns-feed-layout`·`landing-header`·`public/css/chat.css`와 동기화 */
+  --app-header-height: 5rem;
+  --bg: #f8f6f0;
+  --surface: #fffcf5;
+  --ink: #1c1917;
+  --muted: #57534e;
+  --accent: #ffcd38;
+  --accent-soft: #fff4d2;
+  --accent-foreground: #1c1917;
+  --line: #e7e5e4;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-line: var(--line);
+  --font-sans: var(--font-noto), ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+}
