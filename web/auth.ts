@@ -90,6 +90,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     jwt({ token, user }) {
+      const devEpoch = process.env.AUTH_DEV_SESSION_EPOCH;
+      if (devEpoch) {
+        if (user) {
+          token.devEpoch = devEpoch;
+        } else if (token.devEpoch !== devEpoch) {
+          return { devEpoch, exp: 0 };
+        }
+      }
       if (user) {
         token.sub = user.id;
         token.isAdmin =

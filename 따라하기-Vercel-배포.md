@@ -21,7 +21,8 @@ Next.js 앱은 **Vercel**에 올리는 경우가 많습니다. **Vercel + Neon**
 2. **Add New… → Project**
 3. 방금 만든 GitHub 저장소를 **Import**
 4. **Root Directory** 를 **`web`** 으로 설정합니다. (저장소 루트가 아니라 `web` 폴더가 Next 앱인 경우)
-5. **Deploy** 를 누릅니다. (첫 배포가 실패해도 환경 변수를 넣은 뒤 Redeploy 하면 됩니다.)
+5. **(권장)** 아래 **「3. 환경 변수」** 절의 **`DATABASE_URL`**, **`AUTH_SECRET`**, **`AUTH_URL`** 을 **먼저** 넣은 뒤 Deploy 합니다. 변수 없이도 빌드는 통과할 수 있지만, **사이트가 실제로 동작하려면** 특히 `DATABASE_URL`이 필수입니다.
+6. **Deploy** 를 누릅니다. (환경 변수를 나중에 넣었다면 **⋯ → Redeploy** 로 다시 배포하세요.)
 
 ### 실서비스 시작 직후 꼭 할 일
 
@@ -71,6 +72,13 @@ npx prisma migrate deploy
 
 - 브라우저로 `https://(배포주소)/feed` 접속
 - **회원가입 → 로그인 → 글 작성** 이 되는지 확인
+
+---
+
+## 빌드 로그: `Error: DATABASE_URL is not set`
+
+- **최신 코드**에서는 빌드 시점에 DB가 없어도 넘어가도록 맞춰 두었습니다. 위 메시지가 나오면 **저장소를 pull 하고 다시 push·Redeploy** 하세요.
+- 배포가 된 뒤 **페이지/API가 500** 이면 Vercel **Settings → Environment Variables** 에 **`DATABASE_URL`**(및 `AUTH_SECRET`)이 **Production**에 있는지 확인하고, 넣은 뒤 **Redeploy** 하세요.
 
 ---
 
