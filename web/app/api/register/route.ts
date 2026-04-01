@@ -74,11 +74,17 @@ export async function POST(req: Request) {
       },
     });
   } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
     console.error("[register]", e);
+    const hint =
+      process.env.NODE_ENV !== "production"
+        ? ` (${msg})`
+        : "";
     return NextResponse.json(
       {
         error:
-          "데이터베이스에 연결할 수 없습니다. DATABASE_URL 과 Neon 상태를 확인해 주세요.",
+          "데이터베이스에 연결할 수 없습니다. Neon 연결 문자열(풀러 권장·sslmode=require)·Vercel의 DATABASE_URL 을 확인해 주세요." +
+          hint,
       },
       { status: 503 },
     );

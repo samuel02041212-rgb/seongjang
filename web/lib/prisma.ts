@@ -20,9 +20,21 @@ function resolveDatabaseUrl(): string {
   throw new Error("DATABASE_URL is not set");
 }
 
+function createPool(connectionString: string): Pool {
+  const serverless =
+    process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
+  return new Pool({
+    connectionString,
+    // Vercel(서버리스) + Neon: 연결 수 1·짧은 타임아웃이 안정적
+    max: serverless ? 1 : 10,
+    connectionTimeoutMillis: serverless ? 15_000 : 10_000,
+    idleTimeoutMillis: serverless ? 20_000 : 30_000,
+  });
+}
+
 function createPrisma(): PrismaClient {
   const connectionString = resolveDatabaseUrl();
-  const pool = globalForPrisma.pool ?? new Pool({ connectionString });
+  const pool = globalForPrisma.pool ?? createPool(connectionString);
   if (process.env.NODE_ENV !== "production") globalForPrisma.pool = pool;
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });
