@@ -3,6 +3,7 @@ import { Noto_Sans_KR } from "next/font/google";
 
 import { ConditionalChatDock } from "@/components/chat/conditional-chat-dock";
 import { AppProviders } from "@/components/providers/app-providers";
+import { SiteFooter } from "@/components/shell/site-footer";
 
 import "./globals.css";
 
@@ -28,9 +29,10 @@ export default function RootLayout({
       <head>
         <link rel="stylesheet" href="/css/chat.css" />
       </head>
-      <body className="min-h-full font-sans">
+      <body className="flex min-h-full flex-col font-sans">
         <AppProviders>
-          {children}
+          <div className="flex-1">{children}</div>
+          <SiteFooter />
           <ConditionalChatDock />
         </AppProviders>
       </body>
