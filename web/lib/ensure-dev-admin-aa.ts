@@ -9,13 +9,11 @@ const adminProfile = {
   isAdmin: true,
   gender: "M" as const,
   birthDate: new Date("1990-01-01"),
-  church: "(개발)",
+  church: "(관리자)",
   signupSource: "",
 };
 
 export async function ensureDevAdminAaAccount(): Promise<void> {
-  if (process.env.NODE_ENV !== "development") return;
-
   const existing = await prisma.user.findUnique({
     where: { email: ADMIN_USER_EMAIL },
     select: { password: true },
