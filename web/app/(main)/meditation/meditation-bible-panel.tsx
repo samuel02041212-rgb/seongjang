@@ -1,4 +1,3 @@
-/** 말씀묵상 페이지 우측: 성경 뷰어 자리(추후 BibleViewer 연결) */
 export function MeditationBiblePanel() {
   return (
     <section className="flex min-h-[420px] flex-col rounded-2xl border border-line bg-surface p-4 shadow-sm sm:p-6">

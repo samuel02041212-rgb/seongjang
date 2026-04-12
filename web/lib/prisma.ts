@@ -10,7 +10,6 @@ const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
 };
 
-/** `next build` 중 Prisma 모듈이 일부 로딩될 때만 쓰임. 실제 DB 연결은 하지 않음(쿼리 없음). */
 const BUILD_PLACEHOLDER_DATABASE_URL =
   "postgresql://build:build@127.0.0.1:5432/build?sslmode=disable&connect_timeout=1";
 
@@ -27,10 +26,6 @@ function isNeonConnectionString(url: string): boolean {
   return /\.neon\.tech\b/i.test(url) || /neon\.database\./i.test(url);
 }
 
-/**
- * Neon 서버리스 드라이버(WebSocket) — Vercel 등에서 `pg` 풀만으로는 불안정한 경우가 많음.
- * @see https://neon.tech/docs/guides/prisma
- */
 function configureNeonWebSocket(): void {
   if (typeof globalThis.WebSocket === "undefined") {
     neonConfig.webSocketConstructor = ws;
@@ -70,10 +65,6 @@ function getPrisma(): PrismaClient {
   return globalForPrisma.prisma;
 }
 
-/**
- * 첫 DB 접근 시점에만 연결을 만든다. Vercel 빌드 등에서 모듈만 로드될 때는
- * DATABASE_URL 이 없어도 되게 하려는 목적(런타임·로컬 dev에는 반드시 설정).
- */
 export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
   get(_target, prop, receiver) {
     const client = getPrisma();

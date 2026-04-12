@@ -1,11 +1,6 @@
 @import "tailwindcss";
 
-/*
- * Brand: 메인 액센트 #ffcd38 — 버튼·링크·강조에 사용.
- * 액센트 위 텍스트는 text-accent-foreground(진한 잉크)로 대비 유지.
- */
 :root {
-  /* 피드·랜딩 고정 헤더 높이 — `sns-feed-layout`·`landing-header`·`public/css/chat.css`와 동기화 */
   --app-header-height: 5rem;
   --bg: #f8f6f0;
   --surface: #fffcf5;

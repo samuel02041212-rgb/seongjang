@@ -30,7 +30,7 @@ export async function middleware(request: NextRequest) {
 
   const secret = process.env.AUTH_SECRET;
   if (!secret) {
-    console.warn("[middleware] AUTH_SECRET 없음 — 로그인 보호 생략");
+    console.warn("[middleware] AUTH_SECRET missing — auth guard skipped");
     return NextResponse.next();
   }
 

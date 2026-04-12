@@ -51,7 +51,7 @@ export function ChatDock() {
     try {
       setCollapsed(localStorage.getItem(COLLAPSED_KEY) === "1");
     } catch {
-      /* ignore */
+      void 0;
     }
     setHydrated(true);
   }, []);
@@ -77,7 +77,7 @@ export function ChatDock() {
     try {
       localStorage.setItem(COLLAPSED_KEY, next ? "1" : "0");
     } catch {
-      /* ignore */
+      void 0;
     }
   }, []);
 

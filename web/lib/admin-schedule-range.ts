@@ -1,4 +1,3 @@
-/** 레거시 server.js `clampRange` 와 동일 취지: from/to 파싱·최대 구간 제한 */
 export function clampScheduleRange(from: string | null, to: string | null): {
   ok: true;
   fromAt: Date;

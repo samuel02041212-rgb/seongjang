@@ -18,7 +18,6 @@ type PostDetailModalProps = {
   open: boolean;
   onClose: () => void;
   onCommentAdded: () => void;
-  /** true면 API 호출 없이 UI만 (댓글 입력 비활성) */
   previewMode?: boolean;
 };
 

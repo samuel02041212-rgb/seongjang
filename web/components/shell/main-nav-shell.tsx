@@ -14,7 +14,6 @@ type MainNavShellProps = {
   isAdmin: boolean;
 };
 
-/** 로그인 구역 공통: 피드와 동일 헤더·프로필·FAB */
 export function MainNavShell({
   children,
   joinedGroups,

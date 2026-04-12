@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useState } from "react";
 
 type LandingHeaderProps = {
-  /** 로그인된 경우 헤더는 피드 브랜드 + 피드로만 노출 */
   loggedIn: boolean;
 };
 
@@ -27,7 +26,7 @@ export function LandingHeader({ loggedIn }: LandingHeaderProps) {
               성
             </span>
           ) : (
-            // eslint-disable-next-line @next/next/no-img-element -- public
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src="/logo.png"
               alt=""

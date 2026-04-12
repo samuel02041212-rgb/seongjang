@@ -1,9 +1,7 @@
 ---
-description: 성장(seongjang) 웹 UI 브랜드 색 — 액센트는 항상 #ffcd38
+description: seongjang web accent #ffcd38
 globs: web/**/*.tsx, web/**/*.css
 ---
 
-- **메인 액센트 색:** `#ffcd38` — CTA 버튼, 활성 링크, 키 하이라이트, 포커스 링에 사용.
-- **토큰:** `globals.css`의 `--accent` / Tailwind `bg-accent`, `text-accent`, `border-accent` 등. 연한 배경은 `--accent-soft` (`bg-accent-soft`).
-- **대비:** 액센트 위 본문·라벨은 `text-accent-foreground` (진한 `#1c1917` 수준)을 쓰고, 밝은 노랑 위에 흰색 글자는 쓰지 않는다.
-- 새 화면을 만들 때도 위 토큰만 사용하고, 임의의 다른 색으로 브랜드 역할을 대체하지 않는다.
+- Accent `#ffcd38`: CTA, active links, focus — use `globals.css` `--accent` / Tailwind `bg-accent`, `text-accent-foreground`, `bg-accent-soft`.
+- Do not use random yellows; stick to these tokens.

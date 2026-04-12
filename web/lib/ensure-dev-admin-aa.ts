@@ -13,11 +13,6 @@ const adminProfile = {
   signupSource: "",
 };
 
-/**
- * `next dev` 전용: a/a로 쓰는 관리자 행을 DB에 맞춤.
- * 시드를 안 돌렸거나 비밀번호·플래그가 어긋난 경우 로그인 전에 복구한다.
- * 프로덕션(`NODE_ENV === "production"`)에서는 호출해도 즉시 return.
- */
 export async function ensureDevAdminAaAccount(): Promise<void> {
   if (process.env.NODE_ENV !== "development") return;
 

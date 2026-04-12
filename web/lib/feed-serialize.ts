@@ -11,7 +11,6 @@ export type FeedPostJson = {
   likeCount: number;
   isLikedByMe: boolean;
   commentCount: number;
-  /** 소그룹 공개 등 — 레거시 피드 상단 배지용 (목업/API에서 선택) */
   visibleGroupLabel?: string;
 };
 
@@ -38,13 +37,11 @@ export function serializeFeedPost(
   };
 }
 
-/** 레거시 imageUrl 단일 필드는 스키마에 없음 — API에서만 배열 사용 */
 export function normalizeImageUrls(urls: string[] | null | undefined): string[] {
   if (!urls?.length) return [];
   return urls.map((u) => String(u ?? "").trim()).filter(Boolean);
 }
 
-/** 피드 카드·목록용 상대 시간 (레거시 타임라인과 유사) */
 export function formatFeedRelativeTime(iso: string): string {
   const d = new Date(iso);
   const diff = Date.now() - d.getTime();

@@ -1,0 +1,16 @@
+---
+description: New/edited code must stay minimal and simple — top priority
+alwaysApply: true
+---
+
+# Simplicity first (highest priority)
+
+When adding or changing any file in this repo:
+
+- Prefer the **shortest** correct solution: fewest abstractions, fewest new files, shallowest call stack.
+- **No** extra comments, doc blocks, or README churn unless the user asks.
+- **No** drive-by refactors, “cleanup” in unrelated files, or defensive layers unless required for the task.
+- Match existing patterns; if something can be one function or one component, keep it one.
+- Korean or English in UI copy is fine; **agent-facing** text (rules, AGENTS) stays terse.
+
+If a trade-off appears, choose **simpler** over clever.

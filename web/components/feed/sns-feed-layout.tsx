@@ -15,9 +15,7 @@ type SnsFeedLayoutProps = {
   joinedGroups: JoinedGroup[];
   userName?: string | null;
   userImage?: string | null;
-  /** 실제 NextAuth 세션(또는 서버에서 판별한 로그인 여부) */
   isAuthenticated?: boolean;
-  /** DB `User.isAdmin` 등 — FAB에 관리자 링크 */
   isAdmin?: boolean;
 };
 
@@ -51,7 +49,6 @@ export function SnsFeedLayout({
 }: SnsFeedLayoutProps) {
   const [fabOpen, setFabOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  /** `/logo.png`(public) 로드 실패 시 이전 글자 마크 표시 */
   const [logoFailed, setLogoFailed] = useState(false);
   const fabRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -83,7 +80,6 @@ export function SnsFeedLayout({
     <div
       className="relative min-h-screen bg-bg pb-24 pt-[var(--app-header-height)]"
     >
-      {/* Header */}
       <header className="fixed inset-x-0 top-0 z-40 border-b border-line/80 bg-surface/95 backdrop-blur-md">
         <div className="flex h-[var(--app-header-height)] w-full items-center justify-between gap-3 px-4 sm:px-6">
           <Link
@@ -99,7 +95,7 @@ export function SnsFeedLayout({
                 성
               </span>
             ) : (
-              // eslint-disable-next-line @next/next/no-img-element -- public 자산, 로드 실패 시 위 폴백
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src="/logo.png"
                 alt=""
@@ -213,7 +209,6 @@ export function SnsFeedLayout({
         {children}
       </main>
 
-      {/* FAB: 왼쪽 아래, 클릭 시 위로 네비 */}
       <div
         className="fixed bottom-6 left-4 z-50 flex flex-col items-start gap-2"
         ref={fabRef}
@@ -226,7 +221,6 @@ export function SnsFeedLayout({
           }`}
           aria-hidden={!fabOpen}
         >
-          {/* column-reverse: DOM 순서 = FAB에 가까운 것부터 → 위로 갈수록 소그룹 */}
           {fabCoreNav.map((item) => (
             <Link
               key={`${item.label}-${item.href}`}

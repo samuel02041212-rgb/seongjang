@@ -74,7 +74,7 @@ export function FeedStream({ refreshTrigger = 0 }: { refreshTrigger?: number }) 
           : p,
       );
     } catch {
-      /* ignore */
+      void 0;
     }
   }, []);
 

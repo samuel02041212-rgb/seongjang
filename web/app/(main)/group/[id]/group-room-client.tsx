@@ -27,7 +27,6 @@ export function GroupRoomClient({
         </Link>
       </div>
 
-      {/* 백업 GroupRoomClient / subnav: 피드 · 채팅 · 일정 */}
       <div className="flex gap-1 rounded-xl border border-line bg-surface p-1 shadow-sm">
         {(
           [

@@ -4,7 +4,6 @@ import { ADMIN_USER_EMAIL } from "@/lib/auth-constants";
 import { prisma } from "@/lib/prisma";
 import { requireAdminSession } from "@/lib/require-admin";
 
-/** 승인 대기 회원 거절(삭제) — 레거시와 동일하게 미승인만 */
 export async function DELETE(
   _req: Request,
   ctx: { params: Promise<{ id: string }> },

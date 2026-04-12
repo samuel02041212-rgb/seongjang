@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 
-/** 백업 GroupMygroupsContent / mypage — 화면 틀만 */
 export function MePageClient() {
   const [tab, setTab] = useState<"posts" | "calendar">("posts");
 
