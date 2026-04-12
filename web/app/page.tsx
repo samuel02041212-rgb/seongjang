@@ -112,13 +112,6 @@ export default async function Home() {
           </div>
         </section>
       </main>
-
-      <footer className="border-t border-line/80 bg-surface py-8">
-        <div className="mx-auto flex max-w-5xl flex-col gap-2 px-5 text-sm text-muted sm:flex-row sm:items-center sm:justify-between sm:px-8">
-          <span>© {new Date().getFullYear()} 성장 — 로컬 개발 중</span>
-          <span className="text-xs">Next.js · PostgreSQL · Prisma · Auth.js</span>
-        </div>
-      </footer>
     </div>
   );
 }
