@@ -1,6 +1,6 @@
 {
   "name": "web",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -15,7 +15,8 @@
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset",
-    "db:reset-admin-only": "npx tsx prisma/reset-users-admin-only.ts"
+    "db:reset-admin-only": "npx tsx prisma/reset-users-admin-only.ts",
+    "db:delete-all-users": "npx tsx prisma/delete-all-users.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
