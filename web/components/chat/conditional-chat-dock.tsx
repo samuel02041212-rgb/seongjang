@@ -1,11 +1,11 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 import { ChatDock } from "./chat-dock";
 
 export function ConditionalChatDock() {
-  const pathname = usePathname();
-  if (pathname === "/") return null;
+  const { status } = useSession();
+  if (status !== "authenticated") return null;
   return <ChatDock />;
 }
