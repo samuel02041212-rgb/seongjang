@@ -11,10 +11,12 @@ export function FeedStream({ refreshTrigger = 0 }: { refreshTrigger?: number }) 
   const [source, setSource] = useState<FeedSource>("loading");
   const [posts, setPosts] = useState<FeedPostJson[]>([]);
   const [detailPost, setDetailPost] = useState<FeedPostJson | null>(null);
+  const [errorHint, setErrorHint] = useState("");
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      setErrorHint("");
       try {
         const res = await fetch("/api/posts", { credentials: "include" });
         const data = (await res.json()) as unknown;
@@ -23,15 +25,24 @@ export function FeedStream({ refreshTrigger = 0 }: { refreshTrigger?: number }) 
         if (!res.ok || !Array.isArray(data)) {
           setPosts([]);
           setSource("error");
+          setErrorHint(
+            res.status === 401
+              ? "세션이 만료되었습니다. 다시 로그인해 주세요."
+              : "피드를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+          );
           return;
         }
 
+        setErrorHint("");
         setPosts(data as FeedPostJson[]);
         setSource("ready");
       } catch {
         if (!cancelled) {
           setPosts([]);
           setSource("error");
+          setErrorHint(
+            "피드를 불러오지 못했습니다. 네트워크·서버 설정을 확인해 주세요.",
+          );
         }
       }
     })();
@@ -97,7 +108,8 @@ export function FeedStream({ refreshTrigger = 0 }: { refreshTrigger?: number }) 
         </p>
       ) : source === "error" ? (
         <p className="py-10 text-center text-sm text-red-800/90">
-          피드를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
+          {errorHint ||
+            "피드를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."}
         </p>
       ) : posts.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted">

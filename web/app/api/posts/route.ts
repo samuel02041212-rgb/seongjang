@@ -23,7 +23,7 @@ export async function GET() {
     return NextResponse.json(normalized);
   } catch (e) {
     console.error("[GET /api/posts]", e);
-    return NextResponse.json([], { status: 500 });
+    return NextResponse.json({ error: "db" }, { status: 503 });
   }
 }
 
