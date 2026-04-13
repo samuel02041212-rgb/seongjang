@@ -3,17 +3,14 @@ import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { z } from "zod";
+import { authConfig } from "@/auth.config";
 import { ADMIN_LOGIN_HANDLE, ADMIN_USER_EMAIL } from "@/lib/auth-constants";
 import { ensureDevAdminAaAccount } from "@/lib/ensure-dev-admin-aa";
 import { prisma } from "@/lib/prisma";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  trustHost: true,
+  ...authConfig,
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "jwt", maxAge: 5 * 60 },
-  pages: {
-    signIn: "/login",
-  },
   providers: [
     Credentials({
       credentials: {
@@ -88,29 +85,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    jwt({ token, user }) {
-      const devEpoch = process.env.AUTH_DEV_SESSION_EPOCH;
-      if (devEpoch) {
-        if (user) {
-          token.devEpoch = devEpoch;
-        } else if (token.devEpoch !== devEpoch) {
-          return { devEpoch, exp: 0 };
-        }
-      }
-      if (user) {
-        token.sub = user.id;
-        token.isAdmin =
-          user.email === ADMIN_USER_EMAIL || Boolean(user.isAdmin);
-      }
-      return token;
-    },
-    session({ session, token }) {
-      if (session.user && token.sub) {
-        session.user.id = token.sub;
-        session.user.isAdmin = !!token.isAdmin;
-      }
-      return session;
-    },
-  },
 });

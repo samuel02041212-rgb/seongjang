@@ -1,11 +1,12 @@
+import NextAuth from "next-auth";
 import { type NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 
-const PUBLIC_PATHS = new Set(["/", "/login", "/register"]);
+import { authConfig } from "@/auth.config";
+
+const { auth } = NextAuth(authConfig);
 
 function isPublicPath(pathname: string) {
-  if (PUBLIC_PATHS.has(pathname)) return true;
-  if (pathname.startsWith("/login") || pathname.startsWith("/register")) {
+  if (pathname === "/" || pathname.startsWith("/login") || pathname.startsWith("/register")) {
     return true;
   }
   return false;
@@ -21,28 +22,22 @@ function isSkippablePath(pathname: string) {
   return false;
 }
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+export default auth((req: NextRequest & { auth: unknown }) => {
+  const { pathname } = req.nextUrl;
 
   if (isSkippablePath(pathname) || isPublicPath(pathname)) {
     return NextResponse.next();
   }
 
-  const secret = process.env.AUTH_SECRET;
-  if (!secret) {
-    console.warn("[middleware] AUTH_SECRET missing — auth guard skipped");
-    return NextResponse.next();
+  const session = req.auth as { user?: { id?: string } } | null;
+  if (!session?.user?.id) {
+    const login = new URL("/login", req.url);
+    login.searchParams.set("callbackUrl", `${pathname}${req.nextUrl.search}`);
+    return NextResponse.redirect(login);
   }
 
-  const token = await getToken({ req: request, secret });
-  if (token) {
-    return NextResponse.next();
-  }
-
-  const login = new URL("/login", request.url);
-  login.searchParams.set("callbackUrl", `${pathname}${request.nextUrl.search}`);
-  return NextResponse.redirect(login);
-}
+  return NextResponse.next();
+});
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image).*)"],
