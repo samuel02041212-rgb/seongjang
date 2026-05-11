@@ -123,7 +123,7 @@ export function PostDetailModal({
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
           <div className="flex gap-3">
             <div
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#eee8e0] bg-[#fff8e8] text-sm font-bold text-[#5c4d2c]"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#fff4d2] text-sm font-bold text-[#5c4d2c]"
               aria-hidden
             >
               {(post.authorName || "?").slice(0, 1)}
@@ -152,10 +152,9 @@ export function PostDetailModal({
                 </h3>
               ) : null}
               {post.bibleRef ? (
-                <div className="mt-2 inline-flex items-center gap-1 rounded-lg border border-accent/35 bg-accent-soft px-2.5 py-1 text-xs font-medium text-accent-foreground">
-                  <span aria-hidden>📖</span>
+                <p className="mt-2 text-xs font-medium text-muted">
                   {post.bibleRef}
-                </div>
+                </p>
               ) : null}
             </div>
           </div>
@@ -169,7 +168,7 @@ export function PostDetailModal({
               {post.imageUrls.map((url) => (
                 <div
                   key={url}
-                  className="overflow-hidden rounded-xl border border-[#eee] bg-[#f5f3ef]"
+                  className="overflow-hidden rounded-xl border border-line bg-bg"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img

@@ -295,7 +295,7 @@ export function RegisterForm() {
         이미 계정이 있으신가요?{" "}
         <Link
           href="/login"
-          className="font-medium text-accent-foreground underline-offset-2 hover:underline"
+          className="font-semibold text-ink underline underline-offset-2"
         >
           로그인
         </Link>

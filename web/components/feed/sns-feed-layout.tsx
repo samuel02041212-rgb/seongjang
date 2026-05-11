@@ -72,6 +72,7 @@ export function SnsFeedLayout({
       { label: "말씀묵상", href: "/meditation" },
       { label: "말씀연구", href: "/study" },
       { label: "소그룹", href: "/group/mygroups" },
+      { label: "게시글", href: "/feed" },
     );
     return items;
   }, [isAdmin]);
@@ -117,7 +118,7 @@ export function SnsFeedLayout({
                 setProfileOpen((v) => !v);
                 setFabOpen(false);
               }}
-              className="relative h-12 w-12 overflow-hidden rounded-full border-2 border-accent/40 bg-accent-soft shadow-sm ring-offset-2 transition hover:ring-2 hover:ring-accent/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="relative h-12 w-12 overflow-hidden rounded-full bg-[#fff4d2] shadow-sm ring-offset-2 transition hover:ring-2 hover:ring-accent/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               aria-expanded={profileOpen}
               aria-haspopup="menu"
               aria-label="프로필 메뉴"
@@ -130,7 +131,7 @@ export function SnsFeedLayout({
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <span className="flex h-full w-full items-center justify-center text-lg font-semibold text-accent-foreground">
+                <span className="flex h-full w-full items-center justify-center text-lg font-bold text-[#5c4d2c]">
                   {initial}
                 </span>
               )}

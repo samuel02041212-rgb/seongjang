@@ -422,3 +422,110 @@
   color: #999;
   font-size: 14px;
 }
+
+html.dark .chat-toggle {
+  background: #17181b;
+  border-color: #2a2c30;
+  color: #ececec;
+}
+html.dark .chat-toggle:hover {
+  background: #1f2024;
+}
+html.dark .chat-panel {
+  background: #17181b;
+  border-left-color: #2a2c30;
+  color: #ececec;
+}
+html.dark .chat-panel-header {
+  border-bottom-color: #2a2c30;
+}
+html.dark .chat-search {
+  background: #0e0f11;
+  border-color: #2a2c30;
+  color: #ececec;
+}
+html.dark .chat-search::placeholder {
+  color: #6f6d6a;
+}
+html.dark .chat-search-results {
+  background: #0e0f11;
+  border-bottom-color: #2a2c30;
+}
+html.dark .chat-search-results .chat-search-item {
+  border-bottom-color: #2a2c30;
+}
+html.dark .chat-search-results .chat-search-item:hover {
+  background: #1f2024;
+}
+html.dark .chat-room-item {
+  border-bottom-color: #23252a;
+}
+html.dark .chat-room-item:hover {
+  background: #1f2024;
+}
+html.dark .chat-room-item .chat-room-avatar {
+  background: #2a2c30;
+  color: #c9c7c4;
+}
+html.dark .chat-room-item .chat-room-name {
+  color: #ececec;
+}
+html.dark .chat-room-item .chat-room-preview {
+  color: #9a9794;
+}
+html.dark .chat-room-status.offline {
+  background: #3a3d42;
+}
+html.dark .chat-window {
+  background: #17181b;
+  box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.6);
+  color: #ececec;
+}
+html.dark .chat-window-header {
+  background: #1f2024;
+  border-bottom-color: #2a2c30;
+}
+html.dark .chat-window-header .chat-window-minimize,
+html.dark .chat-window-header .chat-window-close {
+  color: #c9c7c4;
+}
+html.dark .chat-window-header .chat-window-title .status-dot {
+  background: #3a3d42;
+}
+html.dark .chat-window-body {
+  background: #121317;
+}
+html.dark .chat-msg.theirs {
+  background: #1f2024;
+  border-color: #2a2c30;
+  color: #ececec;
+}
+html.dark .chat-msg-time {
+  color: #7a7773;
+}
+html.dark .chat-window-footer {
+  background: #17181b;
+  border-top-color: #2a2c30;
+}
+html.dark .chat-window-footer textarea {
+  background: #0e0f11;
+  border-color: #2a2c30;
+  color: #ececec;
+}
+html.dark .chat-window-footer textarea::placeholder {
+  color: #6f6d6a;
+}
+html.dark .chat-context-menu {
+  background: #17181b;
+  border-color: #2a2c30;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+html.dark .chat-context-menu button {
+  color: #ececec;
+}
+html.dark .chat-context-menu button:hover {
+  background: #1f2024;
+}
+html.dark .chat-empty-list {
+  color: #7a7773;
+}

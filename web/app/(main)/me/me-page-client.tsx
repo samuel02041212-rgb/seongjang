@@ -1,20 +1,117 @@
 "use client";
 
-import { useState } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+
+import { FeedPostRow } from "@/components/feed/feed-post-row";
+import { PostDetailModal } from "@/components/feed/post-detail-modal";
+import type { FeedPostJson } from "@/lib/feed-serialize";
 
 export function MePageClient() {
+  const { data: session } = useSession();
   const [tab, setTab] = useState<"posts" | "calendar">("posts");
+  const [posts, setPosts] = useState<FeedPostJson[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [detailPost, setDetailPost] = useState<FeedPostJson | null>(null);
+
+  const displayName =
+    session?.user?.name?.trim() ||
+    session?.user?.email?.split("@")[0] ||
+    "회원";
+  const initial = (displayName || "?").slice(0, 1);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/posts?mine=1", { credentials: "include" });
+        const data = (await res.json()) as unknown;
+        if (cancelled) return;
+        if (!res.ok || !Array.isArray(data)) {
+          setPosts([]);
+          return;
+        }
+        setPosts(data as FeedPostJson[]);
+      } catch {
+        if (!cancelled) setPosts([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const onLike = useCallback(async (postId: string) => {
+    try {
+      const res = await fetch(
+        `/api/posts/${encodeURIComponent(postId)}/like`,
+        { method: "POST", credentials: "include" },
+      );
+      if (!res.ok) return;
+      const body = (await res.json()) as {
+        ok?: boolean;
+        liked?: boolean;
+        likeCount?: number;
+      };
+      if (!body.ok) return;
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                isLikedByMe: body.liked ?? !p.isLikedByMe,
+                likeCount: body.likeCount ?? p.likeCount,
+              }
+            : p,
+        ),
+      );
+      setDetailPost((p) =>
+        p?.id === postId
+          ? {
+              ...p,
+              isLikedByMe: body.liked ?? !p.isLikedByMe,
+              likeCount: body.likeCount ?? p.likeCount,
+            }
+          : p,
+      );
+    } catch {
+      void 0;
+    }
+  }, []);
+
+  const bumpCommentCount = useCallback((postId: string) => {
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId ? { ...p, commentCount: p.commentCount + 1 } : p,
+      ),
+    );
+    setDetailPost((p) =>
+      p?.id === postId ? { ...p, commentCount: p.commentCount + 1 } : p,
+    );
+  }, []);
 
   return (
     <section className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
       <div className="border-b border-line p-4 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-accent-soft text-2xl font-bold text-accent-foreground">
-            게
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#fff4d2] text-2xl font-bold text-[#5c4d2c]">
+            {session?.user?.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={session.user.image}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              initial
+            )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-lg font-semibold text-ink">게스트</p>
+            <p className="text-lg font-semibold text-ink">{displayName}</p>
             <p className="mt-1 text-sm text-muted">상태 메시지 (연결 후 수정)</p>
             <button
               type="button"
@@ -53,18 +150,44 @@ export function MePageClient() {
       </div>
 
       {tab === "posts" ? (
-        <div className="p-6">
-          <p className="text-center text-sm text-muted">
-            아직 작성한 글이 없습니다.
-          </p>
-          <div className="mt-6 flex justify-center">
-            <Link
-              href="/meditation"
-              className="rounded-full bg-accent px-5 py-2 text-sm font-semibold text-accent-foreground"
-            >
-              말씀묵상 쓰기
-            </Link>
-          </div>
+        <div className="p-4 sm:p-6">
+          {loading ? (
+            <p className="py-6 text-center text-sm text-muted">불러오는 중…</p>
+          ) : posts.length === 0 ? (
+            <>
+              <p className="text-center text-sm text-muted">
+                아직 작성한 글이 없습니다.
+              </p>
+              <div className="mt-6 flex justify-center">
+                <Link
+                  href="/meditation"
+                  className="rounded-full bg-accent px-5 py-2 text-sm font-semibold text-accent-foreground"
+                >
+                  말씀묵상 쓰기
+                </Link>
+              </div>
+            </>
+          ) : (
+            <div className="space-y-3">
+              {posts.map((p) => (
+                <FeedPostRow
+                  key={p.id}
+                  post={p}
+                  onOpenDetail={setDetailPost}
+                  onLike={onLike}
+                />
+              ))}
+            </div>
+          )}
+          <PostDetailModal
+            post={detailPost}
+            open={!!detailPost}
+            onClose={() => setDetailPost(null)}
+            onCommentAdded={() =>
+              detailPost && bumpCommentCount(detailPost.id)
+            }
+            previewMode={false}
+          />
         </div>
       ) : (
         <div className="p-6">

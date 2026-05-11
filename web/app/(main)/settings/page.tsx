@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { SubPageLayout } from "@/components/shell/sub-page-layout";
+import { ThemeToggle } from "@/components/settings/theme-toggle";
 
 export const metadata: Metadata = {
   title: "설정 — 성경나눔장소",
@@ -11,6 +12,11 @@ export default function SettingsPage() {
     <SubPageLayout title="설정">
       <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
         <div className="divide-y divide-line">
+          <section className="px-4 py-4 sm:px-6">
+            <h2 className="text-sm font-semibold text-ink">테마</h2>
+            <p className="mt-1 text-xs text-muted">라이트·다크 모드 선택</p>
+            <ThemeToggle />
+          </section>
           <section className="px-4 py-4 sm:px-6">
             <h2 className="text-sm font-semibold text-ink">알림</h2>
             <p className="mt-1 text-xs text-muted">

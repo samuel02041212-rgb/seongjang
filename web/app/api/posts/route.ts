@@ -4,16 +4,19 @@ import { auth } from "@/lib/server-auth";
 import { serializeFeedPost } from "@/lib/feed-serialize";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const mine = new URL(req.url).searchParams.get("mine") === "1";
+
   try {
     const posts = await prisma.post.findMany({
+      where: mine ? { authorId: session.user.id } : undefined,
       orderBy: { createdAt: "desc" },
-      take: 50,
+      take: mine ? 100 : 50,
       include: { _count: { select: { comments: true } } },
     });
 

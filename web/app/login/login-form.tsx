@@ -103,14 +103,9 @@ export function LoginForm({
         계정이 없으신가요?{" "}
         <Link
           href="/register"
-          className="font-medium text-accent-foreground underline-offset-2 hover:underline"
+          className="font-semibold text-ink underline underline-offset-2"
         >
           회원가입
-        </Link>
-      </p>
-      <p className="mt-3 text-center">
-        <Link href="/" className="text-sm text-muted hover:text-ink">
-          ← 처음으로
         </Link>
       </p>
     </div>
