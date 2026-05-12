@@ -1,6 +1,6 @@
 export function MeditationBiblePanel() {
   return (
-    <section className="flex min-h-[420px] flex-col rounded-2xl border border-line bg-surface p-4 shadow-sm sm:p-6">
+    <section className="flex h-full min-h-[420px] flex-col rounded-2xl border border-line bg-surface p-4 shadow-sm sm:p-6">
       <h2 className="text-sm font-semibold text-ink">성경 뷰어</h2>
       <p className="mt-1 text-xs text-muted">
         개역한글 JSON·검색·권·장 이동은 백업의{" "}

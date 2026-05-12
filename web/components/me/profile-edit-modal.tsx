@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { resizeImage } from "@/lib/image-resize";
+
 type Props = {
   open: boolean;
   initialName: string;
@@ -47,8 +49,14 @@ export function ProfileEditModal({
     setError("");
     setUploading(true);
     try {
+      let uploadFile: File;
+      try {
+        uploadFile = await resizeImage(file, 512, 0.9);
+      } catch {
+        uploadFile = file;
+      }
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", uploadFile);
       const res = await fetch("/api/upload", {
         method: "POST",
         credentials: "include",

@@ -85,7 +85,7 @@ export function SnsFeedLayout({
         <div className="flex h-[var(--app-header-height)] w-full items-center justify-between gap-3 px-4 sm:px-6">
           <Link
             href="/feed"
-            className="flex min-w-0 flex-1 items-center gap-3 pr-2"
+            className="flex items-center gap-3"
             aria-label="성경나눔장소 피드"
           >
             {logoFailed ? (

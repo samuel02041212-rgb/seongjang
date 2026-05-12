@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { resizeImage } from "@/lib/image-resize";
+
 const MAX_IMAGES = 20;
 
 type FeedComposerProps = {
@@ -64,8 +66,14 @@ export function FeedComposer({
     try {
       const imageUrls: string[] = [];
       for (const { file } of images) {
+        let uploadFile: File;
+        try {
+          uploadFile = await resizeImage(file);
+        } catch {
+          uploadFile = file;
+        }
         const fd = new FormData();
-        fd.append("file", file);
+        fd.append("file", uploadFile);
         const up = await fetch("/api/upload", {
           method: "POST",
           credentials: "include",
@@ -141,32 +149,31 @@ export function FeedComposer({
   return (
     <form
       onSubmit={onSubmit}
-      className="mb-6 space-y-3 rounded-2xl border border-line bg-surface p-4 shadow-sm"
+      className="flex h-full min-h-[28rem] flex-col gap-3 rounded-2xl border border-line bg-surface p-4 shadow-sm"
     >
       {error ? (
-        <p className="text-sm text-red-700">{error}</p>
+        <p className="shrink-0 text-sm text-red-700">{error}</p>
       ) : null}
       <input
         type="text"
         placeholder="제목 (선택)"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted outline-none ring-accent/30 focus:ring-2"
+        className="w-full shrink-0 rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted outline-none ring-accent/30 focus:ring-2"
       />
       <input
         type="text"
         placeholder="성경 구절 (선택, 예: 시편 23:1)"
         value={bibleRef}
         onChange={(e) => setBibleRef(e.target.value)}
-        className="w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted outline-none ring-accent/30 focus:ring-2"
+        className="w-full shrink-0 rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted outline-none ring-accent/30 focus:ring-2"
       />
       <textarea
         placeholder="무엇을 나누고 싶나요?"
         required
-        rows={4}
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        className="w-full resize-y rounded-xl border border-line bg-bg px-3 py-2.5 text-sm text-ink placeholder:text-muted outline-none ring-accent/30 focus:ring-2"
+        className="min-h-[8rem] w-full flex-1 resize-none rounded-xl border border-line bg-bg px-3 py-2.5 text-sm text-ink placeholder:text-muted outline-none ring-accent/30 focus:ring-2"
       />
 
       <input
@@ -177,23 +184,9 @@ export function FeedComposer({
         className="hidden"
         onChange={(e) => addFiles(e.target.files)}
       />
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          disabled={images.length >= MAX_IMAGES || pending}
-          onClick={() => fileRef.current?.click()}
-          className="rounded-xl border border-line bg-bg px-3 py-2 text-sm font-medium text-ink transition hover:bg-accent-soft disabled:opacity-50"
-        >
-          사진 추가
-          {images.length > 0 ? ` (${images.length}/${MAX_IMAGES})` : ""}
-        </button>
-        <span className="text-xs text-muted">
-          JPG·PNG·GIF·WebP, 장당 4MB 이하
-        </span>
-      </div>
 
       {images.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex shrink-0 flex-wrap gap-2">
           {images.map((img, i) => (
             <div
               key={`${img.previewUrl}-${i}`}
@@ -219,7 +212,16 @@ export function FeedComposer({
         </div>
       ) : null}
 
-      <div className="flex justify-end">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+        <button
+          type="button"
+          disabled={images.length >= MAX_IMAGES || pending}
+          onClick={() => fileRef.current?.click()}
+          className="rounded-xl border border-line bg-bg px-3 py-2 text-sm font-medium text-ink transition hover:bg-accent-soft disabled:opacity-50"
+        >
+          사진 추가
+          {images.length > 0 ? ` (${images.length}/${MAX_IMAGES})` : ""}
+        </button>
         <button
           type="submit"
           disabled={pending || !content.trim()}

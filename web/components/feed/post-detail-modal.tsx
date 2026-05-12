@@ -123,7 +123,7 @@ export function PostDetailModal({
       <div
         className={
           isSide
-            ? "fixed right-0 top-[var(--app-header-height)] bottom-0 z-30 flex w-[min(92vw,40rem)] flex-col overflow-hidden border-l border-line bg-surface shadow-xl"
+            ? "fixed right-0 top-[var(--app-header-height)] bottom-0 z-30 flex w-[min(95vw,48rem)] flex-col overflow-hidden border-l border-line bg-surface shadow-xl"
             : "relative flex aspect-video w-[min(95vw,calc(95vh*16/9),80rem)] flex-col overflow-hidden rounded-2xl bg-surface shadow-xl"
         }
         role="dialog"
@@ -145,7 +145,8 @@ export function PostDetailModal({
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+        <div className={`flex min-h-0 flex-1 ${isSide ? "flex-col" : "flex-row"}`}>
+        <div className="min-w-0 min-h-0 flex-1 overflow-y-auto px-4 py-4">
           <div className="flex gap-3">
             <div
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#fff4d2] text-sm font-bold text-[#5c4d2c]"
@@ -238,7 +239,13 @@ export function PostDetailModal({
           </div>
         </div>
 
-        <div className="flex h-[15rem] shrink-0 flex-col border-t border-line bg-bg">
+        <div
+          className={`flex shrink-0 flex-col bg-bg ${
+            isSide
+              ? "h-[15rem] border-t border-line"
+              : "w-[22rem] border-l border-line"
+          }`}
+        >
           <div className="border-b border-line px-4 py-2 text-sm font-semibold text-ink">
             댓글{" "}
             {previewMode
@@ -299,6 +306,7 @@ export function PostDetailModal({
               </div>
             </>
           )}
+        </div>
         </div>
       </div>
 
