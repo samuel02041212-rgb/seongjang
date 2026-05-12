@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { SubPageLayout } from "@/components/shell/sub-page-layout";
+import { PostViewModeToggle } from "@/components/settings/post-view-mode-toggle";
 import { ThemeToggle } from "@/components/settings/theme-toggle";
 
 export const metadata: Metadata = {
@@ -16,6 +17,14 @@ export default function SettingsPage() {
             <h2 className="text-sm font-semibold text-ink">테마</h2>
             <p className="mt-1 text-xs text-muted">라이트·다크 모드 선택</p>
             <ThemeToggle />
+          </section>
+          <section className="px-4 py-4 sm:px-6">
+            <h2 className="text-sm font-semibold text-ink">게시글 뷰어</h2>
+            <p className="mt-1 text-xs text-muted">
+              피드에서 게시글을 클릭했을 때 표시 방식. 이분할은 오른쪽 패널로
+              열려 다른 글을 계속 둘러볼 수 있습니다.
+            </p>
+            <PostViewModeToggle />
           </section>
           <section className="px-4 py-4 sm:px-6">
             <h2 className="text-sm font-semibold text-ink">알림</h2>

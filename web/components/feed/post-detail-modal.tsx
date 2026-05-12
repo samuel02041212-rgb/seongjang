@@ -6,6 +6,8 @@ import {
 } from "@/lib/feed-serialize";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { ImageViewerModal } from "./image-viewer-modal";
+
 type CommentItem = {
   id: string;
   authorName: string;
@@ -19,6 +21,7 @@ type PostDetailModalProps = {
   onClose: () => void;
   onCommentAdded: () => void;
   previewMode?: boolean;
+  variant?: "popup" | "side";
 };
 
 export function PostDetailModal({
@@ -27,11 +30,19 @@ export function PostDetailModal({
   onClose,
   onCommentAdded,
   previewMode = false,
+  variant = "popup",
 }: PostDetailModalProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [imgIdx, setImgIdx] = useState(0);
+  const [viewerOpen, setViewerOpen] = useState(false);
+
+  useEffect(() => {
+    setImgIdx(0);
+    setViewerOpen(false);
+  }, [post?.id]);
 
   const loadComments = useCallback(async (postId: string) => {
     setLoading(true);
@@ -91,18 +102,32 @@ export function PostDetailModal({
 
   if (!open || !post) return null;
 
+  const isSide = variant === "side";
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4">
-      <button
-        type="button"
-        className="absolute inset-0 bg-ink/45"
-        aria-label="닫기"
-        onClick={onClose}
-      />
+    <div
+      className={
+        isSide
+          ? ""
+          : "fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4"
+      }
+    >
+      {isSide ? null : (
+        <button
+          type="button"
+          className="absolute inset-0 bg-ink/45"
+          aria-label="닫기"
+          onClick={onClose}
+        />
+      )}
       <div
-        className="relative flex max-h-[90vh] w-full max-w-lg flex-col rounded-t-2xl bg-surface shadow-xl sm:rounded-2xl"
+        className={
+          isSide
+            ? "fixed right-0 top-[var(--app-header-height)] bottom-0 z-30 flex w-[min(92vw,40rem)] flex-col overflow-hidden border-l border-line bg-surface shadow-xl"
+            : "relative flex aspect-video w-[min(95vw,calc(95vh*16/9),80rem)] flex-col overflow-hidden rounded-2xl bg-surface shadow-xl"
+        }
         role="dialog"
-        aria-modal="true"
+        aria-modal={isSide ? undefined : "true"}
         aria-labelledby="post-detail-title"
       >
         <div className="flex items-center justify-between border-b border-line px-4 py-3">
@@ -159,94 +184,131 @@ export function PostDetailModal({
             </div>
           </div>
 
-          <div className="mt-4 whitespace-pre-wrap text-[15px] leading-relaxed text-ink">
-            {post.content}
-          </div>
-
           {post.imageUrls.length > 0 ? (
-            <div className="mt-4 space-y-2">
-              {post.imageUrls.map((url) => (
-                <div
-                  key={url}
-                  className="overflow-hidden rounded-xl border border-line bg-bg"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={url}
-                    alt=""
-                    className="max-h-80 w-full object-contain"
-                  />
-                </div>
-              ))}
+            <div className="relative mt-4 h-64 overflow-hidden rounded-xl border border-line bg-bg">
+              <button
+                type="button"
+                onClick={() => setViewerOpen(true)}
+                aria-label="이미지 크게 보기"
+                className="block h-full w-full cursor-zoom-in"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={post.imageUrls[imgIdx]}
+                  alt=""
+                  className="h-full w-full object-contain"
+                />
+              </button>
+              {post.imageUrls.length > 1 ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setImgIdx(
+                        (i) =>
+                          (i - 1 + post.imageUrls.length) %
+                          post.imageUrls.length,
+                      )
+                    }
+                    aria-label="이전 이미지"
+                    className="absolute left-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-lg font-bold text-white hover:bg-black/70"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setImgIdx((i) => (i + 1) % post.imageUrls.length)
+                    }
+                    aria-label="다음 이미지"
+                    className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-lg font-bold text-white hover:bg-black/70"
+                  >
+                    ›
+                  </button>
+                  <span className="absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-xs font-semibold text-white">
+                    {imgIdx + 1} / {post.imageUrls.length}
+                  </span>
+                </>
+              ) : null}
             </div>
           ) : null}
 
-          <div className="mt-8 border-t border-line pt-4">
-            <h4 className="text-sm font-semibold text-ink">
-              댓글{" "}
-              {previewMode
-                ? post.commentCount
-                : loading
-                  ? "…"
-                  : comments.length}
-              개
-            </h4>
-
-            {previewMode ? (
-              <p className="mt-3 text-sm text-muted">
-                미리보기 모드에서는 댓글 목록·작성이 비활성화됩니다.
-              </p>
-            ) : (
-              <>
-                <ul className="mt-3 space-y-3">
-                  {!loading &&
-                    comments.map((c) => (
-                      <li key={c.id} className="text-sm">
-                        <span className="font-medium text-ink">
-                          {c.authorName}
-                        </span>
-                        <span className="ml-2 text-xs text-muted">
-                          {new Date(c.createdAt).toLocaleString("ko-KR")}
-                        </span>
-                        <p className="mt-1 whitespace-pre-wrap text-muted">
-                          {c.content}
-                        </p>
-                      </li>
-                    ))}
-                  {!loading && comments.length === 0 ? (
-                    <li className="text-sm text-muted">
-                      아직 댓글이 없어요.
-                    </li>
-                  ) : null}
-                </ul>
-
-                <div className="mt-4 flex gap-2">
-                  <textarea
-                    ref={textareaRef}
-                    placeholder="댓글을 입력하세요"
-                    rows={2}
-                    className="min-w-0 flex-1 resize-none rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        void submitComment();
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    disabled={submitting}
-                    className="shrink-0 self-end rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
-                    onClick={() => void submitComment()}
-                  >
-                    등록
-                  </button>
-                </div>
-              </>
-            )}
+          <div className="mt-4 whitespace-pre-wrap text-[15px] leading-relaxed text-ink">
+            {post.content}
           </div>
         </div>
+
+        <div className="flex h-[15rem] shrink-0 flex-col border-t border-line bg-bg">
+          <div className="border-b border-line px-4 py-2 text-sm font-semibold text-ink">
+            댓글{" "}
+            {previewMode
+              ? post.commentCount
+              : loading
+                ? "…"
+                : comments.length}
+            개
+          </div>
+
+          {previewMode ? (
+            <p className="px-4 py-3 text-sm text-muted">
+              미리보기 모드에서는 댓글 목록·작성이 비활성화됩니다.
+            </p>
+          ) : (
+            <>
+              <ul className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
+                {!loading &&
+                  comments.map((c) => (
+                    <li key={c.id} className="text-sm">
+                      <span className="font-medium text-ink">
+                        {c.authorName}
+                      </span>
+                      <span className="ml-2 text-xs text-muted">
+                        {new Date(c.createdAt).toLocaleString("ko-KR")}
+                      </span>
+                      <p className="mt-1 whitespace-pre-wrap text-muted">
+                        {c.content}
+                      </p>
+                    </li>
+                  ))}
+                {!loading && comments.length === 0 ? (
+                  <li className="text-sm text-muted">아직 댓글이 없어요.</li>
+                ) : null}
+              </ul>
+
+              <div className="flex gap-2 border-t border-line bg-surface px-3 py-2">
+                <textarea
+                  ref={textareaRef}
+                  placeholder="댓글을 입력하세요"
+                  rows={2}
+                  className="min-w-0 flex-1 resize-none rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      void submitComment();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  disabled={submitting}
+                  className="shrink-0 self-end rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                  onClick={() => void submitComment()}
+                >
+                  등록
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
+
+      <ImageViewerModal
+        urls={post.imageUrls}
+        index={imgIdx}
+        open={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        onIndexChange={setImgIdx}
+      />
     </div>
   );
 }

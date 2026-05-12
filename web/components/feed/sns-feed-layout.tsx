@@ -254,9 +254,7 @@ export function SnsFeedLayout({
             setFabOpen((v) => !v);
             setProfileOpen(false);
           }}
-          className={`flex h-16 w-16 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg ring-4 ring-bg transition hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
-            fabOpen ? "rotate-45" : ""
-          }`}
+          className="flex h-16 w-16 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg ring-4 ring-bg transition hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
           aria-expanded={fabOpen}
           aria-label={fabOpen ? "메뉴 닫기" : "메뉴 열기"}
         >
@@ -266,11 +264,10 @@ export function SnsFeedLayout({
             viewBox="0 0 24 24"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
-            className="transition-transform duration-200"
             aria-hidden
           >
             <path
-              d="M12 5v14M5 12h14"
+              d="M4 7h16M4 12h16M4 17h16"
               stroke="currentColor"
               strokeWidth="2"
               strokeLinecap="round"

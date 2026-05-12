@@ -6,20 +6,47 @@ import { useCallback, useEffect, useState } from "react";
 
 import { FeedPostRow } from "@/components/feed/feed-post-row";
 import { PostDetailModal } from "@/components/feed/post-detail-modal";
+import { ProfileEditModal } from "@/components/me/profile-edit-modal";
 import type { FeedPostJson } from "@/lib/feed-serialize";
 
+type MeJson = {
+  id: string;
+  name: string | null;
+  email: string;
+  image: string | null;
+};
+
 export function MePageClient() {
-  const { data: session } = useSession();
+  const { data: session, update: updateSession } = useSession();
   const [tab, setTab] = useState<"posts" | "calendar">("posts");
   const [posts, setPosts] = useState<FeedPostJson[]>([]);
   const [loading, setLoading] = useState(true);
   const [detailPost, setDetailPost] = useState<FeedPostJson | null>(null);
+  const [me, setMe] = useState<MeJson | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   const displayName =
+    me?.name?.trim() ||
     session?.user?.name?.trim() ||
     session?.user?.email?.split("@")[0] ||
     "회원";
+  const avatarImage = me?.image ?? session?.user?.image ?? null;
   const initial = (displayName || "?").slice(0, 1);
+
+  const loadMe = useCallback(async () => {
+    try {
+      const res = await fetch("/api/me", { credentials: "include" });
+      if (!res.ok) return;
+      const data = (await res.json()) as MeJson | null;
+      if (data) setMe(data);
+    } catch {
+      void 0;
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadMe();
+  }, [loadMe]);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,10 +126,10 @@ export function MePageClient() {
       <div className="border-b border-line p-4 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
           <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#fff4d2] text-2xl font-bold text-[#5c4d2c]">
-            {session?.user?.image ? (
+            {avatarImage ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={session.user.image}
+                src={avatarImage}
                 alt=""
                 className="h-full w-full object-cover"
               />
@@ -112,11 +139,13 @@ export function MePageClient() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-lg font-semibold text-ink">{displayName}</p>
-            <p className="mt-1 text-sm text-muted">상태 메시지 (연결 후 수정)</p>
+            {me?.email ? (
+              <p className="mt-1 text-sm text-muted">{me.email}</p>
+            ) : null}
             <button
               type="button"
-              disabled
-              className="mt-3 rounded-full border border-line bg-bg px-4 py-2 text-xs font-medium text-muted"
+              onClick={() => setEditOpen(true)}
+              className="mt-3 rounded-full border border-line bg-bg px-4 py-2 text-xs font-medium text-ink hover:bg-accent-soft"
             >
               프로필 수정
             </button>
@@ -212,6 +241,21 @@ export function MePageClient() {
           </div>
         </div>
       )}
+
+      <ProfileEditModal
+        open={editOpen}
+        initialName={me?.name ?? displayName}
+        initialImage={avatarImage}
+        onClose={() => setEditOpen(false)}
+        onSaved={async () => {
+          await loadMe();
+          try {
+            await updateSession();
+          } catch {
+            void 0;
+          }
+        }}
+      />
     </section>
   );
 }

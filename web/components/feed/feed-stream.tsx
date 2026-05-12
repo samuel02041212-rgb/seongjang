@@ -7,7 +7,13 @@ import { PostDetailModal } from "./post-detail-modal";
 
 type FeedSource = "loading" | "ready" | "error";
 
-export function FeedStream({ refreshTrigger = 0 }: { refreshTrigger?: number }) {
+export function FeedStream({
+  refreshTrigger = 0,
+  viewerVariant = "popup",
+}: {
+  refreshTrigger?: number;
+  viewerVariant?: "popup" | "side";
+}) {
   const [source, setSource] = useState<FeedSource>("loading");
   const [posts, setPosts] = useState<FeedPostJson[]>([]);
   const [detailPost, setDetailPost] = useState<FeedPostJson | null>(null);
@@ -134,6 +140,7 @@ export function FeedStream({ refreshTrigger = 0 }: { refreshTrigger?: number }) 
         onClose={() => setDetailPost(null)}
         onCommentAdded={() => detailPost && bumpCommentCount(detailPost.id)}
         previewMode={false}
+        variant={viewerVariant}
       />
     </>
   );

@@ -1,0 +1,7 @@
+feat: profile edit, 1:1 chat, post viewer modes, image zoom, v0.1.6
+
+- profile: PATCH /api/me + ProfileEditModal (name + avatar via /api/upload)
+- chat: ChatRoom/ChatMessage models, /api/chat/{users,rooms,rooms/[id]/messages}; ChatDock wired to real APIs (search, list, send, pinning, polling)
+- post viewer: setting toggle popup/split; split = left-aligned feed + fixed right pane that stays open while browsing
+- detail modal: bigger 16:9 popup, image carousel with prev/next, fixed comment area at bottom (own scroll), click image -> ImageViewerModal (zoom/pan, wheel/keys/double-click, arrow nav)
+- FAB icon: hamburger lines (was +)

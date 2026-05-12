@@ -13,8 +13,8 @@ export default function ChatHelpPage() {
       <p className="text-sm text-ink">
         화면{" "}
         <strong className="font-semibold">오른쪽 하단의 💬 버튼</strong>에서
-        채팅 패널을 열 수 있습니다. 방 목록·검색·전송은 API 연동 후
-        표시됩니다.
+        채팅 패널을 열 수 있습니다. 검색창에 이름·이메일을 입력해 대화를
+        시작할 수 있고, 방 목록에서 우클릭하면 고정/해제할 수 있습니다.
       </p>
     </SubPageLayout>
   );
