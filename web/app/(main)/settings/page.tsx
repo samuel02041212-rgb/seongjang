@@ -19,10 +19,11 @@ export default function SettingsPage() {
             <ThemeToggle />
           </section>
           <section className="px-4 py-4 sm:px-6">
-            <h2 className="text-sm font-semibold text-ink">게시글 뷰어</h2>
+            <h2 className="text-sm font-semibold text-ink">게시글·채팅 뷰어</h2>
             <p className="mt-1 text-xs text-muted">
-              피드에서 게시글을 클릭했을 때 표시 방식. 이분할은 오른쪽 패널로
-              열려 다른 글을 계속 둘러볼 수 있습니다.
+              피드에서 게시글을 열 때와 채팅을 열 때 같은 방식이 적용됩니다.
+              이분할은 오른쪽 패널로 열려 화면을 보며 다른 작업을 이어갈 수
+              있습니다.
             </p>
             <PostViewModeToggle />
           </section>

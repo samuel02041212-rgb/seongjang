@@ -1,15 +1,19 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import {
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 
+import { usePostViewMode } from "@/lib/view-mode";
+
 const MAX_WINDOWS = 3;
-const COLLAPSED_KEY = "chat.ui.collapsed";
 const PINS_KEY = "chat.ui.pinned";
 const ROOM_LIST_POLL_MS = 10000;
 const MESSAGE_POLL_MS = 4000;
@@ -69,16 +73,90 @@ function persistPinned(set: Set<string>) {
   }
 }
 
-export function ChatDock() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [collapsed, setCollapsed] = useState(true);
-  const [hydrated, setHydrated] = useState(false);
+type ChatPanelContextValue = {
+  chatOpen: boolean;
+  setChatOpen: (v: boolean) => void;
+  toggleChat: () => void;
+  totalUnread: number;
+  splitDockTop: "chat" | "post";
+  bringPostDockToFront: () => void;
+  bringChatDockToFront: () => void;
+};
+
+const ChatPanelContext = createContext<ChatPanelContextValue | null>(null);
+
+export function useChatPanel() {
+  const v = useContext(ChatPanelContext);
+  if (!v) throw new Error("useChatPanel must be used within ChatProvider");
+  return v;
+}
+
+function ChatChrome({
+  variant,
+  onClose,
+  children,
+  splitDockZ,
+  onSplitPointerDown,
+}: {
+  variant: "popup" | "split";
+  onClose: () => void;
+  children: React.ReactNode;
+  splitDockZ?: number;
+  onSplitPointerDown?: () => void;
+}) {
+  if (variant === "split") {
+    return (
+      <div
+        className="chat-side-panel-wrap fixed right-0 top-[var(--app-header-height)] bottom-0 flex w-[min(90.25vw,45.6rem)] min-h-0 flex-col overflow-hidden border-l border-line bg-surface shadow-xl"
+        style={{ zIndex: splitDockZ ?? 30 }}
+        role="dialog"
+        aria-label="채팅"
+        onPointerDownCapture={onSplitPointerDown}
+      >
+        {children}
+      </div>
+    );
+  }
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
+      <button
+        type="button"
+        className="absolute inset-0 bg-ink/45"
+        aria-label="닫기"
+        onClick={onClose}
+      />
+      <div
+        className="relative flex aspect-video min-h-0 w-[min(95vw,calc(95vh*16/9),80rem)] max-w-full flex-col overflow-hidden rounded-2xl bg-surface shadow-xl"
+        role="dialog"
+        aria-modal="true"
+        aria-label="채팅"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export function ChatProvider({ children }: { children: React.ReactNode }) {
+  const { status } = useSession();
+  const authed = status === "authenticated";
+  const [viewMode] = usePostViewMode();
+  const [chatOpen, setChatOpen] = useState(false);
+  const [splitDockTop, setSplitDockTop] = useState<"chat" | "post">("post");
+  const bringPostDockToFront = useCallback(() => {
+    setSplitDockTop("post");
+  }, []);
+  const bringChatDockToFront = useCallback(() => {
+    setSplitDockTop("chat");
+  }, []);
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [rooms, setRooms] = useState<ChatListRoom[]>([]);
   const [windows, setWindows] = useState<OpenWindow[]>([]);
   const [pinned, setPinned] = useState<Set<string>>(new Set());
+  const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [menu, setMenu] = useState<{
     x: number;
     y: number;
@@ -88,14 +166,24 @@ export function ChatDock() {
   const draftsRef = useRef<Record<string, string>>({});
 
   useEffect(() => {
-    try {
-      setCollapsed(localStorage.getItem(COLLAPSED_KEY) === "1");
-    } catch {
-      void 0;
-    }
     setPinned(loadPinned());
-    setHydrated(true);
   }, []);
+
+  useEffect(() => {
+    if (!chatOpen) setMenu(null);
+  }, [chatOpen]);
+
+  useEffect(() => {
+    if (chatOpen && viewMode === "split") setSplitDockTop("chat");
+  }, [chatOpen, viewMode]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && chatOpen) setChatOpen(false);
+    };
+    if (chatOpen) document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [chatOpen]);
 
   const sortRooms = useCallback(
     (list: ChatListRoom[]) =>
@@ -109,6 +197,7 @@ export function ChatDock() {
   );
 
   const loadRooms = useCallback(async () => {
+    if (!authed) return;
     try {
       const res = await fetch("/api/chat/rooms", {
         credentials: "include",
@@ -131,17 +220,17 @@ export function ChatDock() {
     } catch {
       void 0;
     }
-  }, [pinned, sortRooms]);
+  }, [pinned, sortRooms, authed]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!authed) return;
     void loadRooms();
     const id = window.setInterval(loadRooms, ROOM_LIST_POLL_MS);
     return () => window.clearInterval(id);
-  }, [hydrated, loadRooms]);
+  }, [authed, loadRooms]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (!authed) return;
     const q = search.trim();
     if (!q) {
       setSearchResults([]);
@@ -165,34 +254,16 @@ export function ChatDock() {
       cancelled = true;
       window.clearTimeout(t);
     };
-  }, [search, hydrated]);
+  }, [search, authed]);
 
   const totalUnread = useMemo(
     () => rooms.reduce((s, r) => s + r.unreadCount, 0),
     [rooms],
   );
 
-  const syncOffset = useCallback(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const rightPx = collapsed ? 44 : 280 + 44;
-    el.style.right = `${rightPx}px`;
-  }, [collapsed]);
-
-  useEffect(() => {
-    syncOffset();
-  }, [collapsed, syncOffset]);
-
-  const persistCollapsed = useCallback((next: boolean) => {
-    setCollapsed(next);
-    try {
-      localStorage.setItem(COLLAPSED_KEY, next ? "1" : "0");
-    } catch {
-      void 0;
-    }
+  const toggleChat = useCallback(() => {
+    setChatOpen((v) => !v);
   }, []);
-
-  const togglePanel = () => persistCollapsed(!collapsed);
 
   const loadMessages = useCallback(
     async (roomId: string) => {
@@ -230,6 +301,7 @@ export function ChatDock() {
       otherName: string;
       otherImage: string | null;
     }) => {
+      setActiveRoomId(target.roomId);
       setWindows((prev) => {
         const existing = prev.find((w) => w.roomId === target.roomId);
         if (existing) {
@@ -293,7 +365,14 @@ export function ChatDock() {
   );
 
   const closeWindow = (roomId: string) => {
-    setWindows((prev) => prev.filter((w) => w.roomId !== roomId));
+    setWindows((prev) => {
+      const next = prev.filter((w) => w.roomId !== roomId);
+      setActiveRoomId((cur) => {
+        if (cur !== roomId) return cur;
+        return next[0]?.roomId ?? null;
+      });
+      return next;
+    });
   };
 
   const toggleMinimize = (roomId: string) => {
@@ -358,165 +437,253 @@ export function ChatDock() {
     );
   };
 
-  if (!hydrated) return null;
+  const panelValue = useMemo<ChatPanelContextValue>(
+    () => ({
+      chatOpen: authed ? chatOpen : false,
+      setChatOpen: (v) => {
+        if (authed) setChatOpen(v);
+      },
+      toggleChat: () => {
+        if (authed) setChatOpen((x) => !x);
+      },
+      totalUnread,
+      splitDockTop,
+      bringPostDockToFront,
+      bringChatDockToFront,
+    }),
+    [
+      authed,
+      chatOpen,
+      totalUnread,
+      splitDockTop,
+      bringPostDockToFront,
+      bringChatDockToFront,
+    ],
+  );
+
+  const activeWin = useMemo(() => {
+    if (windows.length === 0) return null;
+    const by = activeRoomId
+      ? windows.find((w) => w.roomId === activeRoomId)
+      : undefined;
+    return by ?? windows[0];
+  }, [windows, activeRoomId]);
 
   return (
-    <>
-      <div
-        id="chat-wrap"
-        className={collapsed ? "collapsed" : ""}
-        suppressHydrationWarning
-      >
-        <button
-          type="button"
-          id="chat-toggle"
-          className="chat-toggle"
-          aria-label="채팅 열기"
-          onClick={togglePanel}
+    <ChatPanelContext.Provider value={panelValue}>
+      {children}
+      {authed && chatOpen ? (
+        <ChatChrome
+          variant={viewMode}
+          splitDockZ={viewMode === "split" ? (splitDockTop === "chat" ? 40 : 30) : undefined}
+          onSplitPointerDown={
+            viewMode === "split" ? bringChatDockToFront : undefined
+          }
+          onClose={() => setChatOpen(false)}
         >
-          💬
-          <span
-            className="chat-toggle-badge"
-            data-visible={
-              collapsed && totalUnread > 0 ? "true" : "false"
-            }
-          >
-            {totalUnread > 0 ? (totalUnread > 9 ? "9+" : totalUnread) : ""}
-          </span>
-        </button>
-        <div id="chat-panel" className="chat-panel">
-          <div className="chat-panel-header">
-            <input
-              type="text"
-              className="chat-search"
-              placeholder="사용자 검색 (이름·이메일)"
-              autoComplete="off"
-              value={search}
-              onFocus={() => {
-                if (search.trim()) setShowSearchResults(true);
-              }}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setShowSearchResults(!!e.target.value.trim());
-              }}
-              onBlur={() => {
-                setTimeout(() => setShowSearchResults(false), 200);
-              }}
-            />
+          <div className="flex shrink-0 items-center justify-between border-b border-line px-4 py-3">
+            <span className="text-sm font-medium text-muted">채팅</span>
+            <button
+              type="button"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-muted hover:bg-accent-soft hover:text-ink"
+              onClick={() => setChatOpen(false)}
+              aria-label="채팅 닫기"
+            >
+              ×
+            </button>
           </div>
-          {showSearchResults && search.trim() ? (
-            <div className="chat-search-results">
-              {searchResults.length === 0 ? (
-                <div className="chat-search-item text-muted">
-                  검색 결과가 없습니다.
-                </div>
-              ) : (
-                searchResults.map((u) => (
-                  <div
-                    key={u.id}
-                    className="chat-search-item"
-                    role="button"
-                    tabIndex={0}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      void openByUser(u);
+
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex min-h-0 flex-1 flex-row">
+              <div
+                className={
+                  viewMode === "split"
+                    ? "flex min-h-0 min-w-[12rem] w-[32%] max-w-[16rem] shrink-0 grow-0 flex-col border-r border-line"
+                    : "flex min-h-0 min-w-0 flex-[1] flex-col border-r border-line"
+                }
+              >
+                <div className="chat-panel-header shrink-0 border-b border-line">
+                  <input
+                    type="text"
+                    className="chat-search"
+                    placeholder="사용자 검색 (이름·이메일)"
+                    autoComplete="off"
+                    value={search}
+                    onFocus={() => {
+                      if (search.trim()) setShowSearchResults(true);
                     }}
-                  >
-                    <div className="chat-room-avatar">
-                      {u.image ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={u.image}
-                          alt=""
-                          className="h-full w-full rounded-full object-cover"
-                        />
-                      ) : (
-                        u.name.charAt(0)
-                      )}
-                    </div>
-                    <span>{u.name}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          ) : null}
-          <div className="chat-room-list">
-            {rooms.length === 0 ? (
-              <div className="chat-empty-list">
-                대화 목록이 비어 있어요.
-                <br />
-                위에서 사용자를 검색해 대화를 시작해 보세요.
-              </div>
-            ) : (
-              rooms.map((r) => (
-                <div
-                  key={r.roomId}
-                  className="chat-room-item"
-                  data-pinned={r.pinned ? "true" : "false"}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openByRoom(r)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") openByRoom(r);
-                  }}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    setMenu({
-                      x: e.clientX,
-                      y: e.clientY,
-                      roomId: r.roomId,
-                      pinned: r.pinned,
-                    });
-                  }}
-                >
-                  <div className="chat-room-avatar">
-                    {r.otherImage ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={r.otherImage}
-                        alt=""
-                        className="h-full w-full rounded-full object-cover"
-                      />
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setShowSearchResults(!!e.target.value.trim());
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => setShowSearchResults(false), 200);
+                    }}
+                  />
+                </div>
+                {showSearchResults && search.trim() ? (
+                  <div className="chat-search-results max-h-[40%] shrink-0 overflow-y-auto border-b border-line">
+                    {searchResults.length === 0 ? (
+                      <div className="chat-search-item text-muted">
+                        검색 결과가 없습니다.
+                      </div>
                     ) : (
-                      r.otherName.charAt(0)
+                      searchResults.map((u) => (
+                        <div
+                          key={u.id}
+                          className="chat-search-item"
+                          role="button"
+                          tabIndex={0}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            void openByUser(u);
+                          }}
+                        >
+                          <div className="chat-room-avatar">
+                            {u.image ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={u.image}
+                                alt=""
+                                className="h-full w-full rounded-full object-cover"
+                              />
+                            ) : (
+                              u.name.charAt(0)
+                            )}
+                          </div>
+                          <span>{u.name}</span>
+                        </div>
+                      ))
                     )}
                   </div>
-                  <div className="chat-room-body">
-                    <div className="chat-room-name">{r.otherName}</div>
-                    <div className="chat-room-preview">
-                      {r.preview || "대화를 시작하세요."}
+                ) : null}
+                <div className="chat-room-list min-h-0 flex-1">
+                  {rooms.length === 0 ? (
+                    <div className="chat-empty-list">
+                      대화 목록이 비어 있어요.
+                      <br />
+                      위에서 사용자를 검색해 대화를 시작해 보세요.
                     </div>
-                  </div>
-                  <div className="chat-room-meta">
-                    {r.unreadCount > 0 ? (
-                      <span className="chat-room-badge">{r.unreadCount}</span>
-                    ) : null}
-                  </div>
+                  ) : (
+                    rooms.map((r) => {
+                      const isOpen = windows.some((w) => w.roomId === r.roomId);
+                      const isActive = isOpen && r.roomId === activeWin?.roomId;
+                      return (
+                        <div
+                          key={r.roomId}
+                          className={`chat-room-item ${isActive ? "chat-room-item-active" : ""}`}
+                          data-pinned={r.pinned ? "true" : "false"}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => openByRoom(r)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ")
+                              openByRoom(r);
+                          }}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            setMenu({
+                              x: e.clientX,
+                              y: e.clientY,
+                              roomId: r.roomId,
+                              pinned: r.pinned,
+                            });
+                          }}
+                        >
+                          <div className="chat-room-avatar">
+                            {r.otherImage ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={r.otherImage}
+                                alt=""
+                                className="h-full w-full rounded-full object-cover"
+                              />
+                            ) : (
+                              r.otherName.charAt(0)
+                            )}
+                          </div>
+                          <div className="chat-room-body">
+                            <div className="chat-room-name">{r.otherName}</div>
+                            <div className="chat-room-preview">
+                              {r.preview || "대화를 시작하세요."}
+                            </div>
+                          </div>
+                          <div className="chat-room-meta">
+                            {r.unreadCount > 0 ? (
+                              <span className="chat-room-badge">
+                                {r.unreadCount}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
+              </div>
 
-      <div id="chat-windows-container" ref={containerRef}>
-        {windows.map((w) => (
-          <ChatWindow
-            key={w.roomId}
-            window={w}
-            initialDraft={draftsRef.current[w.roomId] ?? ""}
-            onDraftChange={(text) => {
-              draftsRef.current[w.roomId] = text;
-            }}
-            onClose={() => closeWindow(w.roomId)}
-            onToggleMinimize={() => toggleMinimize(w.roomId)}
-            onSend={(text) => {
-              draftsRef.current[w.roomId] = "";
-              void sendMessage(w.roomId, text);
-            }}
-          />
-        ))}
-      </div>
+              <div
+                className={
+                  viewMode === "split"
+                    ? "chat-pane-right flex min-h-0 min-w-0 flex-1 flex-col bg-bg"
+                    : "chat-pane-right flex min-h-0 min-w-0 flex-[4] flex-col bg-bg"
+                }
+              >
+                {windows.length === 0 ? (
+                  <div className="flex flex-1 items-center justify-center px-4 text-center text-sm text-muted">
+                    왼쪽 목록에서 대화를 선택하거나
+                    <br />
+                    검색으로 새 대화를 시작하세요.
+                  </div>
+                ) : (
+                  <>
+                    {windows.length > 1 ? (
+                      <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-line bg-surface px-2 py-2">
+                        {windows.map((w) => (
+                          <button
+                            key={w.roomId}
+                            type="button"
+                            onClick={() => setActiveRoomId(w.roomId)}
+                            className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                              w.roomId === activeWin?.roomId
+                                ? "border-accent bg-accent-soft text-ink"
+                                : "border-transparent text-muted hover:bg-accent-soft/60 hover:text-ink"
+                            }`}
+                          >
+                            {w.otherName}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                    {activeWin ? (
+                      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                        <ChatWindow
+                          window={activeWin}
+                          embedded
+                          initialDraft={
+                            draftsRef.current[activeWin.roomId] ?? ""
+                          }
+                          onDraftChange={(text) => {
+                            draftsRef.current[activeWin.roomId] = text;
+                          }}
+                          onClose={() => closeWindow(activeWin.roomId)}
+                          onToggleMinimize={() =>
+                            toggleMinimize(activeWin.roomId)
+                          }
+                          onSend={(text) => {
+                            draftsRef.current[activeWin.roomId] = "";
+                            void sendMessage(activeWin.roomId, text);
+                          }}
+                        />
+                      </div>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </ChatChrome>
+      ) : null}
 
       {menu ? (
         <>
@@ -542,12 +709,13 @@ export function ChatDock() {
           </div>
         </>
       ) : null}
-    </>
+    </ChatPanelContext.Provider>
   );
 }
 
 function ChatWindow({
   window: w,
+  embedded = false,
   initialDraft,
   onClose,
   onToggleMinimize,
@@ -555,6 +723,7 @@ function ChatWindow({
   onDraftChange,
 }: {
   window: OpenWindow;
+  embedded?: boolean;
   initialDraft: string;
   onClose: () => void;
   onToggleMinimize: () => void;
@@ -569,29 +738,33 @@ function ChatWindow({
     if (el) el.scrollTop = el.scrollHeight;
   }, [w.messages.length]);
 
+  const minimized = !embedded && w.minimized;
+
   return (
     <div
-      className={`chat-window ${w.minimized ? "minimized" : ""}`}
+      className={`chat-window ${minimized ? "minimized" : ""} ${embedded ? "chat-window-embedded" : ""}`}
       data-room-id={w.roomId}
     >
       <div
         className="chat-window-header"
         role="presentation"
-        onDoubleClick={onToggleMinimize}
+        onDoubleClick={embedded ? undefined : onToggleMinimize}
       >
         <span className="chat-window-title">{w.otherName}</span>
         <div className="chat-window-actions">
-          <button
-            type="button"
-            className="chat-window-minimize"
-            aria-label="최소화"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleMinimize();
-            }}
-          >
-            −
-          </button>
+          {embedded ? null : (
+            <button
+              type="button"
+              className="chat-window-minimize"
+              aria-label="최소화"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleMinimize();
+              }}
+            >
+              −
+            </button>
+          )}
           <button
             type="button"
             className="chat-window-close"
@@ -608,7 +781,7 @@ function ChatWindow({
       <div className="chat-window-body" ref={bodyRef}>
         {w.messages.length === 0 ? (
           <div className="chat-msg theirs text-muted text-sm">
-            아직 대화가 없어요. 첫 메시지를 보내보세요.
+            아직 대화가 없어요. 첫 메시지를 내보세요.
           </div>
         ) : (
           w.messages.map((m) => (

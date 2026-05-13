@@ -1,26 +1,50 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export type PostViewMode = "popup" | "split";
 const KEY = "postViewMode";
+const CHANGE_EVENT = "postViewModeChange";
+
+function readStored(): PostViewMode {
+  try {
+    const v = localStorage.getItem(KEY);
+    if (v === "popup" || v === "split") return v;
+  } catch {}
+  return "popup";
+}
 
 export function usePostViewMode(): [PostViewMode, (m: PostViewMode) => void] {
   const [mode, setMode] = useState<PostViewMode>("popup");
 
   useEffect(() => {
-    try {
-      const v = localStorage.getItem(KEY);
-      if (v === "popup" || v === "split") setMode(v);
-    } catch {}
+    setMode(readStored());
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === KEY && (e.newValue === "popup" || e.newValue === "split")) {
+        setMode(e.newValue);
+      }
+    };
+    const onCustom = (e: Event) => {
+      const d = (e as CustomEvent<PostViewMode>).detail;
+      if (d === "popup" || d === "split") setMode(d);
+    };
+    window.addEventListener("storage", onStorage);
+    window.addEventListener(CHANGE_EVENT, onCustom);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(CHANGE_EVENT, onCustom);
+    };
   }, []);
 
-  function set(m: PostViewMode) {
+  const set = useCallback((m: PostViewMode) => {
     setMode(m);
     try {
       localStorage.setItem(KEY, m);
     } catch {}
-  }
+    try {
+      window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: m }));
+    } catch {}
+  }, []);
 
   return [mode, set];
 }

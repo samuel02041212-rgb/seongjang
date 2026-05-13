@@ -11,7 +11,7 @@ export function LandingHeader({ loggedIn }: LandingHeaderProps) {
   const [logoFailed, setLogoFailed] = useState(false);
 
   return (
-    <header className="sticky top-0 z-10 border-b border-line/80 bg-surface/90 backdrop-blur-md">
+    <header className="sticky top-0 z-10 bg-surface/90 backdrop-blur-md">
       <div className="flex h-[var(--app-header-height)] w-full items-center justify-between gap-3 px-4 sm:px-6">
         <Link
           href={loggedIn ? "/feed" : "/"}

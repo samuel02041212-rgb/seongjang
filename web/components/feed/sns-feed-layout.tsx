@@ -4,6 +4,10 @@ import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { useChatPanel } from "@/components/chat/chat-dock";
+import { useTheme } from "@/lib/theme";
+import { usePostViewMode } from "@/lib/view-mode";
+
 export type JoinedGroup = {
   id: string;
   name: string;
@@ -89,6 +93,41 @@ const ShieldIcon = () => (
   </svg>
 );
 
+const headerIcon = {
+  width: 20,
+  height: 20,
+  viewBox: "0 0 24 24",
+  fill: "none" as const,
+  stroke: "currentColor",
+  strokeWidth: 1.65,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+};
+
+const MoonIcon = () => (
+  <svg {...headerIcon} aria-hidden>
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+  </svg>
+);
+const SunIcon = () => (
+  <svg {...headerIcon} aria-hidden>
+    <circle cx="12" cy="12" r="3.8" />
+    <path d="M12 2v2M12 20v2M4.9 4.9l1.5 1.5M17.6 17.6l1.5 1.5M2 12h2M20 12h2M4.9 19.1l1.5-1.5M17.6 6.4l1.5-1.5" />
+  </svg>
+);
+const PopupViewIcon = () => (
+  <svg {...headerIcon} aria-hidden>
+    <rect x="5" y="5" width="14" height="14" rx="2" />
+    <path d="M9 9h6M9 13h4" opacity="0.55" />
+  </svg>
+);
+const SplitViewIcon = () => (
+  <svg {...headerIcon} aria-hidden>
+    <rect x="4" y="5" width="7" height="14" rx="1.5" />
+    <rect x="13" y="5" width="7" height="14" rx="1.5" />
+  </svg>
+);
+
 export function SnsFeedLayout({
   children,
   joinedGroups: _joinedGroups,
@@ -98,9 +137,15 @@ export function SnsFeedLayout({
   isAdmin = false,
 }: SnsFeedLayoutProps) {
   const [profileOpen, setProfileOpen] = useState(false);
+  const [logoFailed, setLogoFailed] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const closeProfile = useCallback(() => setProfileOpen(false), []);
   useClickOutside(profileRef, closeProfile, profileOpen);
+
+  const { chatOpen, toggleChat, totalUnread, setChatOpen, splitDockTop, bringChatDockToFront } =
+    useChatPanel();
+  const [viewMode, setViewMode] = usePostViewMode();
+  const [theme, setTheme] = useTheme();
 
   void _joinedGroups;
   void _userName;
@@ -122,11 +167,63 @@ export function SnsFeedLayout({
 
   return (
     <div className="relative min-h-screen bg-bg pb-24 pt-[var(--app-header-height)]">
-      <header className="fixed inset-x-0 top-0 z-40 border-b border-line/80 bg-surface/95 backdrop-blur-md">
-        <div className="h-[var(--app-header-height)] w-full" />
+      <header className="fixed inset-x-0 top-0 z-40 bg-surface/95 backdrop-blur-md">
+        <div className="flex h-[var(--app-header-height)] w-full items-center justify-end gap-2 pr-3 sm:pr-4 lg:pr-5">
+          <button
+            type="button"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className={`flex h-10 w-10 items-center justify-center rounded-xl transition hover:bg-accent-soft ${
+              theme === "dark" ? "text-amber-400" : "text-sky-600 dark:text-sky-400"
+            }`}
+            aria-label={theme === "dark" ? "라이트 모드" : "다크 모드"}
+          >
+            {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              setViewMode(viewMode === "popup" ? "split" : "popup")
+            }
+            className={`flex h-10 w-10 items-center justify-center rounded-xl transition hover:bg-accent-soft ${
+              viewMode === "popup"
+                ? "text-violet-600 dark:text-violet-400"
+                : "text-teal-600 dark:text-teal-400"
+            }`}
+            aria-label={viewMode === "popup" ? "이분할로 보기" : "팝업으로 보기"}
+          >
+            {viewMode === "popup" ? <SplitViewIcon /> : <PopupViewIcon />}
+          </button>
+        </div>
       </header>
 
       <aside className="group/nav fixed left-0 top-0 z-50 hidden h-screen w-16 flex-col py-4 lg:flex">
+        <div className="flex shrink-0 justify-center pb-2">
+          <Link
+            href="/feed"
+            className="flex h-11 w-11 items-center justify-center rounded-xl text-ink transition hover:bg-accent-soft hover:text-accent-foreground"
+            aria-label="성장 홈"
+          >
+            {logoFailed ? (
+              <span
+                className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-xs font-bold text-accent-foreground"
+                aria-hidden
+              >
+                성
+              </span>
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src="/logo.png"
+                alt=""
+                width={36}
+                height={36}
+                className="h-9 w-9 rounded-lg object-contain"
+                onError={() => setLogoFailed(true)}
+              />
+            )}
+          </Link>
+        </div>
+
         <div className="flex-1" />
 
         <nav className="flex flex-col items-center gap-2">
@@ -147,13 +244,54 @@ export function SnsFeedLayout({
 
         <div className="flex-1" />
 
+        {isAuthenticated ? (
+          <div className="flex justify-center pb-1">
+            <button
+              type="button"
+              onClick={() => {
+                setProfileOpen(false);
+                if (chatOpen && viewMode === "split" && splitDockTop !== "chat") {
+                  bringChatDockToFront();
+                  return;
+                }
+                toggleChat();
+              }}
+              className="relative flex h-11 w-11 items-center justify-center rounded-xl text-ink transition hover:bg-accent-soft hover:text-accent-foreground focus:outline-none"
+              aria-label={chatOpen ? "채팅 닫기" : "채팅 열기"}
+              aria-expanded={chatOpen}
+            >
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+              </svg>
+              {!chatOpen && totalUnread > 0 ? (
+                <span className="absolute -right-0.5 -top-0.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[#e0245e] px-1 text-[10px] font-bold leading-none text-white">
+                  {totalUnread > 9 ? "9+" : totalUnread}
+                </span>
+              ) : null}
+            </button>
+          </div>
+        ) : null}
+
         <div
           className="relative flex justify-center pb-2"
           ref={profileRef}
         >
           <button
             type="button"
-            onClick={() => setProfileOpen((v) => !v)}
+            onClick={() => {
+              setProfileOpen((v) => !v);
+              setChatOpen(false);
+            }}
             className="flex h-11 w-11 items-center justify-center rounded-xl text-ink transition hover:bg-accent-soft hover:text-accent-foreground focus:outline-none"
             aria-expanded={profileOpen}
             aria-haspopup="menu"

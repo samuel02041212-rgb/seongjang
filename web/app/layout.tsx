@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Noto_Sans_KR } from "next/font/google";
 
-import { ConditionalChatDock } from "@/components/chat/conditional-chat-dock";
 import { AppProviders } from "@/components/providers/app-providers";
 import { SiteFooter } from "@/components/shell/site-footer";
 
@@ -42,7 +41,6 @@ export default function RootLayout({
         <AppProviders>
           <div className="flex-1">{children}</div>
           <SiteFooter />
-          <ConditionalChatDock />
         </AppProviders>
       </body>
     </html>

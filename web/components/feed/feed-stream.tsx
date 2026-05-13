@@ -1,6 +1,7 @@
 "use client";
 
 import type { FeedPostJson } from "@/lib/feed-serialize";
+import { useChatPanel } from "@/components/chat/chat-dock";
 import { useCallback, useEffect, useState } from "react";
 import { FeedPostRow } from "./feed-post-row";
 import { PostDetailModal } from "./post-detail-modal";
@@ -10,10 +11,13 @@ type FeedSource = "loading" | "ready" | "error";
 export function FeedStream({
   refreshTrigger = 0,
   viewerVariant = "popup",
+  onDetailOpenChange,
 }: {
   refreshTrigger?: number;
   viewerVariant?: "popup" | "side";
+  onDetailOpenChange?: (open: boolean) => void;
 }) {
+  const { bringPostDockToFront } = useChatPanel();
   const [source, setSource] = useState<FeedSource>("loading");
   const [posts, setPosts] = useState<FeedPostJson[]>([]);
   const [detailPost, setDetailPost] = useState<FeedPostJson | null>(null);
@@ -106,6 +110,22 @@ export function FeedStream({
     );
   }, []);
 
+  useEffect(() => {
+    if (viewerVariant !== "side") {
+      onDetailOpenChange?.(false);
+      return;
+    }
+    onDetailOpenChange?.(!!detailPost);
+  }, [viewerVariant, detailPost, onDetailOpenChange]);
+
+  const openDetail = useCallback(
+    (p: FeedPostJson) => {
+      if (viewerVariant === "side") bringPostDockToFront();
+      setDetailPost(p);
+    },
+    [viewerVariant, bringPostDockToFront],
+  );
+
   return (
     <>
       {source === "loading" ? (
@@ -127,7 +147,7 @@ export function FeedStream({
             <FeedPostRow
               key={p.id}
               post={p}
-              onOpenDetail={setDetailPost}
+              onOpenDetail={openDetail}
               onLike={onLike}
             />
           ))}

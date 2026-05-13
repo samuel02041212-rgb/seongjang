@@ -1,10 +1,12 @@
 "use client";
 
+import { useChatPanel } from "@/components/chat/chat-dock";
 import {
   type FeedPostJson,
   formatFeedRelativeTime,
 } from "@/lib/feed-serialize";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { ImageViewerModal } from "./image-viewer-modal";
 
@@ -32,6 +34,7 @@ export function PostDetailModal({
   previewMode = false,
   variant = "popup",
 }: PostDetailModalProps) {
+  const { splitDockTop, bringPostDockToFront } = useChatPanel();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -104,32 +107,25 @@ export function PostDetailModal({
 
   const isSide = variant === "side";
 
-  return (
+  const panel = (
     <div
       className={
         isSide
-          ? ""
-          : "fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4"
+          ? "fixed right-0 top-[var(--app-header-height)] bottom-0 flex w-[min(90.25vw,45.6rem)] flex-col overflow-hidden border-l border-line bg-surface shadow-xl"
+          : "relative flex aspect-video w-[min(95vw,calc(95vh*16/9),80rem)] flex-col overflow-hidden rounded-2xl bg-surface shadow-xl"
       }
+      role="dialog"
+      aria-modal={isSide ? undefined : "true"}
+      aria-labelledby="post-detail-title"
+      style={
+        isSide
+          ? {
+              zIndex: splitDockTop === "post" ? 40 : 30,
+            }
+          : undefined
+      }
+      onPointerDownCapture={isSide ? () => bringPostDockToFront() : undefined}
     >
-      {isSide ? null : (
-        <button
-          type="button"
-          className="absolute inset-0 bg-ink/45"
-          aria-label="닫기"
-          onClick={onClose}
-        />
-      )}
-      <div
-        className={
-          isSide
-            ? "fixed right-0 top-[var(--app-header-height)] bottom-0 z-30 flex w-[min(95vw,48rem)] flex-col overflow-hidden border-l border-line bg-surface shadow-xl"
-            : "relative flex aspect-video w-[min(95vw,calc(95vh*16/9),80rem)] flex-col overflow-hidden rounded-2xl bg-surface shadow-xl"
-        }
-        role="dialog"
-        aria-modal={isSide ? undefined : "true"}
-        aria-labelledby="post-detail-title"
-      >
         <div className="flex items-center justify-between border-b border-line px-4 py-3">
           <h2 id="post-detail-title" className="sr-only">
             게시글 상세
@@ -240,9 +236,9 @@ export function PostDetailModal({
         </div>
 
         <div
-          className={`flex shrink-0 flex-col bg-bg ${
+          className={`flex min-w-0 shrink-0 flex-col overflow-x-hidden bg-bg ${
             isSide
-              ? "h-[15rem] border-t border-line"
+              ? "h-[22.5rem] border-t border-line"
               : "w-[22rem] border-l border-line"
           }`}
         >
@@ -262,17 +258,17 @@ export function PostDetailModal({
             </p>
           ) : (
             <>
-              <ul className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
+              <ul className="min-h-0 min-w-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden px-4 py-3">
                 {!loading &&
                   comments.map((c) => (
-                    <li key={c.id} className="text-sm">
-                      <span className="font-medium text-ink">
+                    <li key={c.id} className="max-w-full min-w-0 text-sm">
+                      <span className="font-medium text-ink break-words">
                         {c.authorName}
                       </span>
-                      <span className="ml-2 text-xs text-muted">
+                      <span className="ml-2 text-xs text-muted break-words">
                         {new Date(c.createdAt).toLocaleString("ko-KR")}
                       </span>
-                      <p className="mt-1 whitespace-pre-wrap text-muted">
+                      <p className="mt-1 whitespace-pre-wrap break-words text-muted">
                         {c.content}
                       </p>
                     </li>
@@ -282,12 +278,12 @@ export function PostDetailModal({
                 ) : null}
               </ul>
 
-              <div className="flex gap-2 border-t border-line bg-surface px-3 py-2">
+              <div className="flex min-w-0 gap-2 border-t border-line bg-surface px-3 py-2">
                 <textarea
                   ref={textareaRef}
                   placeholder="댓글을 입력하세요"
                   rows={2}
-                  className="min-w-0 flex-1 resize-none rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
+                  className="min-h-0 min-w-0 flex-1 resize-none overflow-x-hidden break-words rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
@@ -309,14 +305,38 @@ export function PostDetailModal({
         </div>
         </div>
       </div>
+  );
 
-      <ImageViewerModal
-        urls={post.imageUrls}
-        index={imgIdx}
-        open={viewerOpen}
-        onClose={() => setViewerOpen(false)}
-        onIndexChange={setImgIdx}
+  const imageModal = (
+    <ImageViewerModal
+      urls={post.imageUrls}
+      index={imgIdx}
+      open={viewerOpen}
+      onClose={() => setViewerOpen(false)}
+      onIndexChange={setImgIdx}
+    />
+  );
+
+  if (isSide) {
+    return createPortal(
+      <>
+        {panel}
+        {imageModal}
+      </>,
+      document.body,
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4">
+      <button
+        type="button"
+        className="absolute inset-0 bg-ink/45"
+        aria-label="닫기"
+        onClick={onClose}
       />
+      {panel}
+      {imageModal}
     </div>
   );
 }

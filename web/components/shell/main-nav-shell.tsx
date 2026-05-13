@@ -1,5 +1,6 @@
 "use client";
 
+import { ChatProvider } from "@/components/chat/chat-dock";
 import {
   type JoinedGroup,
   SnsFeedLayout,
@@ -23,14 +24,16 @@ export function MainNavShell({
   isAdmin,
 }: MainNavShellProps) {
   return (
-    <SnsFeedLayout
-      joinedGroups={joinedGroups}
-      userName={userName}
-      userImage={userImage}
-      isAuthenticated={isAuthenticated}
-      isAdmin={isAdmin}
-    >
-      {children}
-    </SnsFeedLayout>
+    <ChatProvider>
+      <SnsFeedLayout
+        joinedGroups={joinedGroups}
+        userName={userName}
+        userImage={userImage}
+        isAuthenticated={isAuthenticated}
+        isAdmin={isAdmin}
+      >
+        {children}
+      </SnsFeedLayout>
+    </ChatProvider>
   );
 }
