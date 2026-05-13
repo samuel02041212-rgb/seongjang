@@ -13,7 +13,7 @@ export function SubPageLayout({
     <div
       className={`mx-auto w-full px-1 pb-12 pt-1 sm:px-2 ${wide ? "max-w-6xl" : "max-w-2xl"}`}
     >
-      <h1 className="mb-4 text-base font-semibold text-ink">{title}</h1>
+      <h1 className="mb-4 font-display text-base text-ink">{title}</h1>
       {children}
     </div>
   );

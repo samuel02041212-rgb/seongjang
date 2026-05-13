@@ -1,41 +1,22 @@
-"use client";
-
 import Link from "next/link";
-import { useState } from "react";
+
+import { appHeaderRowClassName, appHeaderShellClass } from "@/components/shell/app-header-classes";
+import { HeaderLogoGlyph } from "@/components/shell/header-logo-glyph";
 
 type LandingHeaderProps = {
   loggedIn: boolean;
 };
 
 export function LandingHeader({ loggedIn }: LandingHeaderProps) {
-  const [logoFailed, setLogoFailed] = useState(false);
-
   return (
-    <header className="sticky top-0 z-10 bg-surface/90 backdrop-blur-md">
-      <div className="flex h-[var(--app-header-height)] w-full items-center justify-between gap-3 px-4 sm:px-6">
+    <header className={`sticky top-0 z-40 ${appHeaderShellClass}`}>
+      <div className={appHeaderRowClassName}>
         <Link
           href={loggedIn ? "/feed" : "/"}
           className="flex min-w-0 flex-1 items-center gap-3 pr-2"
           aria-label="성경나눔장소"
         >
-          {logoFailed ? (
-            <span
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent text-lg font-bold text-accent-foreground shadow-sm"
-              aria-hidden
-            >
-              성
-            </span>
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src="/logo.png"
-              alt=""
-              width={48}
-              height={48}
-              className="h-12 w-12 shrink-0 rounded-xl object-contain shadow-sm ring-1 ring-black/5"
-              onError={() => setLogoFailed(true)}
-            />
-          )}
+          <HeaderLogoGlyph />
           <span className="truncate text-xl font-semibold tracking-tight text-ink">
             성경나눔장소
           </span>

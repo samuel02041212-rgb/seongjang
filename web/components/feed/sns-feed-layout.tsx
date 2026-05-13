@@ -5,6 +5,8 @@ import { signOut } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useChatPanel } from "@/components/chat/chat-dock";
+import { appHeaderRowClassName, appHeaderShellClass } from "@/components/shell/app-header-classes";
+import { HeaderLogoGlyph } from "@/components/shell/header-logo-glyph";
 import { useTheme } from "@/lib/theme";
 import { usePostViewMode } from "@/lib/view-mode";
 
@@ -137,7 +139,6 @@ export function SnsFeedLayout({
   isAdmin = false,
 }: SnsFeedLayoutProps) {
   const [profileOpen, setProfileOpen] = useState(false);
-  const [logoFailed, setLogoFailed] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const closeProfile = useCallback(() => setProfileOpen(false), []);
   useClickOutside(profileRef, closeProfile, profileOpen);
@@ -167,64 +168,48 @@ export function SnsFeedLayout({
 
   return (
     <div className="relative min-h-screen bg-bg pb-24 pt-[var(--app-header-height)]">
-      <header className="fixed inset-x-0 top-0 z-40 bg-surface/95 backdrop-blur-md">
-        <div className="flex h-[var(--app-header-height)] w-full items-center justify-end gap-2 pr-3 sm:pr-4 lg:pr-5">
-          <button
-            type="button"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className={`flex h-10 w-10 items-center justify-center rounded-xl transition hover:bg-accent-soft ${
-              theme === "dark" ? "text-amber-400" : "text-sky-600 dark:text-sky-400"
-            }`}
-            aria-label={theme === "dark" ? "라이트 모드" : "다크 모드"}
+      <header
+        className={`fixed inset-x-0 top-0 z-40 ${appHeaderShellClass}`}
+      >
+        <div className={appHeaderRowClassName}>
+          <Link
+            href="/feed"
+            className="relative z-10 flex shrink-0 items-center gap-3"
+            aria-label="성경나눔장소"
           >
-            {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              setViewMode(viewMode === "popup" ? "split" : "popup")
-            }
-            className={`flex h-10 w-10 items-center justify-center rounded-xl transition hover:bg-accent-soft ${
-              viewMode === "popup"
-                ? "text-violet-600 dark:text-violet-400"
-                : "text-teal-600 dark:text-teal-400"
-            }`}
-            aria-label={viewMode === "popup" ? "이분할로 보기" : "팝업으로 보기"}
+            <HeaderLogoGlyph />
+          </Link>
+          <p
+            lang="en"
+            className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap px-2 text-center font-handwriting text-sm tracking-wide text-muted sm:text-base md:text-lg"
           >
-            {viewMode === "popup" ? <SplitViewIcon /> : <PopupViewIcon />}
-          </button>
+            &ldquo;Thy word is a lamp unto my feet, and a light unto my path.&rdquo;
+          </p>
+          <div className="relative z-10 flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-black transition-colors hover:text-accent dark:text-white dark:hover:text-accent"
+              aria-label={theme === "dark" ? "라이트 모드" : "다크 모드"}
+            >
+              {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setViewMode(viewMode === "popup" ? "split" : "popup")
+              }
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-black transition-colors hover:text-accent dark:text-white dark:hover:text-accent"
+              aria-label={viewMode === "popup" ? "이분할로 보기" : "팝업으로 보기"}
+            >
+              {viewMode === "popup" ? <SplitViewIcon /> : <PopupViewIcon />}
+            </button>
+          </div>
         </div>
       </header>
 
-      <aside className="group/nav fixed left-0 top-0 z-50 hidden h-screen w-16 flex-col py-4 lg:flex">
-        <div className="flex shrink-0 justify-center pb-2">
-          <Link
-            href="/feed"
-            className="flex h-11 w-11 items-center justify-center rounded-xl text-ink transition hover:bg-accent-soft hover:text-accent-foreground"
-            aria-label="성장 홈"
-          >
-            {logoFailed ? (
-              <span
-                className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-xs font-bold text-accent-foreground"
-                aria-hidden
-              >
-                성
-              </span>
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src="/logo.png"
-                alt=""
-                width={36}
-                height={36}
-                className="h-9 w-9 rounded-lg object-contain"
-                onError={() => setLogoFailed(true)}
-              />
-            )}
-          </Link>
-        </div>
-
-        <div className="flex-1" />
+      <aside className="group/nav fixed bottom-0 left-0 top-[var(--app-header-height)] z-50 hidden w-16 flex-col py-4 lg:flex">
+        <div className="min-h-0 flex-1" />
 
         <nav className="flex flex-col items-center gap-2">
           {navItems.map((item) => (
@@ -381,7 +366,7 @@ export function SnsFeedLayout({
         </div>
       </aside>
 
-      <main className="mx-auto w-full max-w-6xl px-3 pt-4 sm:px-4 lg:pl-20">
+      <main className="mx-auto w-full max-w-6xl px-3 pt-[40px] sm:px-4 lg:pl-20">
         {children}
       </main>
     </div>

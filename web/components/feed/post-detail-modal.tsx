@@ -111,7 +111,7 @@ export function PostDetailModal({
     <div
       className={
         isSide
-          ? "fixed right-0 top-[var(--app-header-height)] bottom-0 flex w-[min(90.25vw,45.6rem)] flex-col overflow-hidden border-l border-line bg-surface shadow-xl"
+          ? "fixed right-0 top-[var(--app-header-height)] bottom-0 flex w-[min(90.25vw,45.6rem)] flex-col overflow-hidden border-l border-t border-line bg-surface shadow-xl"
           : "relative flex aspect-video w-[min(95vw,calc(95vh*16/9),80rem)] flex-col overflow-hidden rounded-2xl bg-surface shadow-xl"
       }
       role="dialog"
@@ -169,7 +169,7 @@ export function PostDetailModal({
                 </span>
               ) : null}
               {post.title ? (
-                <h3 className="mt-2 text-lg font-bold text-ink">
+                <h3 className="mt-2 font-display text-lg text-ink">
                   {post.title}
                 </h3>
               ) : null}
@@ -230,7 +230,7 @@ export function PostDetailModal({
             </div>
           ) : null}
 
-          <div className="mt-4 whitespace-pre-wrap text-[15px] leading-relaxed text-ink">
+          <div className="mt-4 whitespace-pre-wrap font-emotional text-[15px] leading-relaxed text-ink">
             {post.content}
           </div>
         </div>
@@ -268,7 +268,7 @@ export function PostDetailModal({
                       <span className="ml-2 text-xs text-muted break-words">
                         {new Date(c.createdAt).toLocaleString("ko-KR")}
                       </span>
-                      <p className="mt-1 whitespace-pre-wrap break-words text-muted">
+                      <p className="mt-1 whitespace-pre-wrap break-words font-emotional text-muted">
                         {c.content}
                       </p>
                     </li>

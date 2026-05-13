@@ -108,7 +108,7 @@ export function RegisterForm() {
 
   return (
     <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-6 shadow-sm sm:p-8">
-      <h1 className="text-xl font-semibold text-ink">회원가입</h1>
+      <h1 className="font-display text-xl text-ink">회원가입</h1>
       <p className="mt-1 text-sm text-muted">
         가입 후에는 이메일과 비밀번호로 로그인합니다. 운영 정책에 따라 승인 후
         로그인이 필요할 수 있습니다.

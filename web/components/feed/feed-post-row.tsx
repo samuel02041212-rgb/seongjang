@@ -22,8 +22,9 @@ export function FeedPostRow({
   const firstImg = urls[0];
 
   return (
+    <div className="group/card rounded-xl bg-gradient-to-br from-accent/40 via-line to-accent/20 p-[2px] shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition hover:from-accent/60 hover:to-accent/40 hover:shadow-[0_4px_14px_rgba(0,0,0,0.08)] dark:from-accent/25 dark:via-line dark:to-accent/10 dark:hover:from-accent/40 dark:hover:to-accent/25">
     <article
-      className="feed-post-card cursor-pointer rounded-xl border border-line bg-surface shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition hover:border-line/80 hover:shadow-[0_4px_14px_rgba(0,0,0,0.08)]"
+      className="feed-post-card flex aspect-[3/4] cursor-pointer flex-col overflow-hidden rounded-[10px] bg-surface"
       role="button"
       tabIndex={0}
       onClick={() => onOpenDetail(post)}
@@ -34,7 +35,7 @@ export function FeedPostRow({
         }
       }}
     >
-      <div className="px-4 pb-3 pt-4 sm:px-5">
+      <div className="flex min-h-0 flex-1 flex-col px-4 pb-3 pt-4 sm:px-5">
         <div className="flex gap-3">
           <div
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fff4d2] text-xs font-bold text-[#5c4d2c]"
@@ -62,7 +63,7 @@ export function FeedPostRow({
               </div>
             ) : null}
             {post.title ? (
-              <h2 className="mt-2 text-[17px] font-bold leading-snug text-ink">
+              <h2 className="mt-2 font-display text-[17px] leading-snug text-ink">
                 {post.title}
               </h2>
             ) : null}
@@ -99,39 +100,40 @@ export function FeedPostRow({
               );
             })}
           </div>
-        ) : (
-          <p className="mt-3 line-clamp-6 min-h-[146px] whitespace-pre-wrap text-[15px] leading-relaxed text-ink">
+        ) : null}
+        <div className="relative mt-3 min-h-0 flex-1 overflow-hidden">
+          <p className="whitespace-pre-wrap font-emotional text-[15px] leading-relaxed text-ink">
             {post.content}
           </p>
-        )}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-surface to-transparent" />
+        </div>
       </div>
 
       <div
-        className="flex gap-1 border-t border-line px-3 py-2.5 sm:px-4"
+        className="ml-auto flex items-center gap-3 px-4 py-2.5"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
-          className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold transition ${
+          className={`inline-flex items-center gap-1 text-sm font-semibold transition ${
             post.isLikedByMe
-              ? "text-red-600 hover:bg-red-50/10"
-              : "text-muted hover:bg-bg"
+              ? "text-red-600"
+              : "text-muted hover:text-ink"
           }`}
           disabled={likePending}
           aria-pressed={post.isLikedByMe}
           aria-label="공감"
           onClick={() => onLike(post.id)}
         >
-          <span aria-hidden className="text-base">
-            {post.isLikedByMe ? "♥" : "♡"}
-          </span>
-          <span>공감 {post.likeCount}</span>
+          <span aria-hidden>{post.isLikedByMe ? "♥" : "♡"}</span>
+          {post.likeCount > 0 && <span>{post.likeCount}</span>}
         </button>
-        <span className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium text-muted">
-          <span aria-hidden>💬</span>
-          <span>댓글 {post.commentCount}</span>
+        <span className="inline-flex items-center gap-1 text-sm font-medium text-muted">
+          <span>댓글</span>
+          {post.commentCount > 0 && <span>{post.commentCount}</span>}
         </span>
       </div>
     </article>
+    </div>
   );
 }

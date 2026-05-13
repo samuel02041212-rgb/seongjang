@@ -92,10 +92,10 @@ export default async function Home() {
   const loggedIn = !!session?.user?.id;
 
   return (
-    <div className="flex min-h-full flex-col bg-bg" style={{ zoom: 0.93 }}>
+    <div className="flex min-h-full flex-col bg-bg">
       <LandingHeader loggedIn={loggedIn} />
 
-      <main className="flex-1">
+      <main className="flex-1" style={{ zoom: 0.93 }}>
         <section className="mx-auto max-w-6xl px-6 pb-20 pt-14 sm:pt-20">
           <div className="mb-10 flex flex-wrap items-end justify-between gap-4 border-b border-ink pb-3 font-mono text-xs uppercase tracking-[0.25em] text-muted">
             <span>NS · 2026 Archive · Vol. 01</span>
@@ -103,7 +103,7 @@ export default async function Home() {
             <span>Issue No. 001</span>
           </div>
 
-          <h1 className="max-w-5xl text-4xl font-medium leading-[1.12] tracking-tight text-ink sm:text-5xl md:text-6xl">
+          <h1 className="max-w-5xl font-display text-4xl leading-[1.12] tracking-tight text-ink sm:text-5xl md:text-6xl">
             믿음 안에서{" "}
             <span className="relative inline-block">
               <span className="relative z-10">함께</span>
@@ -118,16 +118,16 @@ export default async function Home() {
           </h1>
 
           <div className="mt-12 grid gap-10 md:grid-cols-[1fr_1fr_1fr]">
-            <p className="text-sm leading-relaxed text-ink">
+            <p className="font-emotional text-sm leading-relaxed text-ink">
               성경나눔장소는 말씀과 일상을 잇는 작은 도구입니다. 매일의 묵상,
               가벼운 교제, 오래 가는 공동체의 리듬을 한곳에 둡니다.
             </p>
-            <p className="text-sm leading-relaxed text-muted">
+            <p className="font-emotional text-sm leading-relaxed text-muted">
               우리는 새로운 기능을 만들기보다, 이미 익숙했던 흐름을 더 단순한
               바탕 위에 다시 심습니다. 화면은 비어 있어도, 그 안의 시간은 두텁게
               쌓이도록.
             </p>
-            <p className="text-sm leading-relaxed text-muted">
+            <p className="font-emotional text-sm leading-relaxed text-muted">
               한 사람의 묵상이 다른 사람의 하루로 옮겨 갑니다. 그래서 우리는
               화려한 장식보다, 오래 견디는 형식과 정직한 구조에 마음을 둡니다.
             </p>
@@ -136,7 +136,7 @@ export default async function Home() {
 
         <section className="border-y border-line bg-accent-soft/40">
           <div className="mx-auto grid max-w-6xl gap-10 px-6 py-16 md:grid-cols-[2fr_1fr]">
-            <p className="text-2xl font-light leading-snug tracking-tight text-ink sm:text-3xl">
+            <p className="font-emotional text-2xl leading-snug tracking-tight text-ink sm:text-3xl">
               <span className="text-accent">“</span>가장 좋은 공동체는 기억의
               장치입니다 — 사용과 시간 속에서 의미가 깊어지는 그릇. 짧은 한 줄도
               그 안에서 오래 머무릅니다.<span className="text-accent">”</span>
@@ -168,8 +168,8 @@ export default async function Home() {
                 <span className="font-mono text-xs tracking-wider text-muted">
                   {w.code}
                 </span>
-                <span className="text-lg font-medium text-ink">{w.name}</span>
-                <span className="hidden text-sm leading-relaxed text-muted sm:block">
+                <span className="font-display text-lg text-ink">{w.name}</span>
+                <span className="hidden font-emotional text-sm leading-relaxed text-muted sm:block">
                   {w.desc}
                 </span>
                 <span className="hidden font-mono text-xs uppercase tracking-wider text-muted sm:inline">
@@ -203,10 +203,10 @@ export default async function Home() {
                     {p.n}
                   </span>
                   <div>
-                    <h3 className="mb-2 text-lg font-medium text-ink">
+                    <h3 className="mb-2 font-display text-lg text-ink">
                       {p.title}
                     </h3>
-                    <p className="text-sm leading-relaxed text-muted">
+                    <p className="font-emotional text-sm leading-relaxed text-muted">
                       {p.body}
                     </p>
                   </div>
@@ -225,7 +225,7 @@ export default async function Home() {
               {plates.length.toString().padStart(2, "0")} plates · placeholders
             </span>
           </div>
-          <p className="mb-10 max-w-2xl text-sm leading-relaxed text-muted">
+          <p className="mb-10 max-w-2xl font-emotional text-sm leading-relaxed text-muted">
             이 자리는 비어 있습니다. 같이 채워 갈 사진과 그날의 본문을 위해
             남겨둔 자리입니다. 테두리만 두고, 안은 시간이 채우도록.
           </p>
@@ -248,13 +248,13 @@ export default async function Home() {
               <h2 className="mb-6 font-mono text-xs uppercase tracking-[0.25em] text-muted">
                 About — 짧은 소개
               </h2>
-              <p className="text-base leading-relaxed text-ink">
+              <p className="font-emotional text-base leading-relaxed text-ink">
                 성경나눔장소는 신앙 공동체의 일상을 담는 작은 도구를 만듭니다.
                 정직한 구조, 절제된 형식, 오래 가는 흐름을 지향합니다. 우리가
                 만드는 것은 새로운 플랫폼이 아니라, 이미 익숙한 리듬을 더 단순한
                 바탕 위에 다시 심는 일입니다.
               </p>
-              <p className="mt-6 text-sm leading-relaxed text-muted">
+              <p className="mt-6 font-emotional text-sm leading-relaxed text-muted">
                 특별한 기능보다 매일의 한 줄, 거대한 커뮤니티보다 한 사람과 한
                 사람 사이. 작은 단위의 신실함이 오래 가는 자리를 만든다고
                 믿습니다.

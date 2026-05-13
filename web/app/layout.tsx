@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
-import { Noto_Sans_KR } from "next/font/google";
+import {
+  Black_Han_Sans,
+  Caveat,
+  Nanum_Myeongjo,
+  Noto_Sans_KR,
+} from "next/font/google";
 
 import { AppProviders } from "@/components/providers/app-providers";
 import { SiteFooter } from "@/components/shell/site-footer";
@@ -10,6 +15,24 @@ const noto = Noto_Sans_KR({
   subsets: ["latin"],
   variable: "--font-noto",
   weight: ["400", "500", "600", "700"],
+});
+
+const caveat = Caveat({
+  subsets: ["latin"],
+  variable: "--font-caveat",
+  weight: ["500", "600"],
+});
+
+const nanumMyeongjo = Nanum_Myeongjo({
+  subsets: ["latin"],
+  variable: "--font-myeongjo",
+  weight: ["400", "700"],
+});
+
+const blackHanSans = Black_Han_Sans({
+  subsets: ["latin"],
+  variable: "--font-black-han",
+  weight: "400",
 });
 
 export const metadata: Metadata = {
@@ -26,7 +49,7 @@ export default function RootLayout({
   return (
     <html
       lang="ko"
-      className={`${noto.variable} h-full antialiased`}
+      className={`${noto.variable} ${caveat.variable} ${nanumMyeongjo.variable} ${blackHanSans.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

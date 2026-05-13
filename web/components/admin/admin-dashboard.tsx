@@ -84,7 +84,7 @@ export function AdminDashboard() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold text-ink">
+        <h1 className="font-display text-xl text-ink">
           관리자
           <Link
             href="/feed"

@@ -3,7 +3,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --app-header-height: 5rem;
+  --app-header-height: calc(5rem * 0.8);
   --bg: #ffffff;
   --surface: #ffffff;
   --ink: #1c1917;
@@ -37,6 +37,9 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-line: var(--line);
   --font-sans: var(--font-noto), ui-sans-serif, system-ui, sans-serif;
+  --font-handwriting: var(--font-caveat), cursive;
+  --font-emotional: var(--font-myeongjo), serif;
+  --font-display: var(--font-black-han), sans-serif;
 }
 
 body {

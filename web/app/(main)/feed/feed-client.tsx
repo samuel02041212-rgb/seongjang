@@ -60,7 +60,7 @@ function SplitFeedSlide() {
         style={
           dockOpen
             ? {
-                marginLeft: -pullPx,
+                marginLeft: -(pullPx + 60),
                 transform: "translateX(0px)",
               }
             : {

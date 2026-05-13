@@ -42,7 +42,7 @@ export function LoginForm({
 
   return (
     <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-6 shadow-sm sm:p-8">
-      <h1 className="text-xl font-semibold text-ink">로그인</h1>
+      <h1 className="font-display text-xl text-ink">로그인</h1>
       <p className="mt-1 text-sm text-muted">
         성경나눔장소에 오신 것을 환영합니다.
       </p>

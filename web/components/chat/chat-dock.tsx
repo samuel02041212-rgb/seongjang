@@ -107,7 +107,7 @@ function ChatChrome({
   if (variant === "split") {
     return (
       <div
-        className="chat-side-panel-wrap fixed right-0 top-[var(--app-header-height)] bottom-0 flex w-[min(90.25vw,45.6rem)] min-h-0 flex-col overflow-hidden border-l border-line bg-surface shadow-xl"
+        className="chat-side-panel-wrap fixed right-0 top-[var(--app-header-height)] bottom-0 flex w-[min(90.25vw,45.6rem)] min-h-0 flex-col overflow-hidden border-l border-t border-line bg-surface shadow-xl"
         style={{ zIndex: splitDockZ ?? 30 }}
         role="dialog"
         aria-label="채팅"
