@@ -1,5 +1,15 @@
 "use client";
 
+import { feedCardSizeClass } from "@/lib/feed-card-layout";
+import {
+  feedPostBodyAreaClass,
+  feedPostBodyTextClass,
+  feedPostBibleRefClass,
+  feedPostFooterClass,
+  feedPostImageRowClass,
+  feedPostInnerClass,
+  feedPostTitleClass,
+} from "@/lib/feed-post-body-layout";
 import {
   type FeedPostJson,
   formatFeedRelativeTime,
@@ -24,7 +34,7 @@ export function FeedPostRow({
   return (
     <div className="group/card rounded-xl bg-gradient-to-br from-accent/40 via-line to-accent/20 p-[2px] shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition hover:from-accent/60 hover:to-accent/40 hover:shadow-[0_4px_14px_rgba(0,0,0,0.08)] dark:from-accent/25 dark:via-line dark:to-accent/10 dark:hover:from-accent/40 dark:hover:to-accent/25">
     <article
-      className="feed-post-card flex aspect-[3/4] cursor-pointer flex-col overflow-hidden rounded-[10px] bg-surface"
+      className={`feed-post-card flex cursor-pointer flex-col overflow-hidden rounded-[10px] bg-surface ${feedCardSizeClass}`}
       role="button"
       tabIndex={0}
       onClick={() => onOpenDetail(post)}
@@ -35,48 +45,39 @@ export function FeedPostRow({
         }
       }}
     >
-      <div className="flex min-h-0 flex-1 flex-col px-4 pb-3 pt-4 sm:px-5">
-        <div className="flex gap-3">
-          <div
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fff4d2] text-xs font-bold text-[#5c4d2c]"
-            aria-hidden
-          >
-            {(post.authorName || "?").slice(0, 1)}
-          </div>
+      <div className={feedPostInnerClass}>
+        <div className="flex items-start justify-between gap-x-2 gap-y-1">
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-0.5">
-              <span className="text-[15px] font-semibold text-ink">
-                {post.authorName}
-              </span>
-              <time
-                className="shrink-0 text-xs text-muted"
-                dateTime={post.createdAt}
-              >
-                {formatFeedRelativeTime(post.createdAt)}
-              </time>
-            </div>
-            {post.visibleGroupLabel ? (
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                <span className="inline-flex max-w-full items-center rounded-md border border-line bg-bg px-2 py-0.5 text-[11px] font-medium text-muted">
-                  {post.visibleGroupLabel}
-                </span>
-              </div>
-            ) : null}
             {post.title ? (
-              <h2 className="mt-2 font-display text-[17px] leading-snug text-ink">
+              <h2 className={feedPostTitleClass}>
                 {post.title}
               </h2>
             ) : null}
             {post.bibleRef ? (
-              <p className="mt-2 text-xs font-medium text-muted">
+              <p
+                className={`${feedPostBibleRefClass} ${post.title ? "mt-1" : ""}`}
+              >
                 {post.bibleRef}
               </p>
             ) : null}
           </div>
+          {post.authorName || post.authorChurch ? (
+            <span className="max-w-[45%] shrink-0 truncate text-right text-xs text-muted">
+              {post.authorName}
+              {post.authorChurch ? `, ${post.authorChurch}` : ""}
+            </span>
+          ) : null}
         </div>
+        {post.visibleGroupLabel ? (
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            <span className="inline-flex max-w-full items-center rounded-md border border-line bg-bg px-2 py-0.5 text-[11px] font-medium text-muted">
+              {post.visibleGroupLabel}
+            </span>
+          </div>
+        ) : null}
 
         {firstImg ? (
-          <div className="mt-3 flex h-[146px] gap-1.5 overflow-hidden">
+          <div className={feedPostImageRowClass}>
             {urls.slice(0, 4).map((url, i) => {
               const overflow =
                 i === 3 && urls.length > 4 ? urls.length - 4 : 0;
@@ -101,8 +102,8 @@ export function FeedPostRow({
             })}
           </div>
         ) : null}
-        <div className="relative mt-3 min-h-0 flex-1 overflow-hidden">
-          <p className="whitespace-pre-wrap font-emotional text-[15px] leading-relaxed text-ink">
+        <div className={feedPostBodyAreaClass}>
+          <p className={feedPostBodyTextClass}>
             {post.content}
           </p>
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-surface to-transparent" />
@@ -110,28 +111,33 @@ export function FeedPostRow({
       </div>
 
       <div
-        className="ml-auto flex items-center gap-3 px-4 py-2.5"
+        className={feedPostFooterClass}
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          type="button"
-          className={`inline-flex items-center gap-1 text-sm font-semibold transition ${
-            post.isLikedByMe
-              ? "text-red-600"
-              : "text-muted hover:text-ink"
-          }`}
-          disabled={likePending}
-          aria-pressed={post.isLikedByMe}
-          aria-label="공감"
-          onClick={() => onLike(post.id)}
-        >
-          <span aria-hidden>{post.isLikedByMe ? "♥" : "♡"}</span>
-          {post.likeCount > 0 && <span>{post.likeCount}</span>}
-        </button>
-        <span className="inline-flex items-center gap-1 text-sm font-medium text-muted">
-          <span>댓글</span>
-          {post.commentCount > 0 && <span>{post.commentCount}</span>}
-        </span>
+        <time className="shrink-0 text-xs text-muted" dateTime={post.createdAt}>
+          {formatFeedRelativeTime(post.createdAt)}
+        </time>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            className={`inline-flex items-center gap-1 text-sm font-semibold transition ${
+              post.isLikedByMe
+                ? "text-red-600"
+                : "text-muted hover:text-ink"
+            }`}
+            disabled={likePending}
+            aria-pressed={post.isLikedByMe}
+            aria-label="공감"
+            onClick={() => onLike(post.id)}
+          >
+            <span aria-hidden>{post.isLikedByMe ? "♥" : "♡"}</span>
+            {post.likeCount > 0 && <span>{post.likeCount}</span>}
+          </button>
+          <span className="inline-flex items-center gap-1 text-sm font-medium text-muted">
+            <span>댓글</span>
+            {post.commentCount > 0 && <span>{post.commentCount}</span>}
+          </span>
+        </div>
       </div>
     </article>
     </div>

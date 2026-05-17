@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -8,6 +9,7 @@ import { useChatPanel } from "@/components/chat/chat-dock";
 import { appHeaderRowClassName, appHeaderShellClass } from "@/components/shell/app-header-classes";
 import { HeaderLogoGlyph } from "@/components/shell/header-logo-glyph";
 import { useTheme } from "@/lib/theme";
+import { meditationPageMaxWidthClass } from "@/lib/meditation-layout";
 import { usePostViewMode } from "@/lib/view-mode";
 
 export type JoinedGroup = {
@@ -146,6 +148,9 @@ export function SnsFeedLayout({
   const { chatOpen, toggleChat, totalUnread, setChatOpen, splitDockTop, bringChatDockToFront } =
     useChatPanel();
   const [viewMode, setViewMode] = usePostViewMode();
+  const pathname = usePathname();
+  const mainMaxWidth =
+    pathname === "/meditation" ? meditationPageMaxWidthClass : "max-w-6xl";
   const [theme, setTheme] = useTheme();
 
   void _joinedGroups;
@@ -366,7 +371,9 @@ export function SnsFeedLayout({
         </div>
       </aside>
 
-      <main className="mx-auto w-full max-w-6xl px-3 pt-[40px] sm:px-4 lg:pl-20">
+      <main
+        className={`mx-auto w-full px-3 pt-[40px] sm:px-4 lg:pl-20 ${mainMaxWidth}`}
+      >
         {children}
       </main>
     </div>

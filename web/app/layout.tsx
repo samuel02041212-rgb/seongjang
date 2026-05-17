@@ -59,6 +59,7 @@ export default function RootLayout({
           }}
         />
         <link rel="stylesheet" href="/css/chat.css" />
+        <link rel="stylesheet" href="/css/meditation-bible.css" />
       </head>
       <body className="flex min-h-full flex-col font-sans">
         <AppProviders>

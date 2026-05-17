@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/server-auth";
+import { feedDateRangeUtc, isFeedDateIso } from "@/lib/feed-date";
 import { serializeFeedPost } from "@/lib/feed-serialize";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/server-auth";
 
 export async function GET(req: Request) {
   const session = await auth();
@@ -10,14 +11,31 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const mine = new URL(req.url).searchParams.get("mine") === "1";
+  const { searchParams } = new URL(req.url);
+  const mine = searchParams.get("mine") === "1";
+  const dateParam = searchParams.get("date");
+
+  if (dateParam && !isFeedDateIso(dateParam)) {
+    return NextResponse.json({ error: "bad_date" }, { status: 400 });
+  }
 
   try {
+    const dateRange =
+      !mine && dateParam ? feedDateRangeUtc(dateParam) : null;
+
     const posts = await prisma.post.findMany({
-      where: mine ? { authorId: session.user.id } : undefined,
+      where: {
+        ...(mine ? { authorId: session.user.id } : {}),
+        ...(dateRange
+          ? { createdAt: { gte: dateRange.gte, lt: dateRange.lt } }
+          : {}),
+      },
       orderBy: { createdAt: "desc" },
       take: mine ? 100 : 50,
-      include: { _count: { select: { comments: true } } },
+      include: {
+        _count: { select: { comments: true } },
+        author: { select: { church: true } },
+      },
     });
 
     const normalized = posts.map((p) =>

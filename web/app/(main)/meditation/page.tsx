@@ -18,7 +18,7 @@ export default async function MeditationPage() {
   }
 
   return (
-    <SubPageLayout title="말씀묵상" wide>
+    <SubPageLayout title="말씀묵상" extraWide>
       <MeditationPageClient />
     </SubPageLayout>
   );

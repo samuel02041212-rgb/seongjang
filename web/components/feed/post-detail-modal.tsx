@@ -2,6 +2,14 @@
 
 import { useChatPanel } from "@/components/chat/chat-dock";
 import {
+  feedPostBodyAreaClass,
+  feedPostBodyTextClass,
+  feedPostBibleRefClass,
+  feedPostInnerClass,
+  feedPostTitleClass,
+} from "@/lib/feed-post-body-layout";
+import { feedCardMaxWidthClass } from "@/lib/feed-card-layout";
+import {
   type FeedPostJson,
   formatFeedRelativeTime,
 } from "@/lib/feed-serialize";
@@ -142,44 +150,43 @@ export function PostDetailModal({
         </div>
 
         <div className={`flex min-h-0 flex-1 ${isSide ? "flex-col" : "flex-row"}`}>
-        <div className="min-w-0 min-h-0 flex-1 overflow-y-auto px-4 py-4">
-          <div className="flex gap-3">
-            <div
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#fff4d2] text-sm font-bold text-[#5c4d2c]"
-              aria-hidden
-            >
-              {(post.authorName || "?").slice(0, 1)}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-0.5">
-                <span className="text-[15px] font-semibold text-ink">
-                  {post.authorName}
-                </span>
-                <time
-                  className="shrink-0 text-xs text-muted"
-                  dateTime={post.createdAt}
-                >
-                  {formatFeedRelativeTime(post.createdAt)} ·{" "}
-                  {new Date(post.createdAt).toLocaleString("ko-KR")}
-                </time>
+        <div className="min-w-0 min-h-0 flex-1 overflow-y-auto">
+          <div className={`mx-auto w-full ${feedCardMaxWidthClass}`}>
+          <div className={feedPostInnerClass}>
+            <div className="flex items-start justify-between gap-x-2 gap-y-1">
+              <div className="min-w-0 flex-1">
+                {post.title ? (
+                  <h3 className={feedPostTitleClass}>{post.title}</h3>
+                ) : null}
+                {post.bibleRef ? (
+                  <p
+                    className={`${feedPostBibleRefClass} ${post.title ? "mt-1" : ""}`}
+                  >
+                    {post.bibleRef}
+                  </p>
+                ) : null}
               </div>
-              {post.visibleGroupLabel ? (
-                <span className="mt-1.5 inline-flex rounded-md border border-line bg-bg px-2 py-0.5 text-[11px] font-medium text-muted">
+              {post.authorName || post.authorChurch ? (
+                <span className="max-w-[45%] shrink-0 truncate text-right text-xs text-muted">
+                  {post.authorName}
+                  {post.authorChurch ? `, ${post.authorChurch}` : ""}
+                </span>
+              ) : null}
+            </div>
+            {post.visibleGroupLabel ? (
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                <span className="inline-flex max-w-full items-center rounded-md border border-line bg-bg px-2 py-0.5 text-[11px] font-medium text-muted">
                   {post.visibleGroupLabel}
                 </span>
-              ) : null}
-              {post.title ? (
-                <h3 className="mt-2 font-display text-lg text-ink">
-                  {post.title}
-                </h3>
-              ) : null}
-              {post.bibleRef ? (
-                <p className="mt-2 text-xs font-medium text-muted">
-                  {post.bibleRef}
-                </p>
-              ) : null}
-            </div>
-          </div>
+              </div>
+            ) : null}
+            <time
+              className="mt-1 block text-xs text-muted"
+              dateTime={post.createdAt}
+            >
+              {formatFeedRelativeTime(post.createdAt)} ·{" "}
+              {new Date(post.createdAt).toLocaleString("ko-KR")}
+            </time>
 
           {post.imageUrls.length > 0 ? (
             <div className="relative mt-4 h-64 overflow-hidden rounded-xl border border-line bg-bg">
@@ -230,8 +237,10 @@ export function PostDetailModal({
             </div>
           ) : null}
 
-          <div className="mt-4 whitespace-pre-wrap font-emotional text-[15px] leading-relaxed text-ink">
-            {post.content}
+          <div className={feedPostBodyAreaClass}>
+            <p className={feedPostBodyTextClass}>{post.content}</p>
+          </div>
+          </div>
           </div>
         </div>
 

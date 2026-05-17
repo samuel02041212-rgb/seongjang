@@ -5,6 +5,7 @@ export type FeedPostJson = {
   title: string;
   content: string;
   authorName: string;
+  authorChurch?: string;
   createdAt: string;
   bibleRef: string;
   imageUrls: string[];
@@ -16,6 +17,7 @@ export type FeedPostJson = {
 
 type PostWithCount = PostModel & {
   _count?: { comments: number };
+  author?: { church: string };
 };
 
 export function serializeFeedPost(
@@ -28,6 +30,7 @@ export function serializeFeedPost(
     title: p.title ?? "",
     content: p.content,
     authorName: p.authorName,
+    authorChurch: p.author?.church?.trim() || undefined,
     createdAt: p.createdAt.toISOString(),
     bibleRef: p.bibleRef ?? "",
     imageUrls: normalizeImageUrls(p.imageUrls),

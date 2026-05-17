@@ -3,6 +3,17 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { feedCardSizeClass } from "@/lib/feed-card-layout";
+import {
+  feedPostBodyAreaClass,
+  feedPostBodyInputClass,
+  feedPostBibleRefClass,
+  feedPostFooterClass,
+  feedPostImageRowClass,
+  feedPostInnerClass,
+  feedPostPadXClass,
+  feedPostTitleClass,
+} from "@/lib/feed-post-body-layout";
 import { resizeImage } from "@/lib/image-resize";
 
 const MAX_IMAGES = 20;
@@ -10,6 +21,7 @@ const MAX_IMAGES = 20;
 type FeedComposerProps = {
   isAuthenticated: boolean;
   onPosted: () => void;
+  matchPostCard?: boolean;
 };
 
 type PendingImg = { file: File; previewUrl: string };
@@ -17,6 +29,7 @@ type PendingImg = { file: File; previewUrl: string };
 export function FeedComposer({
   isAuthenticated,
   onPosted,
+  matchPostCard = false,
 }: FeedComposerProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -108,7 +121,7 @@ export function FeedComposer({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: title.trim(),
-          content: content.trim(),
+          content,
           bibleRef: bibleRef.trim(),
           imageUrls,
           visibleGroupIds: [],
@@ -146,6 +159,107 @@ export function FeedComposer({
     );
   }
 
+  const fieldClass =
+    "w-full shrink-0 rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted outline-none ring-accent/30 focus:ring-2";
+
+  if (matchPostCard) {
+    return (
+      <form
+        onSubmit={onSubmit}
+        className={`feed-post-card flex flex-col overflow-hidden rounded-[10px] border border-line bg-surface shadow-sm ${feedCardSizeClass}`}
+      >
+        {error ? (
+          <p className={`shrink-0 text-sm text-red-700 ${feedPostPadXClass} pt-3`}>
+            {error}
+          </p>
+        ) : null}
+        <div className={feedPostInnerClass}>
+          <input
+            type="text"
+            placeholder="제목 (선택)"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className={`${feedPostTitleClass} w-full shrink-0 border-0 bg-transparent p-0 outline-none placeholder:text-muted focus:ring-0`}
+          />
+          <input
+            type="text"
+            placeholder="성경 구절 (선택, 예: 시편 23:1)"
+            value={bibleRef}
+            onChange={(e) => setBibleRef(e.target.value)}
+            className={`w-full shrink-0 border-0 bg-transparent p-0 outline-none placeholder:text-muted focus:ring-0 ${feedPostBibleRefClass} ${title ? "mt-1" : ""}`}
+          />
+          {images.length > 0 ? (
+            <div className={feedPostImageRowClass}>
+              {images.slice(0, 4).map((img, i) => (
+                <div
+                  key={`${img.previewUrl}-${i}`}
+                  className="relative aspect-square h-full shrink-0 overflow-hidden rounded-md border border-line bg-bg"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={img.previewUrl}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                  {i === 3 && images.length > 4 ? (
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/60 text-lg font-bold text-white">
+                      +{images.length - 4}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={pending}
+                      onClick={() => removeAt(i)}
+                      className="absolute right-0.5 top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-[#1a1a1a]/75 text-xs font-bold text-white"
+                      aria-label="이미지 제거"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <div className={feedPostBodyAreaClass}>
+            <textarea
+              placeholder="무엇을 나누고 싶나요?"
+              required
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              className={feedPostBodyInputClass}
+            />
+          </div>
+        </div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/gif,image/webp"
+          multiple
+          className="hidden"
+          onChange={(e) => addFiles(e.target.files)}
+        />
+        <div className={`${feedPostFooterClass} flex-wrap`}>
+          <button
+            type="button"
+            disabled={images.length >= MAX_IMAGES || pending}
+            onClick={() => fileRef.current?.click()}
+            className="text-sm font-medium text-muted transition hover:text-ink disabled:opacity-50"
+          >
+            사진 추가
+            {images.length > 0 ? ` (${images.length}/${MAX_IMAGES})` : ""}
+          </button>
+          <button
+            type="submit"
+            disabled={pending || !content.trim()}
+            className="rounded-full bg-accent px-5 py-2 text-sm font-semibold text-accent-foreground shadow-sm transition hover:bg-accent/90 disabled:opacity-50"
+          >
+            {pending ? "올리는 중…" : "게시하기"}
+          </button>
+        </div>
+      </form>
+    );
+  }
+
   return (
     <form
       onSubmit={onSubmit}
@@ -159,21 +273,21 @@ export function FeedComposer({
         placeholder="제목 (선택)"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        className="w-full shrink-0 rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted outline-none ring-accent/30 focus:ring-2"
+        className={fieldClass}
       />
       <input
         type="text"
         placeholder="성경 구절 (선택, 예: 시편 23:1)"
         value={bibleRef}
         onChange={(e) => setBibleRef(e.target.value)}
-        className="w-full shrink-0 rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted outline-none ring-accent/30 focus:ring-2"
+        className={fieldClass}
       />
       <textarea
         placeholder="무엇을 나누고 싶나요?"
         required
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        className="min-h-[8rem] w-full flex-1 resize-none rounded-xl border border-line bg-bg px-3 py-2.5 text-sm text-ink placeholder:text-muted outline-none ring-accent/30 focus:ring-2"
+        className={`${fieldClass} min-h-[8rem] flex-1 resize-none py-2.5`}
       />
 
       <input

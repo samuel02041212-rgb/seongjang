@@ -46,3 +46,31 @@ body {
   background: var(--bg);
   color: var(--ink);
 }
+
+.feed-post-book {
+  width: 100%;
+  min-width: 0;
+  white-space: pre-wrap;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  line-break: strict;
+  text-align: justify;
+  text-wrap: pretty;
+  hyphens: none;
+  font-size: 15px;
+  line-height: 1.85;
+  letter-spacing: 0.01em;
+}
+
+.feed-post-book-title {
+  width: 100%;
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+}
+
+.feed-post-book-meta {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}

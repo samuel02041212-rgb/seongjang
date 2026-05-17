@@ -1,7 +1,15 @@
 "use client";
 
-import type { FeedPostJson } from "@/lib/feed-serialize";
 import { useChatPanel } from "@/components/chat/chat-dock";
+import { feedTodayIso } from "@/lib/feed-date";
+import {
+  readFeedBrowse,
+  readFeedPostsCache,
+  saveFeedBrowse,
+  saveFeedPostsCache,
+  type FeedBrowseState,
+} from "@/lib/feed-session";
+import type { FeedPostJson } from "@/lib/feed-serialize";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FeedPostRow } from "./feed-post-row";
 import { PostDetailModal } from "./post-detail-modal";
@@ -9,30 +17,115 @@ import { PostDetailModal } from "./post-detail-modal";
 type FeedSource = "loading" | "ready" | "error";
 
 export function FeedStream({
+  feedDate,
   refreshTrigger = 0,
   viewerVariant = "popup",
   onDetailOpenChange,
 }: {
+  feedDate: string;
   refreshTrigger?: number;
   viewerVariant?: "popup" | "side";
   onDetailOpenChange?: (open: boolean) => void;
 }) {
   const { bringPostDockToFront } = useChatPanel();
-  const [source, setSource] = useState<FeedSource>("loading");
-  const [posts, setPosts] = useState<FeedPostJson[]>([]);
+  const initialCache = readFeedPostsCache(feedDate);
+  const [source, setSource] = useState<FeedSource>(
+    initialCache?.length ? "ready" : "loading",
+  );
+  const [posts, setPosts] = useState<FeedPostJson[]>(initialCache ?? []);
   const [detailPost, setDetailPost] = useState<FeedPostJson | null>(null);
   const [errorHint, setErrorHint] = useState("");
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const snappedIdx = useRef(-1);
+  const hasRestored = useRef(false);
+  const stateRef = useRef({ feedDate, posts, detailPost });
+  stateRef.current = { feedDate, posts, detailPost };
 
-  const getScrollTarget = useCallback(() => {
-    const el = cardRefs.current[0];
-    if (!el) return 0;
-    const dummy = el.getBoundingClientRect();
-    const scrollMt = parseFloat(getComputedStyle(el).scrollMarginTop || "0");
-    void dummy;
-    return scrollMt;
+  const persistBrowse = useCallback(() => {
+    const { feedDate: d, posts: list, detailPost: detail } = stateRef.current;
+    let postId: string | null = null;
+    if (detail?.id) {
+      postId = detail.id;
+    } else if (list.length) {
+      let bestIdx = 0;
+      let bestArea = 0;
+      const vpBot = window.innerHeight;
+      for (let i = 0; i < list.length; i++) {
+        const el = cardRefs.current[i];
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        const area = Math.max(
+          0,
+          Math.min(r.bottom, vpBot) - Math.max(r.top, 0),
+        );
+        if (area > bestArea) {
+          bestArea = area;
+          bestIdx = i;
+        }
+      }
+      postId = list[bestIdx]?.id ?? null;
+    }
+    saveFeedBrowse({
+      feedDate: d,
+      scrollY: window.scrollY,
+      postId,
+      detailPostId: detail?.id ?? null,
+    });
+    if (list.length) saveFeedPostsCache(d, list);
   }, []);
+
+  const applyRestore = useCallback(
+    (saved: FeedBrowseState) => {
+      const { posts: list } = stateRef.current;
+      if (!list.length) return false;
+
+      let scrolled = false;
+      if (saved.postId) {
+        const idx = list.findIndex((p) => p.id === saved.postId);
+        const el = idx >= 0 ? cardRefs.current[idx] : null;
+        if (el) {
+          el.scrollIntoView({ block: "start" });
+          snappedIdx.current = idx;
+          scrolled = true;
+        }
+      }
+      if (!scrolled && saved.scrollY > 0) {
+        window.scrollTo(0, saved.scrollY);
+        scrolled = true;
+      }
+
+      if (saved.detailPostId) {
+        const p = list.find((x) => x.id === saved.detailPostId);
+        if (p) {
+          if (viewerVariant === "side") bringPostDockToFront();
+          setDetailPost(p);
+        }
+      }
+
+      return scrolled || !!saved.detailPostId;
+    },
+    [viewerVariant, bringPostDockToFront],
+  );
+
+  const tryRestore = useCallback(() => {
+    if (hasRestored.current) return;
+    const saved = readFeedBrowse();
+    if (!saved || saved.feedDate !== feedDate) return;
+    if (stateRef.current.posts.length === 0) return;
+
+    let attempts = 0;
+    const run = () => {
+      if (hasRestored.current) return;
+      attempts += 1;
+      if (applyRestore(saved) || attempts >= 6) {
+        hasRestored.current = true;
+        return;
+      }
+      requestAnimationFrame(run);
+    };
+
+    requestAnimationFrame(() => requestAnimationFrame(run));
+  }, [feedDate, applyRestore]);
 
   const getMostVisibleIdx = useCallback(() => {
     const refs = cardRefs.current;
@@ -67,24 +160,76 @@ export function FeedStream({
     snappedIdx.current = idx;
   }, []);
 
-  const navigate = useCallback((dir: -1 | 1) => {
-    const vis = getMostVisibleIdx();
-    if (snappedIdx.current === vis && isSnapped(vis)) {
-      const next = vis + dir;
-      if (next >= 0 && next < cardRefs.current.length) {
-        scrollToIdx(next);
+  const navigate = useCallback(
+    (dir: -1 | 1) => {
+      const vis = getMostVisibleIdx();
+      if (snappedIdx.current === vis && isSnapped(vis)) {
+        const next = vis + dir;
+        if (next >= 0 && next < cardRefs.current.length) {
+          scrollToIdx(next);
+        }
+      } else {
+        scrollToIdx(vis);
       }
-    } else {
-      scrollToIdx(vis);
+    },
+    [getMostVisibleIdx, isSnapped, scrollToIdx],
+  );
+
+  useEffect(() => {
+    hasRestored.current = false;
+    const saved = readFeedBrowse();
+    const c = readFeedPostsCache(feedDate);
+    setPosts(c ?? []);
+    setSource(c?.length ? "ready" : "loading");
+    if (
+      saved?.feedDate === feedDate &&
+      (saved.postId || saved.scrollY > 0 || saved.detailPostId)
+    ) {
+      return;
     }
-  }, [getMostVisibleIdx, isSnapped, scrollToIdx]);
+    setDetailPost(null);
+    window.scrollTo(0, 0);
+  }, [feedDate]);
+
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const onScroll = () => {
+      clearTimeout(t);
+      t = setTimeout(() => persistBrowse(), 120);
+    };
+    const onHide = () => persistBrowse();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("pagehide", onHide);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("pagehide", onHide);
+      clearTimeout(t);
+      persistBrowse();
+    };
+  }, [persistBrowse]);
+
+  useEffect(() => {
+    if (source !== "ready") return;
+    const saved = readFeedBrowse();
+    const shouldRestore =
+      saved?.feedDate === feedDate &&
+      !!(saved.postId || saved.scrollY > 0 || saved.detailPostId);
+    if (!shouldRestore) {
+      hasRestored.current = true;
+      return;
+    }
+    tryRestore();
+  }, [source, posts, feedDate, tryRestore]);
 
   useEffect(() => {
     let cancelled = false;
+    const seed = readFeedPostsCache(feedDate);
+    if (!seed?.length) setSource("loading");
     (async () => {
       setErrorHint("");
       try {
-        const res = await fetch("/api/posts", { credentials: "include" });
+        const qs = new URLSearchParams({ date: feedDate });
+        const res = await fetch(`/api/posts?${qs}`, { credentials: "include" });
         const data = (await res.json()) as unknown;
         if (cancelled) return;
 
@@ -99,13 +244,21 @@ export function FeedStream({
           return;
         }
 
+        const list = data as FeedPostJson[];
+        saveFeedPostsCache(feedDate, list);
         setErrorHint("");
-        setPosts(data as FeedPostJson[]);
+        setPosts(list);
         setSource("ready");
+        setDetailPost((prev) => {
+          if (!prev) return null;
+          return list.find((p) => p.id === prev.id) ?? prev;
+        });
       } catch {
         if (!cancelled) {
-          setPosts([]);
-          setSource("error");
+          if (!seed?.length) {
+            setPosts([]);
+            setSource("error");
+          }
           setErrorHint(
             "피드를 불러오지 못했습니다. 네트워크·서버 설정을 확인해 주세요.",
           );
@@ -115,7 +268,7 @@ export function FeedStream({
     return () => {
       cancelled = true;
     };
-  }, [refreshTrigger]);
+  }, [feedDate, refreshTrigger]);
 
   const onLike = useCallback(async (postId: string) => {
     try {
@@ -178,9 +331,20 @@ export function FeedStream({
     (p: FeedPostJson) => {
       if (viewerVariant === "side") bringPostDockToFront();
       setDetailPost(p);
+      saveFeedBrowse({
+        feedDate: stateRef.current.feedDate,
+        scrollY: window.scrollY,
+        postId: p.id,
+        detailPostId: p.id,
+      });
     },
     [viewerVariant, bringPostDockToFront],
   );
+
+  const closeDetail = useCallback(() => {
+    setDetailPost(null);
+    requestAnimationFrame(() => persistBrowse());
+  }, [persistBrowse]);
 
   return (
     <>
@@ -195,14 +359,18 @@ export function FeedStream({
         </p>
       ) : posts.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted">
-          아직 올라온 글이 없습니다. 말씀묵상에서 작성할 수 있습니다.
+          {feedDate === feedTodayIso()
+            ? "오늘 올라온 글이 없습니다. 말씀묵상에서 작성할 수 있습니다."
+            : "이 날짜에 올라온 글이 없습니다."}
         </p>
       ) : (
         <div className="relative mb-6 space-y-[calc(0.75rem+30px)]">
           {posts.map((p, i) => (
             <div
               key={p.id}
-              ref={(el) => { cardRefs.current[i] = el; }}
+              ref={(el) => {
+                cardRefs.current[i] = el;
+              }}
               className="scroll-mt-[calc(var(--app-header-height)+40px)]"
             >
               <FeedPostRow
@@ -221,7 +389,17 @@ export function FeedStream({
                   className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-surface text-ink shadow-md transition-colors hover:bg-accent-soft"
                   aria-label="이전 게시글"
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  >
                     <path d="M18 15l-6-6-6 6" />
                   </svg>
                 </button>
@@ -231,7 +409,17 @@ export function FeedStream({
                   className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-surface text-ink shadow-md transition-colors hover:bg-accent-soft"
                   aria-label="다음 게시글"
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  >
                     <path d="M6 9l6 6 6-6" />
                   </svg>
                 </button>
@@ -244,7 +432,7 @@ export function FeedStream({
       <PostDetailModal
         post={detailPost}
         open={!!detailPost}
-        onClose={() => setDetailPost(null)}
+        onClose={closeDetail}
         onCommentAdded={() => detailPost && bumpCommentCount(detailPost.id)}
         previewMode={false}
         variant={viewerVariant}
