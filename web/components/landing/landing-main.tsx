@@ -5,35 +5,46 @@ const intro =
 
 const quote = `“그대들은 성경에 정통하지 못하다. 성경의 표준에 도달하고 그리스도인 완전에 도달하려는 소망을 가지고 하나님의 말씀을 연구하였더라면, 그대들은 증언들이 필요치 않았을 것이다.”`;
 
-const contacts = [
-  "place_to_share2025",
-  "growth0213@gmail.com",
-  "percentcompany2025@gmail.com",
-];
+const instagram = {
+  handle: "place_to_share2025",
+  href: "https://www.instagram.com/place_to_share2025/",
+};
+
+const emails = ["growth0213@gmail.com", "percentcompany2025@gmail.com"];
+
+function InstagramIcon() {
+  return (
+    <svg
+      width={18}
+      height={18}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden
+      className="shrink-0"
+    >
+      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+    </svg>
+  );
+}
 
 const padX = "px-2 sm:px-3";
 
 export function LandingMain() {
   return (
     <main className="w-full flex-1 bg-bg text-ink">
-      <section className={`${padX} pb-2 pt-0`}>
-        <div className="flex flex-wrap items-end gap-x-4 gap-y-1">
-          <h1
-            lang="en"
-            className="font-sans text-[clamp(4.875rem,21vw,9.75rem)] font-bold leading-[0.95] tracking-tight"
-          >
-            GROWTH
-          </h1>
-          <p className="pb-1 text-2xl font-medium text-ink sm:text-3xl">
-            성장 | 성경나눔장소
-          </p>
-        </div>
+      <section className={`${padX} pb-1 pt-0 sm:pb-1.5`}>
+        <h1
+          lang="en"
+          className="font-sans text-[clamp(4.875rem,21vw,9.75rem)] font-bold leading-[0.95] tracking-tight"
+        >
+          GROWTH
+        </h1>
       </section>
 
       <section
-        className={`grid w-full items-start gap-4 pb-8 sm:gap-5 lg:grid-cols-[minmax(0,1.725fr)_minmax(0,0.85fr)] lg:items-stretch lg:gap-6 ${padX}`}
+        className={`grid w-full items-start gap-4 pb-8 sm:gap-5 lg:grid-cols-[minmax(0,2.07fr)_minmax(0,0.85fr)] lg:items-stretch lg:gap-6 ${padX}`}
       >
-        <div className="relative min-w-0 w-[150%] -ml-[25%] lg:ml-0 lg:w-full">
+        <div className="relative min-w-0 w-[180%] -ml-[40%] lg:ml-0 lg:w-full">
           <Image
             src="/images/landing-group.png"
             alt="성경나눔장소 모임 사진"
@@ -41,25 +52,32 @@ export function LandingMain() {
             height={1600}
             className="h-auto w-full object-cover"
             priority
-            sizes="(min-width: 1024px) 87vw, 150vw"
+            sizes="(min-width: 1024px) 105vw, 180vw"
           />
         </div>
         <div className="flex min-w-0 flex-col gap-6 text-left text-[17px] font-semibold leading-relaxed sm:gap-8 sm:text-lg">
           <p>{intro}</p>
           <p className="font-emotional leading-relaxed">{quote}</p>
           <ul className="mt-auto space-y-0.5 pt-4 text-left text-[16px] font-semibold sm:text-[17px]">
-            {contacts.map((line) => (
+            <li>
+              <a
+                href={instagram.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 hover:text-accent-foreground hover:underline"
+              >
+                <InstagramIcon />
+                {instagram.handle}
+              </a>
+            </li>
+            {emails.map((line) => (
               <li key={line}>
-                {line.includes("@") ? (
-                  <a
-                    href={`mailto:${line}`}
-                    className="hover:text-accent-foreground hover:underline"
-                  >
-                    {line}
-                  </a>
-                ) : (
-                  line
-                )}
+                <a
+                  href={`mailto:${line}`}
+                  className="hover:text-accent-foreground hover:underline"
+                >
+                  {line}
+                </a>
               </li>
             ))}
           </ul>
@@ -83,6 +101,7 @@ export function LandingMain() {
 
         <div className="space-y-2">
           <p>#명칭</p>
+          <p>현재 공식 명칭 : 연합 성경나눔장소</p>
           <p>2023.05.01 [동액트 성경나눔장소]</p>
           <p>+2023.10.11 [신학 23 성장]</p>
           <p>+2023.12.10 [원주삼육 성장]</p>
@@ -104,13 +123,15 @@ export function LandingMain() {
             <p>5차나눔_2024 4분기_부조와 선지자(하)</p>
           </div>
           <div>
-            <p>[도서지원]-2024-2분기</p>
+            <p>[도서지원]
+              <br />-2024-2분기</p>
             <p>*2024 2분기 묵상나눔 활동 연계 활동</p>
             <p>*로마서 산책, 갈라디아서 산책 (저자: 권연경)</p>
           </div>
-          <p>[성경연구_최고의 책 최상의 답]-2024-4분기</p>
+          <p>[성경연구_최고의 책 최상의 답]
+          <br />-2024-4분기</p>
           <div>
-            <p>오프라인 모임</p>
+            <p>[오프라인 모임]</p>
             <p>
               연합성장 2023 1분기 &apos;성장&apos; 말씀훈련 캠프(24.2.21~2.23)
             </p>
