@@ -91,6 +91,8 @@ function FeedDateStripe({
   );
 }
 
+const SPLIT_DOCK_PULL_EXTRA_PX = 95;
+
 function pullMarginPx(): number {
   if (typeof window === "undefined") return 72;
   if (window.matchMedia("(min-width: 1024px)").matches) return 48;
@@ -144,7 +146,7 @@ function SplitFeedSlide({ feedDate }: { feedDate: string }) {
         style={
           dockOpen
             ? {
-                marginLeft: -(pullPx + 60),
+                marginLeft: -(pullPx + 60 + SPLIT_DOCK_PULL_EXTRA_PX),
                 transform: "translateX(0px)",
               }
             : {
