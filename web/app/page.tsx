@@ -7,7 +7,7 @@ export default async function Home() {
   const loggedIn = !!session?.user?.id;
 
   return (
-    <div className="flex min-h-full flex-col bg-bg">
+    <div className="relative min-h-full bg-bg">
       <LandingHeader loggedIn={loggedIn} />
       <LandingMain />
     </div>

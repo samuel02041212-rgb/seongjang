@@ -1,51 +1,28 @@
 import Link from "next/link";
 
-import { appHeaderRowClassName, appHeaderShellClass } from "@/components/shell/app-header-classes";
-import { HeaderLogoGlyph } from "@/components/shell/header-logo-glyph";
+import { LandingHeaderLogo } from "@/components/shell/landing-header-logo";
+
+const landingHeaderRowClassName =
+  "relative flex w-full items-start justify-end gap-3 px-4 pt-0 sm:px-6";
 
 type LandingHeaderProps = {
   loggedIn: boolean;
 };
 
 export function LandingHeader({ loggedIn }: LandingHeaderProps) {
+  const logoHref = loggedIn ? "/feed" : "/login";
+  const logoLabel = loggedIn ? "피드로" : "로그인";
+
   return (
-    <header className={`sticky top-0 z-40 ${appHeaderShellClass}`}>
-      <div className={appHeaderRowClassName}>
+    <header className="pointer-events-none absolute inset-x-0 top-0 z-40 bg-transparent">
+      <div className={`${landingHeaderRowClassName} pointer-events-auto`}>
         <Link
-          href={loggedIn ? "/feed" : "/"}
-          className="flex min-w-0 flex-1 items-center gap-3 pr-2"
-          aria-label="성경나눔장소"
+          href={logoHref}
+          className="group mt-4 shrink-0 rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:mt-5 md:mt-6"
+          aria-label={logoLabel}
         >
-          <HeaderLogoGlyph />
-          <span className="truncate text-xl font-semibold tracking-tight text-ink">
-            성경나눔장소
-          </span>
+          <LandingHeaderLogo />
         </Link>
-        <nav className="flex shrink-0 items-center gap-2 text-base font-medium">
-          {loggedIn ? (
-            <Link
-              href="/feed"
-              className="rounded-full bg-accent px-5 py-2.5 text-accent-foreground shadow-sm transition hover:bg-accent/90"
-            >
-              피드로
-            </Link>
-          ) : (
-            <>
-              <Link
-                href="/register"
-                className="rounded-full px-4 py-2 text-muted transition hover:bg-accent-soft hover:text-accent-foreground"
-              >
-                회원가입
-              </Link>
-              <Link
-                href="/login"
-                className="rounded-full bg-accent px-5 py-2.5 text-accent-foreground shadow-sm transition hover:bg-accent/90"
-              >
-                로그인
-              </Link>
-            </>
-          )}
-        </nav>
       </div>
     </header>
   );

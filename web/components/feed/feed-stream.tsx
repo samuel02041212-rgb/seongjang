@@ -16,6 +16,10 @@ import { PostDetailModal } from "./post-detail-modal";
 
 type FeedSource = "loading" | "ready" | "error";
 
+const feedEmptyVerse =
+  "또한 네가 청년의 정욕을 피하고 주를 깨끗한 마음으로 부르는 자들과 함께 의와 믿음과 사랑과 화평을 좇으라...";
+const feedEmptyVerseRef = "-디모데후서 2:22-";
+
 export function FeedStream({
   feedDate,
   refreshTrigger = 0,
@@ -358,11 +362,19 @@ export function FeedStream({
             "피드를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."}
         </p>
       ) : posts.length === 0 ? (
-        <p className="py-10 text-center text-sm text-muted">
-          {feedDate === feedTodayIso()
-            ? "오늘 올라온 글이 없습니다. 말씀묵상에서 작성할 수 있습니다."
-            : "이 날짜에 올라온 글이 없습니다."}
-        </p>
+        <div className="flex min-h-[calc(100dvh-var(--app-header-height)-6rem)] flex-col items-center justify-center px-6 py-16 text-center">
+          <p className="text-sm text-muted">
+            {feedDate === feedTodayIso()
+              ? "오늘 올라온 글이 없습니다. 말씀묵상에서 작성할 수 있습니다."
+              : "이 날짜에 올라온 글이 없습니다."}
+          </p>
+          <div className="mt-12 max-w-xl">
+            <p className="font-emotional text-[15px] leading-relaxed text-ink sm:text-[17px]">
+              &ldquo;{feedEmptyVerse}&rdquo;
+            </p>
+            <p className="mt-5 text-sm text-muted">{feedEmptyVerseRef}</p>
+          </div>
+        </div>
       ) : (
         <div className="relative mb-6 space-y-[calc(0.75rem+30px)]">
           {posts.map((p, i) => (

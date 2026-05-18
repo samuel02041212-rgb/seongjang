@@ -31,20 +31,20 @@ const padX = "px-2 sm:px-3";
 
 export function LandingMain() {
   return (
-    <main className="w-full flex-1 bg-bg text-ink">
+    <main className="relative z-0 w-full bg-bg text-ink">
       <section className={`${padX} pb-1 pt-0 sm:pb-1.5`}>
         <h1
           lang="en"
-          className="font-sans text-[clamp(4.875rem,21vw,9.75rem)] font-bold leading-[0.95] tracking-tight"
+          className="font-sans text-[clamp(6.34rem,27.3vw,12.68rem)] font-bold leading-[0.95] tracking-tight"
         >
           GROWTH
         </h1>
       </section>
 
       <section
-        className={`grid w-full items-start gap-4 pb-8 sm:gap-5 lg:grid-cols-[minmax(0,2.07fr)_minmax(0,0.85fr)] lg:items-stretch lg:gap-6 ${padX}`}
+        className={`grid w-full items-start gap-4 pb-8 sm:gap-5 lg:grid-cols-[minmax(0,2.24fr)_minmax(0,0.85fr)] lg:items-stretch lg:gap-6 ${padX}`}
       >
-        <div className="relative min-w-0 w-[180%] -ml-[40%] lg:ml-0 lg:w-full">
+        <div className="relative min-w-0 w-[195%] -ml-[47.5%] lg:ml-0 lg:w-full">
           <Image
             src="/images/landing-group.png"
             alt="성경나눔장소 모임 사진"
@@ -52,7 +52,7 @@ export function LandingMain() {
             height={1600}
             className="h-auto w-full object-cover"
             priority
-            sizes="(min-width: 1024px) 105vw, 180vw"
+            sizes="(min-width: 1024px) 114vw, 195vw"
           />
         </div>
         <div className="flex min-w-0 flex-col gap-6 text-left text-[17px] font-semibold leading-relaxed sm:gap-8 sm:text-lg">
