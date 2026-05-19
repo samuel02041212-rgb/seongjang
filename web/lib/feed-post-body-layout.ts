@@ -15,3 +15,7 @@ export const feedPostBodyTextClass =
 export const feedPostBodyInputClass = `${feedPostBodyTextClass} block h-full w-full min-h-0 resize-none border-0 bg-transparent p-0 outline-none placeholder:text-muted focus:ring-0`;
 
 export const feedPostImageRowClass = "mt-4 flex h-[146px] gap-1.5 overflow-hidden";
+export const feedPostImageLargeBleedClass =
+  "-mx-[22px] mt-4 w-[calc(100%+44px)] sm:-mx-[26px] sm:w-[calc(100%+52px)]";
+export const feedPostImageLargeFrameClass =
+  "relative mx-auto aspect-[3/4] w-full max-h-[600px] shrink-0 overflow-hidden bg-bg isolate";

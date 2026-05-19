@@ -126,7 +126,7 @@ function ChatChrome({
         onClick={onClose}
       />
       <div
-        className="relative flex aspect-video min-h-0 w-[min(95vw,calc(95vh*16/9),80rem)] max-w-full flex-col overflow-hidden rounded-2xl bg-surface shadow-xl"
+        className="relative flex aspect-video min-h-0 w-[min(95vw,calc(95vh*16/9),80rem)] max-w-full flex-col overflow-hidden rounded-lg bg-surface shadow-xl"
         role="dialog"
         aria-modal="true"
         aria-label="채팅"

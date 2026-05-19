@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function SettingsPage() {
   return (
     <SubPageLayout title="설정">
-      <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
+      <div className="overflow-hidden rounded-lg border border-line bg-surface shadow-sm">
         <div className="divide-y divide-line">
           <section className="px-4 py-4 sm:px-6">
             <h2 className="text-sm font-semibold text-ink">테마</h2>

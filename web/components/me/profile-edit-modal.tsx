@@ -119,7 +119,7 @@ export function ProfileEditModal({
         onClick={onClose}
       />
       <div
-        className="relative flex w-full max-w-md flex-col rounded-t-2xl bg-surface shadow-xl sm:rounded-2xl"
+        className="relative flex w-full max-w-md flex-col rounded-t-lg bg-surface shadow-xl sm:rounded-lg"
         role="dialog"
         aria-modal="true"
       >
@@ -143,7 +143,7 @@ export function ProfileEditModal({
           ) : null}
 
           <div className="flex items-center gap-4">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#fff4d2] text-2xl font-bold text-[#5c4d2c]">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#fff4d2] text-2xl font-bold text-[#5c4d2c]">
               {imageUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={imageUrl} alt="" className="h-full w-full object-cover" />
@@ -166,7 +166,7 @@ export function ProfileEditModal({
                 type="button"
                 disabled={uploading || pending}
                 onClick={() => fileRef.current?.click()}
-                className="rounded-xl border border-line bg-bg px-3 py-2 text-sm font-medium text-ink transition hover:bg-accent-soft disabled:opacity-50"
+                className="rounded-md border border-line bg-bg px-3 py-2 text-sm font-medium text-ink transition hover:bg-accent-soft disabled:opacity-50"
               >
                 {uploading ? "올리는 중…" : "사진 변경"}
               </button>
@@ -175,7 +175,7 @@ export function ProfileEditModal({
                   type="button"
                   disabled={pending}
                   onClick={() => setImageUrl(null)}
-                  className="rounded-xl px-3 py-1 text-xs text-muted hover:text-ink"
+                  className="rounded-md px-3 py-1 text-xs text-muted hover:text-ink"
                 >
                   사진 제거
                 </button>
@@ -193,7 +193,7 @@ export function ProfileEditModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={40}
-              className="mt-1 w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
+              className="mt-1 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
             />
           </div>
         </div>

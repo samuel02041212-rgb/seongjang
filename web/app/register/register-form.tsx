@@ -107,7 +107,7 @@ export function RegisterForm() {
   }
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-6 shadow-sm sm:p-8">
+    <div className="w-full max-w-md rounded-lg border border-line bg-surface p-6 shadow-sm sm:p-8">
       <h1 className="font-display text-xl text-ink">회원가입</h1>
       <p className="mt-1 text-sm text-muted">
         가입 후에는 이메일과 비밀번호로 로그인합니다. 운영 정책에 따라 승인 후
@@ -132,7 +132,7 @@ export function RegisterForm() {
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
+            className="mt-1 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
           />
         </div>
         <fieldset>
@@ -176,7 +176,7 @@ export function RegisterForm() {
               required
               value={birthYear}
               onChange={(e) => setBirthYear(e.target.value)}
-              className="min-w-[5.5rem] flex-1 rounded-xl border border-line bg-bg px-2 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2 sm:flex-none sm:min-w-[6.5rem]"
+              className="min-w-[5.5rem] flex-1 rounded-md border border-line bg-bg px-2 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2 sm:flex-none sm:min-w-[6.5rem]"
             >
               <option value="">년</option>
               {yearOptions.map((y) => (
@@ -191,7 +191,7 @@ export function RegisterForm() {
               required
               value={birthMonth}
               onChange={(e) => setBirthMonth(e.target.value)}
-              className="min-w-[4.5rem] flex-1 rounded-xl border border-line bg-bg px-2 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2 sm:flex-none"
+              className="min-w-[4.5rem] flex-1 rounded-md border border-line bg-bg px-2 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2 sm:flex-none"
             >
               <option value="">월</option>
               {Array.from({ length: 12 }, (_, i) => String(i + 1)).map((m) => (
@@ -206,7 +206,7 @@ export function RegisterForm() {
               required
               value={birthDay}
               onChange={(e) => setBirthDay(e.target.value)}
-              className="min-w-[4.5rem] flex-1 rounded-xl border border-line bg-bg px-2 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2 sm:flex-none"
+              className="min-w-[4.5rem] flex-1 rounded-md border border-line bg-bg px-2 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2 sm:flex-none"
             >
               <option value="">일</option>
               {dayOptions.map((d) => (
@@ -234,7 +234,7 @@ export function RegisterForm() {
             value={church}
             onChange={(e) => setChurch(e.target.value)}
             placeholder="예: ○○교회"
-            className="mt-1 w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
+            className="mt-1 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
           />
         </div>
         <div>
@@ -249,7 +249,7 @@ export function RegisterForm() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
+            className="mt-1 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
           />
         </div>
         <div>
@@ -265,7 +265,7 @@ export function RegisterForm() {
             minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
+            className="mt-1 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
           />
         </div>
         <div>
@@ -279,13 +279,13 @@ export function RegisterForm() {
             value={signupSource}
             onChange={(e) => setSignupSource(e.target.value)}
             placeholder="예: 지인 소개, 검색 등"
-            className="mt-1 w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
+            className="mt-1 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
           />
         </div>
         <button
           type="submit"
           disabled={pending}
-          className="w-full rounded-xl bg-accent py-3 text-sm font-semibold text-accent-foreground shadow-sm transition hover:bg-accent/90 disabled:opacity-60"
+          className="w-full rounded-md bg-accent py-3 text-sm font-semibold text-accent-foreground shadow-sm transition hover:bg-accent/90 disabled:opacity-60"
         >
           {pending ? "처리 중…" : "가입하기"}
         </button>

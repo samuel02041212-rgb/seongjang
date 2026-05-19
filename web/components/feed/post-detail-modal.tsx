@@ -16,6 +16,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { FeedPostImages } from "./feed-post-images";
 import { ImageViewerModal } from "./image-viewer-modal";
 
 type CommentItem = {
@@ -49,10 +50,12 @@ export function PostDetailModal({
   const [submitting, setSubmitting] = useState(false);
   const [imgIdx, setImgIdx] = useState(0);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
 
   useEffect(() => {
     setImgIdx(0);
     setViewerOpen(false);
+    setCommentsOpen(false);
   }, [post?.id]);
 
   const loadComments = useCallback(async (postId: string) => {
@@ -114,13 +117,18 @@ export function PostDetailModal({
   if (!open || !post) return null;
 
   const isSide = variant === "side";
+  const commentCountLabel = previewMode
+    ? post.commentCount
+    : loading
+      ? "…"
+      : comments.length;
 
   const panel = (
     <div
       className={
         isSide
           ? "fixed right-0 top-[var(--app-header-height)] bottom-0 flex w-[min(90.25vw,45.6rem)] flex-col overflow-hidden border-l border-t border-line bg-surface shadow-xl"
-          : "relative flex aspect-video w-[min(95vw,calc(95vh*16/9),80rem)] flex-col overflow-hidden rounded-2xl bg-surface shadow-xl"
+          : "relative flex aspect-video w-[min(95vw,calc(95vh*16/9),80rem)] flex-col overflow-hidden rounded-lg bg-surface shadow-xl"
       }
       role="dialog"
       aria-modal={isSide ? undefined : "true"}
@@ -158,13 +166,6 @@ export function PostDetailModal({
                 {post.title ? (
                   <h3 className={feedPostTitleClass}>{post.title}</h3>
                 ) : null}
-                {post.bibleRef ? (
-                  <p
-                    className={`${feedPostBibleRefClass} ${post.title ? "mt-1" : ""}`}
-                  >
-                    {post.bibleRef}
-                  </p>
-                ) : null}
               </div>
               {post.authorName || post.authorChurch ? (
                 <span className="max-w-[45%] shrink-0 truncate text-right text-xs text-muted">
@@ -173,6 +174,24 @@ export function PostDetailModal({
                 </span>
               ) : null}
             </div>
+            <div
+              className={`flex items-baseline justify-between gap-x-3 ${post.title || post.bibleRef ? "mt-1" : ""}`}
+            >
+              {post.bibleRef ? (
+                <p className={`min-w-0 flex-1 ${feedPostBibleRefClass}`}>
+                  {post.bibleRef}
+                </p>
+              ) : (
+                <span className="min-w-0 flex-1" aria-hidden />
+              )}
+              <time
+                className="shrink-0 text-right text-xs text-muted whitespace-nowrap"
+                dateTime={post.createdAt}
+              >
+                {formatFeedRelativeTime(post.createdAt)} ·{" "}
+                {new Date(post.createdAt).toLocaleString("ko-KR")}
+              </time>
+            </div>
             {post.visibleGroupLabel ? (
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 <span className="inline-flex max-w-full items-center rounded-md border border-line bg-bg px-2 py-0.5 text-[11px] font-medium text-muted">
@@ -180,62 +199,14 @@ export function PostDetailModal({
                 </span>
               </div>
             ) : null}
-            <time
-              className="mt-1 block text-xs text-muted"
-              dateTime={post.createdAt}
-            >
-              {formatFeedRelativeTime(post.createdAt)} ·{" "}
-              {new Date(post.createdAt).toLocaleString("ko-KR")}
-            </time>
 
-          {post.imageUrls.length > 0 ? (
-            <div className="relative mt-4 h-64 overflow-hidden rounded-xl border border-line bg-bg">
-              <button
-                type="button"
-                onClick={() => setViewerOpen(true)}
-                aria-label="이미지 크게 보기"
-                className="block h-full w-full cursor-zoom-in"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={post.imageUrls[imgIdx]}
-                  alt=""
-                  className="h-full w-full object-contain"
-                />
-              </button>
-              {post.imageUrls.length > 1 ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setImgIdx(
-                        (i) =>
-                          (i - 1 + post.imageUrls.length) %
-                          post.imageUrls.length,
-                      )
-                    }
-                    aria-label="이전 이미지"
-                    className="absolute left-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-lg font-bold text-white hover:bg-black/70"
-                  >
-                    ‹
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setImgIdx((i) => (i + 1) % post.imageUrls.length)
-                    }
-                    aria-label="다음 이미지"
-                    className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-lg font-bold text-white hover:bg-black/70"
-                  >
-                    ›
-                  </button>
-                  <span className="absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-xs font-semibold text-white">
-                    {imgIdx + 1} / {post.imageUrls.length}
-                  </span>
-                </>
-              ) : null}
-            </div>
-          ) : null}
+          <FeedPostImages
+            urls={post.imageUrls}
+            large={false}
+            index={imgIdx}
+            onIndexChange={setImgIdx}
+            onImageClick={() => setViewerOpen(true)}
+          />
 
           <div className={feedPostBodyAreaClass}>
             <p className={feedPostBodyTextClass}>{post.content}</p>
@@ -246,70 +217,84 @@ export function PostDetailModal({
 
         <div
           className={`flex min-w-0 shrink-0 flex-col overflow-x-hidden bg-bg ${
-            isSide
-              ? "h-[22.5rem] border-t border-line"
-              : "w-[22rem] border-l border-line"
+            isSide ? "border-t border-line" : "w-[22rem] border-l border-line"
           }`}
         >
-          <div className="border-b border-line px-4 py-2 text-sm font-semibold text-ink">
-            댓글{" "}
-            {previewMode
-              ? post.commentCount
-              : loading
-                ? "…"
-                : comments.length}
-            개
-          </div>
-
-          {previewMode ? (
-            <p className="px-4 py-3 text-sm text-muted">
-              미리보기 모드에서는 댓글 목록·작성이 비활성화됩니다.
-            </p>
+          {isSide ? (
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-2 border-b border-line bg-surface px-4 py-2.5 text-sm font-semibold text-ink hover:bg-accent-soft/50"
+              aria-expanded={commentsOpen}
+              onClick={() => setCommentsOpen((o) => !o)}
+            >
+              <span>댓글 {commentCountLabel}개</span>
+              <span className="text-muted" aria-hidden>
+                {commentsOpen ? "▼" : "▲"}
+              </span>
+            </button>
           ) : (
-            <>
-              <ul className="min-h-0 min-w-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden px-4 py-3">
-                {!loading &&
-                  comments.map((c) => (
-                    <li key={c.id} className="max-w-full min-w-0 text-sm">
-                      <span className="font-medium text-ink break-words">
-                        {c.authorName}
-                      </span>
-                      <span className="ml-2 text-xs text-muted break-words">
-                        {new Date(c.createdAt).toLocaleString("ko-KR")}
-                      </span>
-                      <p className="mt-1 whitespace-pre-wrap break-words font-emotional text-muted">
-                        {c.content}
-                      </p>
-                    </li>
-                  ))}
-                {!loading && comments.length === 0 ? (
-                  <li className="text-sm text-muted">아직 댓글이 없어요.</li>
-                ) : null}
-              </ul>
+            <div className="border-b border-line px-4 py-2 text-sm font-semibold text-ink">
+              댓글 {commentCountLabel}개
+            </div>
+          )}
 
-              <div className="flex min-w-0 gap-2 border-t border-line bg-surface px-3 py-2">
-                <textarea
-                  ref={textareaRef}
-                  placeholder="댓글을 입력하세요"
-                  rows={2}
-                  className="min-h-0 min-w-0 flex-1 resize-none overflow-x-hidden break-words rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      void submitComment();
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  disabled={submitting}
-                  className="shrink-0 self-end rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
-                  onClick={() => void submitComment()}
-                >
-                  등록
-                </button>
-              </div>
-            </>
+          {(!isSide || commentsOpen) && (
+            <div
+              className={`flex min-h-0 flex-col overflow-hidden ${
+                isSide ? "h-[22.5rem]" : "min-h-0 flex-1"
+              }`}
+            >
+              {previewMode ? (
+                <p className="px-4 py-3 text-sm text-muted">
+                  미리보기 모드에서는 댓글 목록·작성이 비활성화됩니다.
+                </p>
+              ) : (
+                <>
+                  <ul className="min-h-0 min-w-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden px-4 py-3">
+                    {!loading &&
+                      comments.map((c) => (
+                        <li key={c.id} className="max-w-full min-w-0 text-sm">
+                          <span className="font-medium text-ink break-words">
+                            {c.authorName}
+                          </span>
+                          <span className="ml-2 text-xs text-muted break-words">
+                            {new Date(c.createdAt).toLocaleString("ko-KR")}
+                          </span>
+                          <p className="mt-1 whitespace-pre-wrap break-words font-emotional text-muted">
+                            {c.content}
+                          </p>
+                        </li>
+                      ))}
+                    {!loading && comments.length === 0 ? (
+                      <li className="text-sm text-muted">아직 댓글이 없어요.</li>
+                    ) : null}
+                  </ul>
+
+                  <div className="flex min-w-0 gap-2 border-t border-line bg-surface px-3 py-2">
+                    <textarea
+                      ref={textareaRef}
+                      placeholder="댓글을 입력하세요"
+                      rows={2}
+                      className="min-h-0 min-w-0 flex-1 resize-none overflow-x-hidden break-words rounded-md border border-line bg-bg px-3 py-2 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          void submitComment();
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      disabled={submitting}
+                      className="shrink-0 self-end rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground disabled:opacity-50"
+                      onClick={() => void submitComment()}
+                    >
+                      등록
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </div>
         </div>

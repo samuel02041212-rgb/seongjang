@@ -41,7 +41,7 @@ export function LoginForm({
   }
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-6 shadow-sm sm:p-8">
+    <div className="w-full max-w-md rounded-lg border border-line bg-surface p-6 shadow-sm sm:p-8">
       <h1 className="font-display text-xl text-ink">로그인</h1>
       <p className="mt-1 text-sm text-muted">
         성경나눔장소에 오신 것을 환영합니다.
@@ -72,7 +72,7 @@ export function LoginForm({
             value={loginId}
             onChange={(e) => setLoginId(e.target.value)}
             placeholder="가입 시 이메일"
-            className="mt-1 w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
+            className="mt-1 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
           />
         </div>
         <div>
@@ -87,13 +87,13 @@ export function LoginForm({
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
+            className="mt-1 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
           />
         </div>
         <button
           type="submit"
           disabled={pending}
-          className="w-full rounded-xl bg-accent py-3 text-sm font-semibold text-accent-foreground shadow-sm transition hover:bg-accent/90 disabled:opacity-60"
+          className="w-full rounded-md bg-accent py-3 text-sm font-semibold text-accent-foreground shadow-sm transition hover:bg-accent/90 disabled:opacity-60"
         >
           {pending ? "확인 중…" : "로그인"}
         </button>

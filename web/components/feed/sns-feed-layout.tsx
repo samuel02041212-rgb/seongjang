@@ -6,6 +6,8 @@ import { signOut } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useChatPanel } from "@/components/chat/chat-dock";
+import { AppHeaderCenter } from "@/components/shell/app-header-center";
+import { FeedBrowseProvider } from "@/components/shell/feed-browse-context";
 import { appHeaderRowClassName, appHeaderShellClass } from "@/components/shell/app-header-classes";
 import { HeaderLogoGlyph } from "@/components/shell/header-logo-glyph";
 import { useTheme } from "@/lib/theme";
@@ -172,6 +174,7 @@ export function SnsFeedLayout({
   }, [isAdmin]);
 
   return (
+    <FeedBrowseProvider>
     <div className="relative min-h-screen bg-bg pb-24 pt-[var(--app-header-height)]">
       <header
         className={`fixed inset-x-0 top-0 z-40 ${appHeaderShellClass}`}
@@ -184,12 +187,7 @@ export function SnsFeedLayout({
           >
             <HeaderLogoGlyph />
           </Link>
-          <p
-            lang="en"
-            className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap px-2 text-center font-handwriting text-sm tracking-wide text-muted sm:text-base md:text-lg"
-          >
-            &ldquo;Thy word is a lamp unto my feet, and a light unto my path.&rdquo;
-          </p>
+          <AppHeaderCenter />
           <div className="relative z-10 flex shrink-0 items-center gap-2">
             <button
               type="button"
@@ -305,7 +303,7 @@ export function SnsFeedLayout({
 
           {profileOpen ? (
             <div
-              className="absolute bottom-[calc(100%+8px)] left-2 z-50 w-52 overflow-hidden rounded-2xl border border-line bg-surface py-1.5 shadow-lg"
+              className="absolute bottom-[calc(100%+8px)] left-2 z-50 w-52 overflow-hidden rounded-lg border border-line bg-surface py-1.5 shadow-lg"
               role="menu"
             >
               {isAuthenticated ? (
@@ -372,10 +370,11 @@ export function SnsFeedLayout({
       </aside>
 
       <main
-        className={`mx-auto w-full px-3 pt-[40px] sm:px-4 lg:pl-20 ${mainMaxWidth}`}
+        className={`mx-auto w-full px-3 pt-[15px] sm:px-4 lg:pl-20 ${mainMaxWidth}`}
       >
         {children}
       </main>
     </div>
+    </FeedBrowseProvider>
   );
 }

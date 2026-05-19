@@ -49,10 +49,11 @@ export async function GET(req: Request) {
 }
 
 const createBody = z.object({
-  title: z.string().optional().default(""),
+  title: z.string().trim().min(1),
   content: z.string().min(1, "내용을 입력해 주세요."),
-  bibleRef: z.string().optional().default(""),
+  bibleRef: z.string().trim().min(1),
   imageUrls: z.array(z.string().min(1)).max(20).optional().default([]),
+  imagesLarge: z.boolean().optional().default(false),
   visibleGroupIds: z.array(z.string()).optional().default([]),
 });
 
@@ -89,6 +90,7 @@ export async function POST(req: Request) {
         content: parsed.data.content,
         bibleRef: parsed.data.bibleRef,
         imageUrls: parsed.data.imageUrls,
+        imagesLarge: parsed.data.imagesLarge,
         visibleGroupIds: parsed.data.visibleGroupIds,
       },
     });

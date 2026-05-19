@@ -14,7 +14,7 @@ export function GroupRoomClient({
 
   return (
     <>
-      <div className="mb-4 rounded-2xl border border-line bg-surface p-4 shadow-sm">
+      <div className="mb-4 rounded-lg border border-line bg-surface p-4 shadow-sm">
         <p className="text-xs font-medium uppercase tracking-wide text-muted">
           소그룹 방
         </p>
@@ -27,7 +27,7 @@ export function GroupRoomClient({
         </Link>
       </div>
 
-      <div className="flex gap-1 rounded-xl border border-line bg-surface p-1 shadow-sm">
+      <div className="flex gap-1 rounded-lg border border-line bg-surface p-1 shadow-sm">
         {(
           [
             ["feed", "피드"],
@@ -50,7 +50,7 @@ export function GroupRoomClient({
         ))}
       </div>
 
-      <div className="mt-4 min-h-[240px] rounded-2xl border border-dashed border-line bg-bg p-8 text-center">
+      <div className="mt-4 min-h-[240px] rounded-lg border border-dashed border-line bg-bg p-8 text-center">
         {tab === "feed" && (
           <>
             <p className="text-sm font-medium text-ink">그룹 전용 피드</p>

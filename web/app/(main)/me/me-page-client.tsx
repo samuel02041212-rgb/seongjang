@@ -122,10 +122,10 @@ export function MePageClient() {
   }, []);
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
+    <section className="overflow-hidden rounded-lg border border-line bg-surface shadow-sm">
       <div className="border-b border-line p-4 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#fff4d2] text-2xl font-bold text-[#5c4d2c]">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#fff4d2] text-2xl font-bold text-[#5c4d2c]">
             {avatarImage ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -220,7 +220,7 @@ export function MePageClient() {
         </div>
       ) : (
         <div className="p-6">
-          <div className="rounded-xl border border-dashed border-line bg-bg p-8 text-center">
+          <div className="rounded-md border border-dashed border-line bg-bg p-8 text-center">
             <p className="text-sm font-medium text-ink">일정 달력</p>
             <p className="mt-2 text-xs text-muted">
               관리자 일정·내 일정은 API 연결 후 표시됩니다.

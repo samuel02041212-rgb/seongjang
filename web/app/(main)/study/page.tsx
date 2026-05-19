@@ -11,13 +11,13 @@ export const metadata: Metadata = {
 export default function StudyPage() {
   return (
     <SubPageLayout title="말씀연구">
-      <div className="rounded-2xl border border-line bg-surface p-8 text-center shadow-sm">
+      <div className="rounded-lg border border-line bg-surface p-8 text-center shadow-sm">
         <p className="font-display text-lg text-ink">coming soon</p>
         <p className="mt-3 font-emotional text-sm text-muted">
           레거시와 같이 말씀연구 전용 화면을 단계적으로 붙입니다.
         </p>
       </div>
-      <ul className="mt-6 space-y-3 rounded-2xl border border-line bg-surface p-6 text-sm text-muted">
+      <ul className="mt-6 space-y-3 rounded-lg border border-line bg-surface p-6 text-sm text-muted">
         <li className="flex gap-2">
           <span className="text-accent" aria-hidden>
             ·

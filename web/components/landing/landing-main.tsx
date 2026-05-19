@@ -45,8 +45,8 @@ export function LandingMain() {
         className={`grid w-full items-start gap-4 pb-8 sm:gap-5 lg:grid-cols-[minmax(0,2.24fr)_minmax(0,0.85fr)] lg:items-stretch lg:gap-6 ${padX}`}
       >
         <div className="relative min-w-0 w-[195%] -ml-[47.5%] lg:ml-0 lg:w-full">
-          <div className="rounded-xl bg-gradient-to-br from-accent/40 via-line to-accent/20 p-[2px] shadow-[0_1px_3px_rgba(0,0,0,0.06)] dark:from-accent/25 dark:via-line dark:to-accent/10">
-            <div className="overflow-hidden rounded-[10px] bg-surface">
+          <div className="rounded-none bg-gradient-to-br from-accent/40 via-line to-accent/20 p-[2px] shadow-[0_1px_3px_rgba(0,0,0,0.06)] dark:from-accent/25 dark:via-line dark:to-accent/10">
+            <div className="overflow-hidden rounded-none bg-surface">
               <Image
                 src="/images/landing-group.png"
                 alt="성경나눔장소 모임 사진"

@@ -1,22 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { feedCardSizeClass } from "@/lib/feed-card-layout";
 import {
-  feedPostBodyAreaClass,
-  feedPostBodyInputClass,
+  feedPostBodyTextClass,
   feedPostBibleRefClass,
   feedPostFooterClass,
   feedPostImageRowClass,
   feedPostInnerClass,
-  feedPostPadXClass,
   feedPostTitleClass,
 } from "@/lib/feed-post-body-layout";
+import { FeedPostImages } from "@/components/feed/feed-post-images";
 import { resizeImage } from "@/lib/image-resize";
 
 const MAX_IMAGES = 20;
+const COMPOSER_BODY_MIN_PX = 192;
 
 type FeedComposerProps = {
   isAuthenticated: boolean;
@@ -35,17 +35,32 @@ export function FeedComposer({
   const [content, setContent] = useState("");
   const [bibleRef, setBibleRef] = useState("");
   const [images, setImages] = useState<PendingImg[]>([]);
+  const [imagesLarge, setImagesLarge] = useState(false);
+  const [previewIdx, setPreviewIdx] = useState(0);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
   const imagesRef = useRef(images);
   imagesRef.current = images;
+
+  function syncBodyHeight() {
+    const el = bodyRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.max(el.scrollHeight, COMPOSER_BODY_MIN_PX)}px`;
+  }
 
   useEffect(() => {
     return () => {
       imagesRef.current.forEach((p) => URL.revokeObjectURL(p.previewUrl));
     };
   }, []);
+
+  useLayoutEffect(() => {
+    if (!matchPostCard) return;
+    syncBodyHeight();
+  }, [matchPostCard, content, images.length, imagesLarge, previewIdx]);
 
   function addFiles(list: FileList | null) {
     if (!list?.length) return;
@@ -69,13 +84,29 @@ export function FeedComposer({
       if (removed) URL.revokeObjectURL(removed.previewUrl);
       return copy;
     });
+    setPreviewIdx((i) => Math.max(0, i - 1));
   }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!content.trim()) return;
-    setPending(true);
     setError("");
+    if (matchPostCard) {
+      if (!title.trim()) {
+        setError("제목을 입력해 주세요.");
+        return;
+      }
+      if (!bibleRef.trim()) {
+        setError("성경 구절을 입력해 주세요.");
+        return;
+      }
+      if (!content.trim()) {
+        setError("본문을 입력해 주세요.");
+        return;
+      }
+    } else if (!content.trim()) {
+      return;
+    }
+    setPending(true);
     try {
       const imageUrls: string[] = [];
       for (const { file } of images) {
@@ -124,6 +155,7 @@ export function FeedComposer({
           content,
           bibleRef: bibleRef.trim(),
           imageUrls,
+          imagesLarge: imagesLarge && imageUrls.length > 0,
           visibleGroupIds: [],
         }),
       });
@@ -133,6 +165,8 @@ export function FeedComposer({
       }
       images.forEach((p) => URL.revokeObjectURL(p.previewUrl));
       setImages([]);
+      setImagesLarge(false);
+      setPreviewIdx(0);
       setTitle("");
       setContent("");
       setBibleRef("");
@@ -146,7 +180,7 @@ export function FeedComposer({
 
   if (!isAuthenticated) {
     return (
-      <div className="mb-4 rounded-2xl border border-dashed border-line bg-surface/80 px-4 py-6 text-center text-sm text-muted">
+      <div className="mb-4 rounded-lg border border-dashed border-line bg-surface/80 px-4 py-6 text-center text-sm text-muted">
         글을 작성하려면{" "}
         <Link
           href="/login"
@@ -160,36 +194,61 @@ export function FeedComposer({
   }
 
   const fieldClass =
-    "w-full shrink-0 rounded-xl border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted outline-none ring-accent/30 focus:ring-2";
+    "w-full shrink-0 rounded-md border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted outline-none ring-accent/30 focus:ring-2";
+
+  const composerScrollClass =
+    "mt-5 min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain pb-3";
+  const composerTextareaClass = `${feedPostBodyTextClass} block w-full resize-none overflow-hidden border-0 bg-transparent p-0 outline-none placeholder:text-muted focus:ring-0`;
 
   if (matchPostCard) {
     return (
       <form
         onSubmit={onSubmit}
-        className={`feed-post-card flex flex-col overflow-hidden rounded-[10px] border border-line bg-surface shadow-sm ${feedCardSizeClass}`}
+        className={`feed-post-card flex flex-col overflow-hidden rounded-md border border-line bg-surface shadow-sm ${feedCardSizeClass}`}
       >
-        {error ? (
-          <p className={`shrink-0 text-sm text-red-700 ${feedPostPadXClass} pt-3`}>
-            {error}
-          </p>
-        ) : null}
-        <div className={feedPostInnerClass}>
-          <input
-            type="text"
-            placeholder="제목 (선택)"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className={`${feedPostTitleClass} w-full shrink-0 border-0 bg-transparent p-0 outline-none placeholder:text-muted focus:ring-0`}
-          />
-          <input
-            type="text"
-            placeholder="성경 구절 (선택, 예: 시편 23:1)"
-            value={bibleRef}
-            onChange={(e) => setBibleRef(e.target.value)}
-            className={`w-full shrink-0 border-0 bg-transparent p-0 outline-none placeholder:text-muted focus:ring-0 ${feedPostBibleRefClass} ${title ? "mt-1" : ""}`}
-          />
-          {images.length > 0 ? (
-            <div className={feedPostImageRowClass}>
+        <div className={`${feedPostInnerClass} pb-0`}>
+          <div className="shrink-0">
+            <input
+              type="text"
+              placeholder="제목"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className={`${feedPostTitleClass} w-full shrink-0 border-0 bg-transparent p-0 outline-none placeholder:text-muted focus:ring-0`}
+            />
+            <input
+              type="text"
+              placeholder="성경 구절 (예: 시편 23:1)"
+              value={bibleRef}
+              onChange={(e) => setBibleRef(e.target.value)}
+              className={`w-full shrink-0 border-0 bg-transparent p-0 outline-none placeholder:text-muted focus:ring-0 ${feedPostBibleRefClass} ${title ? "mt-1" : ""}`}
+            />
+          </div>
+          <div className={composerScrollClass}>
+            {images.length > 0 ? (
+            imagesLarge ? (
+                <div className="relative">
+                <FeedPostImages
+                  urls={images.map((img) => img.previewUrl)}
+                  large
+                  edgeBleed={false}
+                  index={previewIdx}
+                  onIndexChange={setPreviewIdx}
+                />
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeAt(previewIdx);
+                  }}
+                  className="absolute right-1 top-1 z-30 flex h-7 w-7 items-center justify-center rounded-full bg-[#1a1a1a]/75 text-sm font-bold text-white"
+                  aria-label="이미지 제거"
+                >
+                  ×
+                </button>
+              </div>
+              ) : (
+                <div className={feedPostImageRowClass}>
               {images.slice(0, 4).map((img, i) => (
                 <div
                   key={`${img.previewUrl}-${i}`}
@@ -218,15 +277,18 @@ export function FeedComposer({
                   )}
                 </div>
               ))}
-            </div>
-          ) : null}
-          <div className={feedPostBodyAreaClass}>
+                </div>
+              )
+            ) : null}
             <textarea
+              ref={bodyRef}
               placeholder="무엇을 나누고 싶나요?"
-              required
               value={content}
-              onChange={(e) => setContent(e.target.value)}
-              className={feedPostBodyInputClass}
+              onChange={(e) => {
+                setContent(e.target.value);
+                syncBodyHeight();
+              }}
+              className={composerTextareaClass}
             />
           </div>
         </div>
@@ -239,23 +301,48 @@ export function FeedComposer({
           onChange={(e) => addFiles(e.target.files)}
         />
         <div className={`${feedPostFooterClass} flex-wrap`}>
-          <button
-            type="button"
-            disabled={images.length >= MAX_IMAGES || pending}
-            onClick={() => fileRef.current?.click()}
-            className="text-sm font-medium text-muted transition hover:text-ink disabled:opacity-50"
-          >
-            사진 추가
-            {images.length > 0 ? ` (${images.length}/${MAX_IMAGES})` : ""}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={images.length >= MAX_IMAGES || pending}
+              onClick={() => fileRef.current?.click()}
+              className="text-sm font-medium text-muted transition hover:text-ink disabled:opacity-50"
+            >
+              사진 추가
+              {images.length > 0 ? ` (${images.length}/${MAX_IMAGES})` : ""}
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => setImagesLarge((v) => !v)}
+              aria-pressed={imagesLarge}
+              aria-label="사진 크게 올리기"
+              title="사진 크게 올리기 (3:4)"
+              className={`text-[1.35rem] leading-none transition ${
+                imagesLarge ? "opacity-100" : "opacity-35 hover:opacity-70"
+              }`}
+            >
+              🖼️
+            </button>
+          </div>
           <button
             type="submit"
-            disabled={pending || !content.trim()}
+            disabled={
+              pending ||
+              !title.trim() ||
+              !bibleRef.trim() ||
+              !content.trim()
+            }
             className="rounded-full bg-accent px-5 py-2 text-sm font-semibold text-accent-foreground shadow-sm transition hover:bg-accent/90 disabled:opacity-50"
           >
             {pending ? "올리는 중…" : "게시하기"}
           </button>
         </div>
+        {error ? (
+          <p className="shrink-0 px-4 pb-3 text-center text-sm text-red-700">
+            {error}
+          </p>
+        ) : null}
       </form>
     );
   }
@@ -263,7 +350,7 @@ export function FeedComposer({
   return (
     <form
       onSubmit={onSubmit}
-      className="flex h-full min-h-[28rem] flex-col gap-3 rounded-2xl border border-line bg-surface p-4 shadow-sm"
+      className="flex h-full min-h-[28rem] flex-col gap-3 rounded-lg border border-line bg-surface p-4 shadow-sm"
     >
       {error ? (
         <p className="shrink-0 text-sm text-red-700">{error}</p>
@@ -331,7 +418,7 @@ export function FeedComposer({
           type="button"
           disabled={images.length >= MAX_IMAGES || pending}
           onClick={() => fileRef.current?.click()}
-          className="rounded-xl border border-line bg-bg px-3 py-2 text-sm font-medium text-ink transition hover:bg-accent-soft disabled:opacity-50"
+          className="rounded-md border border-line bg-bg px-3 py-2 text-sm font-medium text-ink transition hover:bg-accent-soft disabled:opacity-50"
         >
           사진 추가
           {images.length > 0 ? ` (${images.length}/${MAX_IMAGES})` : ""}

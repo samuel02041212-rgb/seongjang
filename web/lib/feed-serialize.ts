@@ -9,6 +9,7 @@ export type FeedPostJson = {
   createdAt: string;
   bibleRef: string;
   imageUrls: string[];
+  imagesLarge: boolean;
   likeCount: number;
   isLikedByMe: boolean;
   commentCount: number;
@@ -34,6 +35,7 @@ export function serializeFeedPost(
     createdAt: p.createdAt.toISOString(),
     bibleRef: p.bibleRef ?? "",
     imageUrls: normalizeImageUrls(p.imageUrls),
+    imagesLarge: p.imagesLarge ?? false,
     likeCount: likedBy.length,
     isLikedByMe: likedBy.includes(myUserId),
     commentCount: p._count?.comments ?? 0,

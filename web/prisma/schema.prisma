@@ -38,6 +38,7 @@ model Post {
   title            String   @default("")
   content          String
   imageUrls        String[] @default([])
+  imagesLarge      Boolean  @default(false)
   bibleRef         String   @default("")
   likedBy          String[] @default([])
   visibleGroupIds  String[] @default([])

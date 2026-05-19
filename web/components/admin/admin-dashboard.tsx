@@ -233,19 +233,19 @@ function AdminManagePanel() {
         <p className="lg:col-span-3 text-sm text-red-700">{loadErr}</p>
       ) : null}
 
-      <section className="rounded-2xl border border-line bg-surface p-4 shadow-sm">
+      <section className="rounded-lg border border-line bg-surface p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-ink">사용자</h2>
         <div className="mt-2 flex gap-2">
           <input
             value={userQ}
             onChange={(e) => setUserQ(e.target.value)}
             placeholder="이름/이메일 검색"
-            className="min-w-0 flex-1 rounded-xl border border-line bg-bg px-3 py-2 text-sm"
+            className="min-w-0 flex-1 rounded-md border border-line bg-bg px-3 py-2 text-sm"
           />
           <button
             type="button"
             onClick={() => void loadUsers()}
-            className="shrink-0 rounded-xl border border-line bg-bg px-3 py-2 text-xs font-medium"
+            className="shrink-0 rounded-md border border-line bg-bg px-3 py-2 text-xs font-medium"
           >
             새로고침
           </button>
@@ -257,7 +257,7 @@ function AdminManagePanel() {
             filteredUsers.map((u) => (
               <li
                 key={u._id}
-                className="flex gap-2 rounded-xl border border-line/80 bg-bg/50 p-3"
+                className="flex gap-2 rounded-md border border-line/80 bg-bg/50 p-3"
               >
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-ink">
@@ -289,19 +289,19 @@ function AdminManagePanel() {
         </ul>
       </section>
 
-      <section className="rounded-2xl border border-line bg-surface p-4 shadow-sm">
+      <section className="rounded-lg border border-line bg-surface p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-ink">게시글</h2>
         <div className="mt-2 flex gap-2">
           <input
             value={postQ}
             onChange={(e) => setPostQ(e.target.value)}
             placeholder="작성자/제목/내용 검색"
-            className="min-w-0 flex-1 rounded-xl border border-line bg-bg px-3 py-2 text-sm"
+            className="min-w-0 flex-1 rounded-md border border-line bg-bg px-3 py-2 text-sm"
           />
           <button
             type="button"
             onClick={() => void loadPosts()}
-            className="shrink-0 rounded-xl border border-line bg-bg px-3 py-2 text-xs font-medium"
+            className="shrink-0 rounded-md border border-line bg-bg px-3 py-2 text-xs font-medium"
           >
             새로고침
           </button>
@@ -313,7 +313,7 @@ function AdminManagePanel() {
             filteredPosts.map((p) => (
               <li
                 key={p._id}
-                className="rounded-xl border border-line/80 bg-bg/50 p-3"
+                className="rounded-md border border-line/80 bg-bg/50 p-3"
               >
                 <div className="flex justify-between gap-2">
                   <span className="font-medium text-ink">
@@ -346,7 +346,7 @@ function AdminManagePanel() {
         </ul>
       </section>
 
-      <section className="rounded-2xl border border-line bg-surface p-4 shadow-sm">
+      <section className="rounded-lg border border-line bg-surface p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-ink">회원가입 요청</h2>
         <div className="mt-2 flex items-center gap-2">
           <span className="rounded-full bg-accent-soft px-3 py-1 text-xs font-medium">
@@ -355,7 +355,7 @@ function AdminManagePanel() {
           <button
             type="button"
             onClick={() => void loadPending()}
-            className="rounded-xl border border-line bg-bg px-3 py-2 text-xs font-medium"
+            className="rounded-md border border-line bg-bg px-3 py-2 text-xs font-medium"
           >
             새로고침
           </button>
@@ -367,7 +367,7 @@ function AdminManagePanel() {
             pending.map((u) => (
               <li
                 key={u._id}
-                className="flex gap-2 rounded-xl border border-line/80 bg-bg/50 p-3"
+                className="flex gap-2 rounded-md border border-line/80 bg-bg/50 p-3"
               >
                 <div className="min-w-0 flex-1">
                   <div className="font-medium">{u.username}</div>
@@ -419,7 +419,7 @@ function AdminGroupPanel() {
   }, []);
 
   return (
-    <section className="rounded-2xl border border-line bg-surface p-4 shadow-sm">
+    <section className="rounded-lg border border-line bg-surface p-4 shadow-sm">
       <h2 className="text-sm font-semibold text-ink">소그룹 개설 요청</h2>
       <div className="mt-2 flex gap-2">
         <span className="rounded-full bg-accent-soft px-3 py-1 text-xs">
@@ -428,7 +428,7 @@ function AdminGroupPanel() {
         <button
           type="button"
           onClick={() => void load()}
-          className="rounded-xl border border-line bg-bg px-3 py-2 text-xs"
+          className="rounded-md border border-line bg-bg px-3 py-2 text-xs"
         >
           새로고침
         </button>
@@ -446,7 +446,7 @@ function AdminGroupPanel() {
       ) : (
         <ul className="mt-4 space-y-2">
           {list.map((r) => (
-            <li key={r._id} className="rounded-xl border border-line p-3">
+            <li key={r._id} className="rounded-md border border-line p-3">
               {r.name}
             </li>
           ))}
@@ -613,7 +613,7 @@ function AdminSchedulePanel() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <section className="rounded-2xl border border-line bg-surface p-4 shadow-sm">
+      <section className="rounded-lg border border-line bg-surface p-4 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -704,7 +704,7 @@ function AdminSchedulePanel() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-line bg-surface shadow-sm">
+      <section className="rounded-lg border border-line bg-surface shadow-sm">
         <h2 className="border-b border-line px-4 py-3 text-sm font-semibold">
           선택한 날짜 일정 · {fmtYMD(selected)} ({dayList.length}개)
         </h2>
@@ -720,7 +720,7 @@ function AdminSchedulePanel() {
                 return (
                   <li
                     key={ev._id}
-                    className="flex items-start justify-between gap-2 rounded-xl border border-line/80 bg-bg/50 p-3"
+                    className="flex items-start justify-between gap-2 rounded-md border border-line/80 bg-bg/50 p-3"
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -760,7 +760,7 @@ function AdminSchedulePanel() {
 
       {modal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-line bg-surface p-5 shadow-xl">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg border border-line bg-surface p-5 shadow-xl">
             <h3 className="text-base font-semibold">공용 일정</h3>
             <label className="mt-3 block text-xs font-medium text-muted">
               제목
@@ -768,7 +768,7 @@ function AdminSchedulePanel() {
             <input
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              className="mt-1 w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-md border border-line bg-bg px-3 py-2 text-sm"
             />
             <label className="mt-3 block text-xs font-medium text-muted">
               색상
@@ -777,7 +777,7 @@ function AdminSchedulePanel() {
               type="color"
               value={form.color}
               onChange={(e) => setForm((f) => ({ ...f, color: e.target.value }))}
-              className="mt-1 h-10 w-full rounded-xl border border-line"
+              className="mt-1 h-10 w-full rounded-md border border-line"
             />
             <label className="mt-2 flex items-center gap-2 text-sm">
               <input
@@ -798,7 +798,7 @@ function AdminSchedulePanel() {
                   onChange={(e) =>
                     setForm((f) => ({ ...f, start: e.target.value }))
                   }
-                  className="mt-1 w-full rounded-xl border border-line bg-bg px-2 py-2 text-sm"
+                  className="mt-1 w-full rounded-md border border-line bg-bg px-2 py-2 text-sm"
                 />
               </div>
               <div>
@@ -809,7 +809,7 @@ function AdminSchedulePanel() {
                   onChange={(e) =>
                     setForm((f) => ({ ...f, end: e.target.value }))
                   }
-                  className="mt-1 w-full rounded-xl border border-line bg-bg px-2 py-2 text-sm"
+                  className="mt-1 w-full rounded-md border border-line bg-bg px-2 py-2 text-sm"
                 />
               </div>
             </div>
@@ -820,14 +820,14 @@ function AdminSchedulePanel() {
                 setForm((f) => ({ ...f, description: e.target.value }))
               }
               rows={3}
-              className="mt-1 w-full rounded-xl border border-line bg-bg px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-md border border-line bg-bg px-3 py-2 text-sm"
             />
             <div className="mt-4 flex justify-between gap-2">
               {modal.mode === "edit" ? (
                 <button
                   type="button"
                   onClick={() => void deleteModal()}
-                  className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+                  className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
                 >
                   삭제
                 </button>
@@ -838,14 +838,14 @@ function AdminSchedulePanel() {
                 <button
                   type="button"
                   onClick={() => setModal(null)}
-                  className="rounded-xl border border-line px-3 py-2 text-sm"
+                  className="rounded-md border border-line px-3 py-2 text-sm"
                 >
                   취소
                 </button>
                 <button
                   type="button"
                   onClick={() => void saveModal()}
-                  className="rounded-xl bg-accent px-3 py-2 text-sm font-medium text-accent-foreground"
+                  className="rounded-md bg-accent px-3 py-2 text-sm font-medium text-accent-foreground"
                 >
                   저장
                 </button>

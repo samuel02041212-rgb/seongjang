@@ -3,93 +3,9 @@
 import { useChatPanel } from "@/components/chat/chat-dock";
 import { FeedStream } from "@/components/feed/feed-stream";
 import { FEED_CARD_MAX_WIDTH_PX, feedCardMaxWidthClass } from "@/lib/feed-card-layout";
-import {
-  feedDateAddDays,
-  feedDateLabel,
-  feedTodayIso,
-} from "@/lib/feed-date";
-import { readFeedBrowse, saveFeedBrowse } from "@/lib/feed-session";
+import { useFeedBrowse } from "@/components/shell/feed-browse-context";
 import { usePostViewMode } from "@/lib/view-mode";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
-
-function FeedDateStripe({
-  feedDate,
-  onOlder,
-  onNewer,
-  canGoNewer,
-}: {
-  feedDate: string;
-  onOlder: () => void;
-  onNewer: () => void;
-  canGoNewer: boolean;
-}) {
-  const label = feedDateLabel(feedDate);
-  const btnClass =
-    "flex h-8 w-8 items-center justify-center rounded-lg text-muted transition hover:bg-accent-soft hover:text-ink disabled:pointer-events-none disabled:opacity-25";
-
-  return (
-    <div
-      className="fixed left-16 top-[calc(var(--app-header-height)+1.75rem)] z-30 hidden flex-col items-center pl-1 lg:flex"
-    >
-      <button
-        type="button"
-        className={btnClass}
-        onClick={onOlder}
-        aria-label="이전 날짜"
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
-        >
-          <path d="M18 15l-6-6-6 6" />
-        </svg>
-      </button>
-      <time
-        dateTime={feedDate}
-        lang="en"
-        className="my-1 flex flex-col items-center font-handwriting text-[1.65rem] text-muted"
-      >
-        {label.split("").map((ch, i) =>
-          ch === " " ? (
-            <span key={i} className="h-2 shrink-0" aria-hidden />
-          ) : (
-            <span key={i} className="leading-none">
-              {ch}
-            </span>
-          ),
-        )}
-      </time>
-      <button
-        type="button"
-        className={btnClass}
-        onClick={onNewer}
-        disabled={!canGoNewer}
-        aria-label="다음 날짜"
-      >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
-        >
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      </button>
-    </div>
-  );
-}
 
 const SPLIT_DOCK_PULL_EXTRA_PX = 95;
 
@@ -168,52 +84,15 @@ function SplitFeedSlide({ feedDate }: { feedDate: string }) {
 export function FeedClient() {
   const [mode] = usePostViewMode();
   const split = mode === "split";
-  const [feedDate, setFeedDate] = useState(() => {
-    return readFeedBrowse()?.feedDate ?? feedTodayIso();
-  });
-  const today = feedTodayIso();
-  const canGoNewer = feedDate < today;
-
-  const pickDate = (next: string) => {
-    saveFeedBrowse({
-      feedDate: next,
-      scrollY: 0,
-      postId: null,
-      detailPostId: null,
-    });
-    setFeedDate(next);
-  };
-
-  const goOlder = () => pickDate(feedDateAddDays(feedDate, -1));
-  const goNewer = () => {
-    if (!canGoNewer) return;
-    pickDate(feedDateAddDays(feedDate, 1));
-  };
-
-  const stripe = (
-    <FeedDateStripe
-      feedDate={feedDate}
-      onOlder={goOlder}
-      onNewer={goNewer}
-      canGoNewer={canGoNewer}
-    />
-  );
+  const { feedDate } = useFeedBrowse();
 
   if (!split) {
     return (
-      <>
-        {stripe}
-        <div className={`mx-auto w-full ${feedCardMaxWidthClass}`}>
-          <FeedStream feedDate={feedDate} viewerVariant="popup" />
-        </div>
-      </>
+      <div className={`mx-auto w-full ${feedCardMaxWidthClass}`}>
+        <FeedStream feedDate={feedDate} viewerVariant="popup" />
+      </div>
     );
   }
 
-  return (
-    <>
-      {stripe}
-      <SplitFeedSlide feedDate={feedDate} />
-    </>
-  );
+  return <SplitFeedSlide feedDate={feedDate} />;
 }
