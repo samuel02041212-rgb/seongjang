@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function MePage() {
   return (
-    <SubPageLayout title="마이페이지">
+    <SubPageLayout title="마이페이지" mePage>
       <MePageClient />
     </SubPageLayout>
   );

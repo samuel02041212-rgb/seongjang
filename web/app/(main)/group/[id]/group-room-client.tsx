@@ -7,23 +7,43 @@ type Tab = "feed" | "chat" | "schedule";
 
 export function GroupRoomClient({
   groupId,
+  groupName,
+  statusMessage,
+  image,
 }: {
   groupId: string;
+  groupName: string;
+  statusMessage?: string;
+  image?: string | null;
 }) {
   const [tab, setTab] = useState<Tab>("feed");
 
   return (
     <>
-      <div className="mb-4 rounded-lg border border-line bg-surface p-4 shadow-sm">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted">
-          소그룹 방
-        </p>
-        <p className="mt-1 font-mono text-xs text-muted">/{groupId}</p>
+      <div className="mb-4 flex items-center gap-3 rounded-lg border border-line bg-surface p-4 shadow-sm">
+        {image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={image}
+            alt=""
+            className="h-12 w-12 rounded-full object-cover"
+          />
+        ) : (
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-soft text-sm font-semibold text-accent">
+            {groupName.slice(0, 1)}
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="font-medium text-ink">{groupName}</p>
+          {statusMessage ? (
+            <p className="truncate text-xs text-muted">{statusMessage}</p>
+          ) : null}
+        </div>
         <Link
           href="/group/mygroups"
-          className="mt-3 inline-block text-xs font-medium text-accent-foreground hover:underline"
+          className="shrink-0 text-xs font-medium text-accent-foreground hover:underline"
         >
-          ← 소그룹
+          ← 목록
         </Link>
       </div>
 

@@ -1,10 +1,16 @@
 import { meditationPageMaxWidthClass } from "@/lib/meditation-layout";
+import {
+  feedCardMaxWidthClass,
+  mePageShellMaxWidthClass,
+} from "@/lib/feed-card-layout";
 
 type SubPageLayoutProps = {
   title: string;
   children: React.ReactNode;
   wide?: boolean;
   extraWide?: boolean;
+  feedCard?: boolean;
+  mePage?: boolean;
 };
 
 export function SubPageLayout({
@@ -12,15 +18,23 @@ export function SubPageLayout({
   children,
   wide = false,
   extraWide = false,
+  feedCard = false,
+  mePage = false,
 }: SubPageLayoutProps) {
-  const maxWidth = extraWide
-    ? meditationPageMaxWidthClass
-    : wide
-      ? "max-w-6xl"
-      : "max-w-2xl";
+  const maxWidth = mePage
+    ? mePageShellMaxWidthClass
+    : feedCard
+      ? feedCardMaxWidthClass
+      : extraWide
+        ? meditationPageMaxWidthClass
+        : wide
+          ? "max-w-6xl"
+          : "max-w-2xl";
 
   return (
-    <div className={`mx-auto w-full px-1 pb-12 pt-1 sm:px-2 ${maxWidth}`}>
+    <div
+      className={`mx-auto w-full pb-12 pt-1 ${mePage || feedCard ? "px-0" : "px-1 sm:px-2"} ${maxWidth}`}
+    >
       <h1 className="mb-4 font-display text-base text-ink">{title}</h1>
       {children}
     </div>

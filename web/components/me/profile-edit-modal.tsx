@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { ProfileAvatar } from "@/components/me/profile-avatar";
 import { resizeImage } from "@/lib/image-resize";
 
 type Props = {
   open: boolean;
   initialName: string;
+  initialStatusMessage: string;
   initialImage: string | null;
   onClose: () => void;
   onSaved: () => void;
@@ -15,11 +17,13 @@ type Props = {
 export function ProfileEditModal({
   open,
   initialName,
+  initialStatusMessage,
   initialImage,
   onClose,
   onSaved,
 }: Props) {
   const [name, setName] = useState(initialName);
+  const [statusMessage, setStatusMessage] = useState(initialStatusMessage);
   const [imageUrl, setImageUrl] = useState<string | null>(initialImage);
   const [pending, setPending] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -29,10 +33,11 @@ export function ProfileEditModal({
   useEffect(() => {
     if (open) {
       setName(initialName);
+      setStatusMessage(initialStatusMessage);
       setImageUrl(initialImage);
       setError("");
     }
-  }, [open, initialName, initialImage]);
+  }, [open, initialName, initialStatusMessage, initialImage]);
 
   useEffect(() => {
     if (!open) return;
@@ -94,6 +99,7 @@ export function ProfileEditModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
+          statusMessage: statusMessage.trim(),
           image: imageUrl,
         }),
       });
@@ -143,14 +149,7 @@ export function ProfileEditModal({
           ) : null}
 
           <div className="flex items-center gap-4">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#fff4d2] text-2xl font-bold text-[#5c4d2c]">
-              {imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={imageUrl} alt="" className="h-full w-full object-cover" />
-              ) : (
-                (name || "?").slice(0, 1)
-              )}
-            </div>
+            <ProfileAvatar image={imageUrl} />
             <div className="flex flex-col gap-2">
               <input
                 ref={fileRef}
@@ -193,6 +192,24 @@ export function ProfileEditModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={40}
+              className="mt-1 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="profile-status"
+              className="text-sm font-medium text-ink"
+            >
+              상태 메시지
+            </label>
+            <input
+              id="profile-status"
+              type="text"
+              value={statusMessage}
+              onChange={(e) => setStatusMessage(e.target.value)}
+              maxLength={80}
+              placeholder="한 줄 소개"
               className="mt-1 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
             />
           </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { ChatProvider } from "@/components/chat/chat-dock";
+import { GroupProvider } from "@/components/group/group-panel";
 import {
   type JoinedGroup,
   SnsFeedLayout,
@@ -13,6 +14,7 @@ type MainNavShellProps = {
   userImage: string | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isGroupAdmin: boolean;
 };
 
 export function MainNavShell({
@@ -22,18 +24,22 @@ export function MainNavShell({
   userImage,
   isAuthenticated,
   isAdmin,
+  isGroupAdmin,
 }: MainNavShellProps) {
   return (
-    <ChatProvider>
-      <SnsFeedLayout
-        joinedGroups={joinedGroups}
-        userName={userName}
-        userImage={userImage}
-        isAuthenticated={isAuthenticated}
-        isAdmin={isAdmin}
-      >
-        {children}
-      </SnsFeedLayout>
-    </ChatProvider>
+    <GroupProvider>
+      <ChatProvider>
+        <SnsFeedLayout
+          joinedGroups={joinedGroups}
+          userName={userName}
+          userImage={userImage}
+          isAuthenticated={isAuthenticated}
+          isAdmin={isAdmin}
+          isGroupAdmin={isGroupAdmin}
+        >
+          {children}
+        </SnsFeedLayout>
+      </ChatProvider>
+    </GroupProvider>
   );
 }

@@ -19,6 +19,7 @@ model User {
   gender                String?
   birthDate             DateTime?
   church                String    @default("")
+  statusMessage         String    @default("")
   signupSource          String    @default("")
   accounts              Account[]
   sessions              Session[]
@@ -27,6 +28,13 @@ model User {
   chatRoomsA            ChatRoom[] @relation("ChatRoomA")
   chatRoomsB            ChatRoom[] @relation("ChatRoomB")
   chatMessages          ChatMessage[] @relation("ChatMessages")
+  bookmarkFolders       BookmarkFolder[]
+  postBookmarks         PostBookmark[]
+  adminGroups           SmallGroup[]         @relation("GroupAdmin")
+  groupMembers          GroupMember[]
+  groupCreationRequests GroupCreationRequest[]
+  groupJoinRequests     GroupJoinRequest[]
+  groupChatMessages     GroupChatMessage[] @relation("GroupChatMessages")
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 }
@@ -47,6 +55,7 @@ model Post {
 
   author   User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
   comments Comment[]
+  bookmarks PostBookmark[]
 
   @@index([createdAt(sort: Desc)])
   @@index([visibleGroupIds])
@@ -147,4 +156,109 @@ model GlobalScheduleEvent {
   updatedAt   DateTime @updatedAt
 
   @@index([startAt, endAt])
+}
+
+model BookmarkFolder {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookmarks PostBookmark[]
+
+  @@index([userId, sortOrder])
+}
+
+model PostBookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  folderId  String
+  createdAt DateTime @default(now())
+
+  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post   Post           @relation(fields: [postId], references: [id], onDelete: Cascade)
+  folder BookmarkFolder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId, folderId])
+  @@index([userId, folderId])
+  @@index([postId])
+}
+
+model SmallGroup {
+  id            String   @id @default(cuid())
+  name          String
+  image         String?
+  statusMessage String   @default("")
+  description   String   @default("")
+  adminId       String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  admin        User               @relation("GroupAdmin", fields: [adminId], references: [id], onDelete: Cascade)
+  members      GroupMember[]
+  joinRequests GroupJoinRequest[]
+  chatMessages GroupChatMessage[]
+
+  @@index([name])
+  @@index([adminId])
+}
+
+model GroupMember {
+  userId   String
+  groupId  String
+  joinedAt DateTime @default(now())
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group SmallGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([userId, groupId])
+  @@index([groupId])
+}
+
+model GroupCreationRequest {
+  id           String    @id @default(cuid())
+  requesterId  String
+  name         String
+  description  String    @default("")
+  image        String?
+  status       String    @default("pending")
+  createdAt    DateTime  @default(now())
+  reviewedAt   DateTime?
+  reviewedById String?
+
+  requester User @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt(sort: Desc)])
+}
+
+model GroupJoinRequest {
+  id         String    @id @default(cuid())
+  userId     String
+  groupId    String
+  status     String    @default("pending")
+  createdAt  DateTime  @default(now())
+  reviewedAt DateTime?
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group SmallGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+  @@index([groupId, status])
+}
+
+model GroupChatMessage {
+  id        String   @id @default(cuid())
+  groupId   String
+  senderId  String
+  kind      String   @default("text")
+  content   String
+  createdAt DateTime @default(now())
+
+  group  SmallGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  sender User       @relation("GroupChatMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, createdAt])
 }

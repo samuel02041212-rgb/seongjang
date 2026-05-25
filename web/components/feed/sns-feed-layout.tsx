@@ -6,6 +6,8 @@ import { signOut } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useChatPanel } from "@/components/chat/chat-dock";
+import { GroupNavActions } from "@/components/group/group-nav-actions";
+import { useGroupPanel } from "@/components/group/group-panel";
 import { AppHeaderCenter } from "@/components/shell/app-header-center";
 import { FeedBrowseProvider } from "@/components/shell/feed-browse-context";
 import { appHeaderRowClassName, appHeaderShellClass } from "@/components/shell/app-header-classes";
@@ -27,6 +29,7 @@ type SnsFeedLayoutProps = {
   userImage?: string | null;
   isAuthenticated?: boolean;
   isAdmin?: boolean;
+  isGroupAdmin?: boolean;
 };
 
 function useClickOutside(
@@ -141,6 +144,7 @@ export function SnsFeedLayout({
   userImage: _userImage,
   isAuthenticated = false,
   isAdmin = false,
+  isGroupAdmin = false,
 }: SnsFeedLayoutProps) {
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -149,29 +153,73 @@ export function SnsFeedLayout({
 
   const { chatOpen, toggleChat, totalUnread, setChatOpen, splitDockTop, bringChatDockToFront } =
     useChatPanel();
+  const {
+    groupOpen,
+    setGroupOpen,
+    closeGroup,
+    joinedGroups,
+    groupsLoaded,
+    refreshPicker,
+  } = useGroupPanel();
   const [viewMode, setViewMode] = usePostViewMode();
   const pathname = usePathname();
+  const isGroupRoom =
+    pathname.startsWith("/group/") &&
+    pathname !== "/group/mygroups" &&
+    pathname !== "/group/manage";
+  const showGroupPlus =
+    isAuthenticated &&
+    groupOpen &&
+    groupsLoaded &&
+    joinedGroups.length === 0;
   const mainMaxWidth =
-    pathname === "/meditation" ? meditationPageMaxWidthClass : "max-w-6xl";
+    pathname === "/meditation"
+      ? meditationPageMaxWidthClass
+      : isGroupRoom
+        ? "max-w-none"
+        : "max-w-6xl";
   const [theme, setTheme] = useTheme();
 
   void _joinedGroups;
   void _userName;
   void _userImage;
 
+  const onGroupTabClick = useCallback(() => {
+    setProfileOpen(false);
+    setChatOpen(false);
+    refreshPicker();
+    if (groupOpen) {
+      closeGroup();
+      return;
+    }
+    setGroupOpen(true);
+  }, [
+    groupOpen,
+    closeGroup,
+    refreshPicker,
+    setGroupOpen,
+    setChatOpen,
+  ]);
+
   const navItems = useMemo(() => {
     const items: { label: string; href: string; icon: React.ReactNode }[] = [
       { label: "게시글", href: "/feed", icon: <FeedIcon /> },
       { label: "말씀묵상", href: "/meditation", icon: <BookHeartIcon /> },
       { label: "말씀연구", href: "/study", icon: <BookIcon /> },
-      { label: "소그룹", href: "/group/mygroups", icon: <UsersIcon /> },
       { label: "마이페이지", href: "/me", icon: <UserIcon /> },
     ];
+    if (isGroupAdmin) {
+      items.push({
+        label: "소그룹 관리",
+        href: "/group/manage",
+        icon: <ShieldIcon />,
+      });
+    }
     if (isAdmin) {
       items.push({ label: "관리자", href: "/admin", icon: <ShieldIcon /> });
     }
     return items;
-  }, [isAdmin]);
+  }, [isAdmin, isGroupAdmin]);
 
   return (
     <FeedBrowseProvider>
@@ -215,7 +263,32 @@ export function SnsFeedLayout({
         <div className="min-h-0 flex-1" />
 
         <nav className="flex flex-col items-center gap-2">
-          {navItems.map((item) => (
+          {navItems.slice(0, 3).map((item) => (
+            <Link
+              key={`${item.label}-${item.href}`}
+              href={item.href}
+              className="relative flex h-11 w-11 items-center justify-center rounded-xl text-ink transition hover:bg-accent-soft hover:text-accent-foreground"
+              aria-label={item.label}
+            >
+              {item.icon}
+              <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded-md border border-line bg-surface px-3 py-1 text-sm font-medium text-ink opacity-0 shadow-md transition-opacity duration-150 group-hover/nav:opacity-100">
+                {item.label}
+              </span>
+            </Link>
+          ))}
+          <button
+            type="button"
+            onClick={onGroupTabClick}
+            className="relative flex h-11 w-11 items-center justify-center rounded-xl text-ink transition hover:bg-accent-soft hover:text-accent-foreground"
+            aria-label="소그룹"
+            aria-expanded={groupOpen}
+          >
+            <UsersIcon />
+            <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded-md border border-line bg-surface px-3 py-1 text-sm font-medium text-ink opacity-0 shadow-md transition-opacity duration-150 group-hover/nav:opacity-100">
+              소그룹
+            </span>
+          </button>
+          {navItems.slice(3).map((item) => (
             <Link
               key={`${item.label}-${item.href}`}
               href={item.href}
@@ -233,7 +306,12 @@ export function SnsFeedLayout({
         <div className="flex-1" />
 
         {isAuthenticated ? (
-          <div className="flex justify-center pb-1">
+          <div className="relative flex justify-center pb-1">
+            {showGroupPlus ? (
+              <div className="absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2">
+                <GroupNavActions />
+              </div>
+            ) : null}
             <button
               type="button"
               onClick={() => {
@@ -303,14 +381,14 @@ export function SnsFeedLayout({
 
           {profileOpen ? (
             <div
-              className="absolute bottom-[calc(100%+8px)] left-2 z-50 w-52 overflow-hidden rounded-lg border border-line bg-surface py-1.5 shadow-lg"
+              className="absolute left-full top-1/2 z-50 ml-2 w-36 -translate-y-[calc(50%+35px)] overflow-hidden rounded-lg border border-line bg-surface py-0.5 shadow-lg"
               role="menu"
             >
               {isAuthenticated ? (
                 <>
                   <Link
                     href="/settings"
-                    className="block px-4 py-3 text-base font-medium text-ink hover:bg-accent-soft"
+                    className="block px-3 py-2 text-xs font-medium text-ink hover:bg-accent-soft"
                     role="menuitem"
                     onClick={closeProfile}
                   >
@@ -318,7 +396,7 @@ export function SnsFeedLayout({
                   </Link>
                   <Link
                     href="/"
-                    className="block px-4 py-3 text-base font-medium text-ink hover:bg-accent-soft"
+                    className="block px-3 py-2 text-xs font-medium text-ink hover:bg-accent-soft"
                     role="menuitem"
                     onClick={closeProfile}
                   >
@@ -326,7 +404,7 @@ export function SnsFeedLayout({
                   </Link>
                   <button
                     type="button"
-                    className="block w-full px-4 py-3 text-left text-base font-medium text-ink hover:bg-accent-soft"
+                    className="block w-full px-3 py-2 text-left text-xs font-medium text-ink hover:bg-accent-soft"
                     role="menuitem"
                     onClick={() => {
                       closeProfile();
@@ -340,7 +418,7 @@ export function SnsFeedLayout({
                 <>
                   <Link
                     href="/login"
-                    className="block px-4 py-3 text-base font-medium text-ink hover:bg-accent-soft"
+                    className="block px-3 py-2 text-xs font-medium text-ink hover:bg-accent-soft"
                     role="menuitem"
                     onClick={closeProfile}
                   >
@@ -348,7 +426,7 @@ export function SnsFeedLayout({
                   </Link>
                   <Link
                     href="/register"
-                    className="block px-4 py-3 text-base font-medium text-ink hover:bg-accent-soft"
+                    className="block px-3 py-2 text-xs font-medium text-ink hover:bg-accent-soft"
                     role="menuitem"
                     onClick={closeProfile}
                   >
@@ -356,7 +434,7 @@ export function SnsFeedLayout({
                   </Link>
                   <Link
                     href="/"
-                    className="block px-4 py-3 text-base font-medium text-ink hover:bg-accent-soft"
+                    className="block px-3 py-2 text-xs font-medium text-ink hover:bg-accent-soft"
                     role="menuitem"
                     onClick={closeProfile}
                   >
@@ -370,7 +448,9 @@ export function SnsFeedLayout({
       </aside>
 
       <main
-        className={`mx-auto w-full px-3 pt-[15px] sm:px-4 lg:pl-20 ${mainMaxWidth}`}
+        className={`mx-auto w-full px-3 pt-[15px] sm:px-4 lg:pl-20 ${mainMaxWidth} ${
+          isGroupRoom ? "flex min-h-[calc(100dvh-var(--app-header-height))] flex-col" : ""
+        }`}
       >
         {children}
       </main>

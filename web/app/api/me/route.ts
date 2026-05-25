@@ -12,13 +12,22 @@ export async function GET() {
   }
   const me = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, name: true, email: true, image: true, isAdmin: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      image: true,
+      isAdmin: true,
+      church: true,
+      statusMessage: true,
+    },
   });
   if (!me) return NextResponse.json(null, { status: 401 });
   return NextResponse.json({
     id: me.id,
     name: me.name,
-    email: me.email ?? "",
+    church: me.church ?? "",
+    statusMessage: me.statusMessage ?? "",
     image: me.image,
     role:
       me.email === ADMIN_USER_EMAIL || me.isAdmin ? "admin" : "user",
@@ -28,6 +37,7 @@ export async function GET() {
 const patchBody = z.object({
   name: z.string().trim().min(1).max(40).optional(),
   image: z.string().trim().max(2000).nullable().optional(),
+  statusMessage: z.string().trim().max(80).optional(),
 });
 
 export async function PATCH(req: Request) {
@@ -45,10 +55,17 @@ export async function PATCH(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
-  const data: { name?: string; image?: string | null } = {};
+  const data: {
+    name?: string;
+    image?: string | null;
+    statusMessage?: string;
+  } = {};
   if (parsed.data.name !== undefined) data.name = parsed.data.name;
   if (parsed.data.image !== undefined) {
     data.image = parsed.data.image ? parsed.data.image : null;
+  }
+  if (parsed.data.statusMessage !== undefined) {
+    data.statusMessage = parsed.data.statusMessage;
   }
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ ok: true });

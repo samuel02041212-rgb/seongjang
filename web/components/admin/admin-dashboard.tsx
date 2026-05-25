@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { GroupEditModal } from "@/components/group/group-edit-modal";
+import { ProfileAvatar } from "@/components/me/profile-avatar";
+import type { GroupJson } from "@/lib/group";
+
 type AdminTab = "manage" | "schedule" | "group";
 
 type AdminUserRow = {
@@ -12,6 +16,10 @@ type AdminUserRow = {
   role?: string;
   isApproved?: boolean;
   createdAt?: string;
+  church?: string | null;
+  gender?: string | null;
+  birthDate?: string | null;
+  signupSource?: string | null;
 };
 
 type AdminPostRow = {
@@ -40,6 +48,33 @@ function fmtDate(iso: string | undefined) {
   } catch {
     return "";
   }
+}
+
+function fmtBirthDate(iso: string | null | undefined) {
+  if (!iso) return "";
+  try {
+    return new Date(iso).toLocaleDateString("ko-KR");
+  } catch {
+    return "";
+  }
+}
+
+function fmtGender(g: string | null | undefined) {
+  if (g === "M") return "남";
+  if (g === "F") return "여";
+  return g ?? "";
+}
+
+function UserProfileDetails({ u }: { u: AdminUserRow }) {
+  return (
+    <div className="mt-1 space-y-0.5 text-xs text-muted">
+      {u.email ? <div>이메일: {u.email}</div> : null}
+      {u.church ? <div>출석 교회: {u.church}</div> : null}
+      {u.gender ? <div>성별: {fmtGender(u.gender)}</div> : null}
+      {u.birthDate ? <div>생년월일: {fmtBirthDate(u.birthDate)}</div> : null}
+      {u.signupSource ? <div>가입 경로: {u.signupSource}</div> : null}
+    </div>
+  );
 }
 
 function pad(n: number) {
@@ -268,8 +303,8 @@ function AdminManagePanel() {
                       </span>
                     ) : null}
                   </div>
-                  <div className="text-xs text-muted">{u.email}</div>
-                  <div className="text-xs text-muted">
+                  <UserProfileDetails u={u} />
+                  <div className="mt-1 text-xs text-muted">
                     승인: {u.isApproved ? "예" : "대기"} · 가입:{" "}
                     {fmtDate(u.createdAt)}
                   </div>
@@ -371,8 +406,8 @@ function AdminManagePanel() {
               >
                 <div className="min-w-0 flex-1">
                   <div className="font-medium">{u.username}</div>
-                  <div className="text-xs text-muted">{u.email}</div>
-                  <div className="text-xs text-muted">
+                  <UserProfileDetails u={u} />
+                  <div className="mt-1 text-xs text-muted">
                     요청: {fmtDate(u.createdAt)}
                   </div>
                 </div>
@@ -402,57 +437,254 @@ function AdminManagePanel() {
 }
 
 function AdminGroupPanel() {
-  const [list, setList] = useState<{ _id: string; name?: string }[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [requests, setRequests] = useState<
+    {
+      id: string;
+      name: string;
+      description: string;
+      createdAt: string;
+      requester: { name: string; church: string };
+    }[]
+  >([]);
+  const [groups, setGroups] = useState<
+    {
+      id: string;
+      name: string;
+      statusMessage: string;
+      description: string;
+      image: string | null;
+      createdAt: string;
+      memberCount: number;
+      admin: { id: string; name: string; church: string };
+    }[]
+  >([]);
+  const [loadingRequests, setLoadingRequests] = useState(true);
+  const [loadingGroups, setLoadingGroups] = useState(true);
+  const [editGroup, setEditGroup] = useState<GroupJson | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
-  async function load() {
-    setLoading(true);
+  const loadRequests = useCallback(async () => {
+    setLoadingRequests(true);
     const res = await fetch("/api/admin/group-creation-requests", {
       credentials: "include",
     });
-    if (res.ok) setList(await res.json());
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    void load();
+    if (res.ok) setRequests(await res.json());
+    setLoadingRequests(false);
   }, []);
 
+  const loadGroups = useCallback(async () => {
+    setLoadingGroups(true);
+    const res = await fetch("/api/admin/groups", { credentials: "include" });
+    if (res.ok) setGroups(await res.json());
+    else setGroups([]);
+    setLoadingGroups(false);
+  }, []);
+
+  const loadAll = useCallback(async () => {
+    await Promise.all([loadRequests(), loadGroups()]);
+  }, [loadRequests, loadGroups]);
+
+  useEffect(() => {
+    void loadAll();
+  }, [loadAll]);
+
+  async function review(id: string, action: "approve" | "reject") {
+    const res = await fetch(
+      `/api/admin/group-creation-requests/${encodeURIComponent(id)}/${action}`,
+      { method: "POST", credentials: "include" },
+    );
+    if (!res.ok) {
+      alert("처리에 실패했습니다.");
+      return;
+    }
+    await loadAll();
+  }
+
+  function openEdit(g: (typeof groups)[number]) {
+    setEditGroup({
+      id: g.id,
+      name: g.name,
+      image: g.image,
+      statusMessage: g.statusMessage,
+      description: g.description,
+      adminId: g.admin.id,
+      isAdmin: false,
+      isMember: false,
+      joinStatus: "none",
+    });
+    setEditOpen(true);
+  }
+
+  async function removeGroup(id: string, name: string) {
+    if (!confirm(`"${name}" 소그룹을 삭제할까요? 되돌릴 수 없습니다.`)) return;
+    const res = await fetch(`/api/admin/groups/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    if (!res.ok) {
+      alert("삭제에 실패했습니다.");
+      return;
+    }
+    await loadGroups();
+  }
+
   return (
-    <section className="rounded-lg border border-line bg-surface p-4 shadow-sm">
+    <div className="space-y-4">
+      <section className="rounded-lg border border-line bg-surface p-4 shadow-sm">
       <h2 className="text-sm font-semibold text-ink">소그룹 개설 요청</h2>
       <div className="mt-2 flex gap-2">
         <span className="rounded-full bg-accent-soft px-3 py-1 text-xs">
-          {list.length}건
+          {requests.length}건
         </span>
         <button
           type="button"
-          onClick={() => void load()}
+          onClick={() => void loadAll()}
           className="rounded-md border border-line bg-bg px-3 py-2 text-xs"
         >
           새로고침
         </button>
       </div>
-      {loading ? (
+      {loadingRequests ? (
         <p className="mt-4 text-sm text-muted">불러오는 중…</p>
-      ) : list.length === 0 ? (
-        <div className="mt-4 space-y-2 text-sm text-muted">
-          <p>대기 중인 요청이 없습니다.</p>
-          <p className="text-xs">
-            (레거시 Mongo `GroupCreationRequest`는 아직 Prisma에 없습니다. 모델
-            추가 후 승인·거절 API를 연결할 수 있습니다.)
-          </p>
-        </div>
+      ) : requests.length === 0 ? (
+        <p className="mt-4 text-sm text-muted">대기 중인 요청이 없습니다.</p>
       ) : (
         <ul className="mt-4 space-y-2">
-          {list.map((r) => (
-            <li key={r._id} className="rounded-md border border-line p-3">
-              {r.name}
+          {requests.map((r) => (
+            <li
+              key={r.id}
+              className="flex gap-2 rounded-md border border-line/80 bg-bg/50 p-3"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="font-medium text-ink">{r.name}</div>
+                {r.description ? (
+                  <p className="mt-1 text-xs text-muted">{r.description}</p>
+                ) : null}
+                <p className="mt-1 text-xs text-muted">
+                  요청: {r.requester.name}
+                  {r.requester.church ? ` · ${r.requester.church}` : ""}
+                </p>
+                <p className="text-xs text-muted">{fmtDate(r.createdAt)}</p>
+              </div>
+              <div className="flex shrink-0 flex-col gap-1">
+                <button
+                  type="button"
+                  onClick={() => void review(r.id, "approve")}
+                  className="rounded-lg bg-accent px-2 py-1 text-xs text-accent-foreground"
+                >
+                  승인
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void review(r.id, "reject")}
+                  className="rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-800"
+                >
+                  거절
+                </button>
+              </div>
             </li>
           ))}
         </ul>
       )}
-    </section>
+      </section>
+
+      <section className="rounded-lg border border-line bg-surface p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-ink">전체 소그룹</h2>
+        <div className="mt-2 flex gap-2">
+          <span className="rounded-full bg-accent-soft px-3 py-1 text-xs">
+            {groups.length}개
+          </span>
+          <button
+            type="button"
+            onClick={() => void loadGroups()}
+            className="rounded-md border border-line bg-bg px-3 py-2 text-xs"
+          >
+            새로고침
+          </button>
+        </div>
+        {loadingGroups ? (
+          <p className="mt-4 text-sm text-muted">불러오는 중…</p>
+        ) : groups.length === 0 ? (
+          <p className="mt-4 text-sm text-muted">등록된 소그룹이 없습니다.</p>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {groups.map((g) => (
+              <li
+                key={g.id}
+                className="flex gap-3 rounded-md border border-line/80 bg-bg/50 p-3"
+              >
+                {g.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={g.image}
+                    alt=""
+                    className="h-11 w-11 shrink-0 rounded-full object-cover"
+                  />
+                ) : (
+                  <ProfileAvatar image={null} className="h-11 w-11 shrink-0" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-ink">{g.name}</div>
+                  {g.statusMessage ? (
+                    <p className="mt-0.5 truncate text-xs text-muted">
+                      {g.statusMessage}
+                    </p>
+                  ) : null}
+                  <p className="mt-1 text-xs text-muted">
+                    관리자: {g.admin.name}
+                    {g.admin.church ? ` · ${g.admin.church}` : ""}
+                    {" · "}멤버 {g.memberCount}명
+                  </p>
+                  <p className="text-xs text-muted">{fmtDate(g.createdAt)}</p>
+                </div>
+                <div className="flex shrink-0 flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={() => openEdit(g)}
+                    className="rounded-lg border border-line bg-bg px-2 py-1 text-xs"
+                  >
+                    수정
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void removeGroup(g.id, g.name)}
+                    className="rounded-lg border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-800"
+                  >
+                    삭제
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <GroupEditModal
+        open={editOpen}
+        group={editGroup}
+        onClose={() => setEditOpen(false)}
+        patchPath={
+          editGroup
+            ? `/api/admin/groups/${encodeURIComponent(editGroup.id)}`
+            : undefined
+        }
+        onSaved={(saved) => {
+          setGroups((prev) =>
+            prev.map((g) =>
+              g.id === saved.id
+                ? {
+                    ...g,
+                    name: saved.name,
+                    statusMessage: saved.statusMessage,
+                    image: saved.image,
+                    description: saved.description,
+                  }
+                : g,
+            ),
+          );
+        }}
+      />
+    </div>
   );
 }
 

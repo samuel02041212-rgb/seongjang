@@ -14,6 +14,7 @@ export type FeedPostJson = {
   isLikedByMe: boolean;
   commentCount: number;
   visibleGroupLabel?: string;
+  bookmarkFolderIds: string[];
 };
 
 type PostWithCount = PostModel & {
@@ -24,6 +25,7 @@ type PostWithCount = PostModel & {
 export function serializeFeedPost(
   p: PostWithCount,
   myUserId: string,
+  opts?: { bookmarkFolderIds?: string[] },
 ): FeedPostJson {
   const likedBy = p.likedBy ?? [];
   return {
@@ -39,6 +41,7 @@ export function serializeFeedPost(
     likeCount: likedBy.length,
     isLikedByMe: likedBy.includes(myUserId),
     commentCount: p._count?.comments ?? 0,
+    bookmarkFolderIds: opts?.bookmarkFolderIds ?? [],
   };
 }
 

@@ -1,13 +1,14 @@
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { neonConfig } from "@neondatabase/serverless";
-import { PrismaClient } from "@/app/generated/prisma/client";
+import { PrismaClient, Prisma } from "@/app/generated/prisma/client";
 import { Pool } from "pg";
 import ws from "ws";
 
 const globalForPrisma = globalThis as unknown as {
   pool?: Pool;
   prisma?: PrismaClient;
+  devSchemaKey?: string;
 };
 
 const BUILD_PLACEHOLDER_DATABASE_URL =
@@ -58,9 +59,26 @@ function createPrisma(): PrismaClient {
   return new PrismaClient({ adapter });
 }
 
+function devSchemaKey(): string {
+  const userFields = Object.keys(Prisma.UserScalarFieldEnum).sort().join(",");
+  const models = Object.values(Prisma.ModelName).sort().join(",");
+  return `${userFields}|${models}`;
+}
+
 function getPrisma(): PrismaClient {
+  const schemaKey = devSchemaKey();
+  if (
+    globalForPrisma.prisma &&
+    process.env.NODE_ENV !== "production" &&
+    globalForPrisma.devSchemaKey !== schemaKey
+  ) {
+    globalForPrisma.prisma = undefined;
+  }
   if (!globalForPrisma.prisma) {
     globalForPrisma.prisma = createPrisma();
+    if (process.env.NODE_ENV !== "production") {
+      globalForPrisma.devSchemaKey = schemaKey;
+    }
   }
   return globalForPrisma.prisma;
 }

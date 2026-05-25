@@ -38,8 +38,25 @@ export async function GET(req: Request) {
       },
     });
 
+    const postIds = posts.map((p) => p.id);
+    const bookmarks =
+      postIds.length > 0
+        ? await prisma.postBookmark.findMany({
+            where: { userId: session.user.id, postId: { in: postIds } },
+            select: { postId: true, folderId: true },
+          })
+        : [];
+    const bookmarkMap = new Map<string, string[]>();
+    for (const b of bookmarks) {
+      const list = bookmarkMap.get(b.postId) ?? [];
+      list.push(b.folderId);
+      bookmarkMap.set(b.postId, list);
+    }
+
     const normalized = posts.map((p) =>
-      serializeFeedPost(p, session.user!.id),
+      serializeFeedPost(p, session.user!.id, {
+        bookmarkFolderIds: bookmarkMap.get(p.id) ?? [],
+      }),
     );
     return NextResponse.json(normalized);
   } catch (e) {

@@ -14,6 +14,7 @@ import {
   feedPostTitleClass,
 } from "@/lib/feed-post-body-layout";
 import { FeedPostImages } from "@/components/feed/feed-post-images";
+import { PostBookmarkButton } from "@/components/feed/post-bookmark-button";
 import {
   type FeedPostJson,
   formatFeedRelativeTime,
@@ -24,6 +25,8 @@ type FeedPostRowProps = {
   onOpenDetail: (post: FeedPostJson) => void;
   onLike: (postId: string) => void;
   likePending?: boolean;
+  showBookmark?: boolean;
+  onBookmarkChange?: (postId: string, folderIds: string[]) => void;
 };
 
 export function FeedPostRow({
@@ -31,6 +34,8 @@ export function FeedPostRow({
   onOpenDetail,
   onLike,
   likePending,
+  showBookmark,
+  onBookmarkChange,
 }: FeedPostRowProps) {
   return (
     <div className={`group/card ${cardShellClass} bg-gradient-to-br from-accent/40 via-line to-accent/20 p-[2px] shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition hover:from-accent/60 hover:to-accent/40 hover:shadow-[0_4px_14px_rgba(0,0,0,0.08)] dark:from-accent/25 dark:via-line dark:to-accent/10 dark:hover:from-accent/40 dark:hover:to-accent/25`}>
@@ -98,6 +103,10 @@ export function FeedPostRow({
           {formatFeedRelativeTime(post.createdAt)}
         </time>
         <div className="flex items-center gap-3">
+          <span className="inline-flex items-center gap-1 text-sm font-medium text-muted">
+            <span>댓글</span>
+            {post.commentCount > 0 && <span>{post.commentCount}</span>}
+          </span>
           <button
             type="button"
             className={`inline-flex items-center gap-1 text-sm font-semibold transition ${
@@ -113,10 +122,13 @@ export function FeedPostRow({
             <span aria-hidden>{post.isLikedByMe ? "♥" : "♡"}</span>
             {post.likeCount > 0 && <span>{post.likeCount}</span>}
           </button>
-          <span className="inline-flex items-center gap-1 text-sm font-medium text-muted">
-            <span>댓글</span>
-            {post.commentCount > 0 && <span>{post.commentCount}</span>}
-          </span>
+          {showBookmark && onBookmarkChange ? (
+            <PostBookmarkButton
+              postId={post.id}
+              folderIds={post.bookmarkFolderIds ?? []}
+              onChange={(folderIds) => onBookmarkChange(post.id, folderIds)}
+            />
+          ) : null}
         </div>
       </div>
     </article>

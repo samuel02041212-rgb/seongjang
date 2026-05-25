@@ -109,10 +109,6 @@ export function RegisterForm() {
   return (
     <div className="w-full max-w-md rounded-lg border border-line bg-surface p-6 shadow-sm sm:p-8">
       <h1 className="font-display text-xl text-ink">회원가입</h1>
-      <p className="mt-1 text-sm text-muted">
-        가입 후에는 이메일과 비밀번호로 로그인합니다. 운영 정책에 따라 승인 후
-        로그인이 필요할 수 있습니다.
-      </p>
 
       <form onSubmit={onSubmit} className="mt-6 space-y-4">
         {error ? (
@@ -121,49 +117,67 @@ export function RegisterForm() {
           </p>
         ) : null}
         <div>
-          <label htmlFor="reg-name" className="text-sm font-medium text-ink">
-            이름
-          </label>
-          <input
-            id="reg-name"
-            name="name"
-            type="text"
-            autoComplete="name"
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="mt-1 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
-          />
-        </div>
-        <fieldset>
-          <legend className="text-sm font-medium text-ink">성별</legend>
-          <div className="mt-2 flex flex-wrap gap-4 text-sm text-ink">
-            <label className="inline-flex cursor-pointer items-center gap-2">
+          <div className="flex items-end gap-2">
+            <div className="min-w-0 flex-1">
+              <label htmlFor="reg-name" className="text-sm font-medium text-ink">
+                이름
+              </label>
               <input
-                type="radio"
-                name="gender"
-                value="M"
-                checked={gender === "M"}
-                onChange={() => setGender("M")}
+                id="reg-name"
+                name="name"
+                type="text"
+                autoComplete="name"
                 required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="mt-1 h-10 w-full rounded-md border border-line bg-bg px-3 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
               />
-              남성
-            </label>
-            <label className="inline-flex cursor-pointer items-center gap-2">
-              <input
-                type="radio"
-                name="gender"
-                value="F"
-                checked={gender === "F"}
-                onChange={() => setGender("F")}
-              />
-              여성
-            </label>
+            </div>
+            <fieldset className="shrink-0">
+              <legend className="text-sm font-medium text-ink">성별</legend>
+              <div className="mt-1 flex h-10" role="radiogroup" aria-label="성별">
+                <label
+                  className={`flex h-full min-w-[2.75rem] cursor-pointer items-center justify-center border border-line px-3 text-sm transition ${
+                    gender === "M"
+                      ? "relative z-10 border-accent bg-accent font-medium text-accent-foreground"
+                      : "bg-bg text-ink hover:bg-accent-soft/60"
+                  } rounded-l-md`}
+                >
+                  <input
+                    type="radio"
+                    name="gender"
+                    value="M"
+                    checked={gender === "M"}
+                    onChange={() => setGender("M")}
+                    required
+                    className="sr-only"
+                  />
+                  남
+                </label>
+                <label
+                  className={`flex h-full min-w-[2.75rem] cursor-pointer items-center justify-center border border-line -ml-px px-3 text-sm transition ${
+                    gender === "F"
+                      ? "relative z-10 border-accent bg-accent font-medium text-accent-foreground"
+                      : "bg-bg text-ink hover:bg-accent-soft/60"
+                  } rounded-r-md`}
+                >
+                  <input
+                    type="radio"
+                    name="gender"
+                    value="F"
+                    checked={gender === "F"}
+                    onChange={() => setGender("F")}
+                    className="sr-only"
+                  />
+                  여
+                </label>
+              </div>
+            </fieldset>
           </div>
-        </fieldset>
+        </div>
         <div>
           <span id="reg-birth-label" className="text-sm font-medium text-ink">
-            생년월일 <span className="font-normal text-muted">(년 → 월 → 일)</span>
+            생년월일
           </span>
           <div
             className="mt-1 flex flex-wrap gap-2"
@@ -216,10 +230,6 @@ export function RegisterForm() {
               ))}
             </select>
           </div>
-          <p className="mt-1 text-xs text-muted">
-            브라우저/기기마다 달라지는 달력 대신, 어디서든 같은 순서로 고를 수
-            있게 했습니다.
-          </p>
         </div>
         <div>
           <label htmlFor="reg-church" className="text-sm font-medium text-ink">

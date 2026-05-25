@@ -42,6 +42,10 @@ async function main() {
     },
   });
 
+  const admin = await prisma.user.findUnique({
+    where: { email: ADMIN_USER_EMAIL },
+  });
+
   const email = "dev@seongjang.local";
   const password = await bcrypt.hash("devpassword", 12);
   const user = await prisma.user.upsert({

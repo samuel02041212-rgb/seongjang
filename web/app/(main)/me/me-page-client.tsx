@@ -4,21 +4,28 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { BookmarksPanel } from "@/components/me/bookmarks-panel";
 import { FeedPostRow } from "@/components/feed/feed-post-row";
 import { PostDetailModal } from "@/components/feed/post-detail-modal";
 import { ProfileEditModal } from "@/components/me/profile-edit-modal";
+import { ProfileAvatar } from "@/components/me/profile-avatar";
+import {
+  feedPostListClass,
+  feedPostListWrapClass,
+} from "@/lib/feed-card-layout";
 import type { FeedPostJson } from "@/lib/feed-serialize";
 
 type MeJson = {
   id: string;
   name: string | null;
-  email: string;
+  church: string;
+  statusMessage: string;
   image: string | null;
 };
 
 export function MePageClient() {
   const { data: session, update: updateSession } = useSession();
-  const [tab, setTab] = useState<"posts" | "calendar">("posts");
+  const [tab, setTab] = useState<"posts" | "calendar" | "bookmarks">("posts");
   const [posts, setPosts] = useState<FeedPostJson[]>([]);
   const [loading, setLoading] = useState(true);
   const [detailPost, setDetailPost] = useState<FeedPostJson | null>(null);
@@ -31,7 +38,6 @@ export function MePageClient() {
     session?.user?.email?.split("@")[0] ||
     "회원";
   const avatarImage = me?.image ?? session?.user?.image ?? null;
-  const initial = (displayName || "?").slice(0, 1);
 
   const loadMe = useCallback(async () => {
     try {
@@ -110,6 +116,20 @@ export function MePageClient() {
     }
   }, []);
 
+  const onBookmarkChange = useCallback(
+    (postId: string, folderIds: string[]) => {
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId ? { ...p, bookmarkFolderIds: folderIds } : p,
+        ),
+      );
+      setDetailPost((p) =>
+        p?.id === postId ? { ...p, bookmarkFolderIds: folderIds } : p,
+      );
+    },
+    [],
+  );
+
   const bumpCommentCount = useCallback((postId: string) => {
     setPosts((prev) =>
       prev.map((p) =>
@@ -122,33 +142,22 @@ export function MePageClient() {
   }, []);
 
   return (
-    <section className="overflow-hidden rounded-lg border border-line bg-surface shadow-sm">
-      <div className="border-b border-line p-4 sm:p-6">
+    <section className="w-full overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
+      <div className="border-b border-line p-5 sm:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#fff4d2] text-2xl font-bold text-[#5c4d2c]">
-            {avatarImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={avatarImage}
-                alt=""
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              initial
-            )}
-          </div>
+          <ProfileAvatar
+            image={avatarImage}
+            editable
+            onEdit={() => setEditOpen(true)}
+          />
           <div className="min-w-0 flex-1">
             <p className="text-lg font-semibold text-ink">{displayName}</p>
-            {me?.email ? (
-              <p className="mt-1 text-sm text-muted">{me.email}</p>
+            {me?.statusMessage?.trim() ? (
+              <p className="mt-1 text-sm text-ink/90">{me.statusMessage.trim()}</p>
             ) : null}
-            <button
-              type="button"
-              onClick={() => setEditOpen(true)}
-              className="mt-3 rounded-full border border-line bg-bg px-4 py-2 text-xs font-medium text-ink hover:bg-accent-soft"
-            >
-              프로필 수정
-            </button>
+            {me?.church ? (
+              <p className="mt-1 text-sm text-muted">{me.church}</p>
+            ) : null}
           </div>
         </div>
       </div>
@@ -157,33 +166,90 @@ export function MePageClient() {
         <button
           type="button"
           onClick={() => setTab("posts")}
-          className={`flex-1 py-3 text-sm font-medium transition ${
+          title="내 게시글"
+          aria-label="내 게시글"
+          className={`flex flex-1 items-center justify-center py-3 transition ${
             tab === "posts"
               ? "border-b-2 border-accent text-ink"
               : "text-muted hover:text-ink"
           }`}
         >
-          내 게시글
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <path d="M3 9h18M9 21V9" />
+          </svg>
         </button>
         <button
           type="button"
           onClick={() => setTab("calendar")}
-          className={`flex-1 py-3 text-sm font-medium transition ${
+          title="달력"
+          aria-label="달력"
+          className={`flex flex-1 items-center justify-center py-3 transition ${
             tab === "calendar"
               ? "border-b-2 border-accent text-ink"
               : "text-muted hover:text-ink"
           }`}
         >
-          달력
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+            <path d="M16 2v4M8 2v4M3 10h18" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("bookmarks")}
+          title="책깔피"
+          aria-label="책깔피"
+          className={`flex flex-1 items-center justify-center py-3 transition ${
+            tab === "bookmarks"
+              ? "border-b-2 border-accent text-ink"
+              : "text-muted hover:text-ink"
+          }`}
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+          </svg>
         </button>
       </div>
 
       {tab === "posts" ? (
-        <div className="p-4 sm:p-6">
+        <>
           {loading ? (
-            <p className="py-6 text-center text-sm text-muted">불러오는 중…</p>
+            <p className="px-4 pb-6 pt-6 text-center text-sm text-muted sm:px-6 sm:pt-8">
+              불러오는 중…
+            </p>
           ) : posts.length === 0 ? (
-            <>
+            <div className="px-4 pb-6 pt-6 sm:px-6 sm:pt-8">
               <p className="text-center text-sm text-muted">
                 아직 작성한 글이 없습니다.
               </p>
@@ -195,15 +261,19 @@ export function MePageClient() {
                   말씀묵상 쓰기
                 </Link>
               </div>
-            </>
+            </div>
           ) : (
-            <div className="space-y-3">
+            <div
+              className={`${feedPostListWrapClass} ${feedPostListClass} pt-6 sm:pt-8`}
+            >
               {posts.map((p) => (
                 <FeedPostRow
                   key={p.id}
                   post={p}
                   onOpenDetail={setDetailPost}
                   onLike={onLike}
+                  showBookmark
+                  onBookmarkChange={onBookmarkChange}
                 />
               ))}
             </div>
@@ -217,9 +287,13 @@ export function MePageClient() {
             }
             previewMode={false}
           />
+        </>
+      ) : tab === "bookmarks" ? (
+        <div className="p-5 sm:p-8">
+          <BookmarksPanel />
         </div>
       ) : (
-        <div className="p-6">
+        <div className="p-5 sm:p-8">
           <div className="rounded-md border border-dashed border-line bg-bg p-8 text-center">
             <p className="text-sm font-medium text-ink">일정 달력</p>
             <p className="mt-2 text-xs text-muted">
@@ -245,6 +319,7 @@ export function MePageClient() {
       <ProfileEditModal
         open={editOpen}
         initialName={me?.name ?? displayName}
+        initialStatusMessage={me?.statusMessage ?? ""}
         initialImage={avatarImage}
         onClose={() => setEditOpen(false)}
         onSaved={async () => {

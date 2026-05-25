@@ -10,6 +10,7 @@ import {
   type FeedBrowseState,
 } from "@/lib/feed-session";
 import type { FeedPostJson } from "@/lib/feed-serialize";
+import { feedPostListClass } from "@/lib/feed-card-layout";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FeedPostRow } from "./feed-post-row";
 import { PostDetailModal } from "./post-detail-modal";
@@ -274,6 +275,20 @@ export function FeedStream({
     };
   }, [feedDate, refreshTrigger]);
 
+  const onBookmarkChange = useCallback(
+    (postId: string, folderIds: string[]) => {
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId ? { ...p, bookmarkFolderIds: folderIds } : p,
+        ),
+      );
+      setDetailPost((p) =>
+        p?.id === postId ? { ...p, bookmarkFolderIds: folderIds } : p,
+      );
+    },
+    [],
+  );
+
   const onLike = useCallback(async (postId: string) => {
     try {
       const res = await fetch(
@@ -376,7 +391,7 @@ export function FeedStream({
           </div>
         </div>
       ) : (
-        <div className="relative mb-6 space-y-[calc(0.75rem+30px)]">
+        <div className={feedPostListClass}>
           {posts.map((p, i) => (
             <div
               key={p.id}
@@ -389,6 +404,8 @@ export function FeedStream({
                 post={p}
                 onOpenDetail={openDetail}
                 onLike={onLike}
+                showBookmark
+                onBookmarkChange={onBookmarkChange}
               />
             </div>
           ))}
