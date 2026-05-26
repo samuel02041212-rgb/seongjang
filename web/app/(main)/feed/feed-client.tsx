@@ -16,7 +16,13 @@ function pullMarginPx(): number {
   return 72;
 }
 
-function SplitFeedSlide({ feedDate }: { feedDate: string }) {
+function SplitFeedSlide({
+  feedDate,
+  groupId,
+}: {
+  feedDate: string;
+  groupId?: string;
+}) {
   const { chatOpen } = useChatPanel();
   const [detailOpen, setDetailOpen] = useState(false);
   const dockOpen = detailOpen || chatOpen;
@@ -73,6 +79,7 @@ function SplitFeedSlide({ feedDate }: { feedDate: string }) {
       >
         <FeedStream
           feedDate={feedDate}
+          groupId={groupId}
           viewerVariant="side"
           onDetailOpenChange={setDetailOpen}
         />
@@ -81,7 +88,7 @@ function SplitFeedSlide({ feedDate }: { feedDate: string }) {
   );
 }
 
-export function FeedClient() {
+export function FeedClient({ groupId }: { groupId?: string } = {}) {
   const [mode] = usePostViewMode();
   const split = mode === "split";
   const { feedDate } = useFeedBrowse();
@@ -89,10 +96,10 @@ export function FeedClient() {
   if (!split) {
     return (
       <div className={`mx-auto w-full ${feedCardMaxWidthClass}`}>
-        <FeedStream feedDate={feedDate} viewerVariant="popup" />
+        <FeedStream feedDate={feedDate} groupId={groupId} viewerVariant="popup" />
       </div>
     );
   }
 
-  return <SplitFeedSlide feedDate={feedDate} />;
+  return <SplitFeedSlide feedDate={feedDate} groupId={groupId} />;
 }

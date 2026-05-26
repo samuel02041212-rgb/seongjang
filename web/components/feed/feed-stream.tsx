@@ -23,17 +23,19 @@ const feedEmptyVerseRef = "-디모데후서 2:22-";
 
 export function FeedStream({
   feedDate,
+  groupId,
   refreshTrigger = 0,
   viewerVariant = "popup",
   onDetailOpenChange,
 }: {
   feedDate: string;
+  groupId?: string;
   refreshTrigger?: number;
   viewerVariant?: "popup" | "side";
   onDetailOpenChange?: (open: boolean) => void;
 }) {
   const { bringPostDockToFront } = useChatPanel();
-  const initialCache = readFeedPostsCache(feedDate);
+  const initialCache = readFeedPostsCache(feedDate, groupId);
   const [source, setSource] = useState<FeedSource>(
     initialCache?.length ? "ready" : "loading",
   );
@@ -70,14 +72,17 @@ export function FeedStream({
       }
       postId = list[bestIdx]?.id ?? null;
     }
-    saveFeedBrowse({
-      feedDate: d,
-      scrollY: window.scrollY,
-      postId,
-      detailPostId: detail?.id ?? null,
-    });
-    if (list.length) saveFeedPostsCache(d, list);
-  }, []);
+    saveFeedBrowse(
+      {
+        feedDate: d,
+        scrollY: window.scrollY,
+        postId,
+        detailPostId: detail?.id ?? null,
+      },
+      groupId,
+    );
+    if (list.length) saveFeedPostsCache(d, list, groupId);
+  }, [groupId]);
 
   const applyRestore = useCallback(
     (saved: FeedBrowseState) => {
@@ -114,7 +119,7 @@ export function FeedStream({
 
   const tryRestore = useCallback(() => {
     if (hasRestored.current) return;
-    const saved = readFeedBrowse();
+    const saved = readFeedBrowse(groupId);
     if (!saved || saved.feedDate !== feedDate) return;
     if (stateRef.current.posts.length === 0) return;
 
@@ -130,7 +135,7 @@ export function FeedStream({
     };
 
     requestAnimationFrame(() => requestAnimationFrame(run));
-  }, [feedDate, applyRestore]);
+  }, [feedDate, groupId, applyRestore]);
 
   const getMostVisibleIdx = useCallback(() => {
     const refs = cardRefs.current;
@@ -182,8 +187,8 @@ export function FeedStream({
 
   useEffect(() => {
     hasRestored.current = false;
-    const saved = readFeedBrowse();
-    const c = readFeedPostsCache(feedDate);
+    const saved = readFeedBrowse(groupId);
+    const c = readFeedPostsCache(feedDate, groupId);
     setPosts(c ?? []);
     setSource(c?.length ? "ready" : "loading");
     if (
@@ -194,7 +199,7 @@ export function FeedStream({
     }
     setDetailPost(null);
     window.scrollTo(0, 0);
-  }, [feedDate]);
+  }, [feedDate, groupId]);
 
   useEffect(() => {
     let t: ReturnType<typeof setTimeout> | undefined;
@@ -215,7 +220,7 @@ export function FeedStream({
 
   useEffect(() => {
     if (source !== "ready") return;
-    const saved = readFeedBrowse();
+    const saved = readFeedBrowse(groupId);
     const shouldRestore =
       saved?.feedDate === feedDate &&
       !!(saved.postId || saved.scrollY > 0 || saved.detailPostId);
@@ -228,12 +233,13 @@ export function FeedStream({
 
   useEffect(() => {
     let cancelled = false;
-    const seed = readFeedPostsCache(feedDate);
+    const seed = readFeedPostsCache(feedDate, groupId);
     if (!seed?.length) setSource("loading");
     (async () => {
       setErrorHint("");
       try {
         const qs = new URLSearchParams({ date: feedDate });
+        if (groupId) qs.set("groupId", groupId);
         const res = await fetch(`/api/posts?${qs}`, { credentials: "include" });
         const data = (await res.json()) as unknown;
         if (cancelled) return;
@@ -250,7 +256,7 @@ export function FeedStream({
         }
 
         const list = data as FeedPostJson[];
-        saveFeedPostsCache(feedDate, list);
+        saveFeedPostsCache(feedDate, list, groupId);
         setErrorHint("");
         setPosts(list);
         setSource("ready");
@@ -273,7 +279,7 @@ export function FeedStream({
     return () => {
       cancelled = true;
     };
-  }, [feedDate, refreshTrigger]);
+  }, [feedDate, groupId, refreshTrigger]);
 
   const onBookmarkChange = useCallback(
     (postId: string, folderIds: string[]) => {
@@ -350,14 +356,17 @@ export function FeedStream({
     (p: FeedPostJson) => {
       if (viewerVariant === "side") bringPostDockToFront();
       setDetailPost(p);
-      saveFeedBrowse({
-        feedDate: stateRef.current.feedDate,
-        scrollY: window.scrollY,
-        postId: p.id,
-        detailPostId: p.id,
-      });
+      saveFeedBrowse(
+        {
+          feedDate: stateRef.current.feedDate,
+          scrollY: window.scrollY,
+          postId: p.id,
+          detailPostId: p.id,
+        },
+        groupId,
+      );
     },
-    [viewerVariant, bringPostDockToFront],
+    [viewerVariant, bringPostDockToFront, groupId],
   );
 
   const closeDetail = useCallback(() => {

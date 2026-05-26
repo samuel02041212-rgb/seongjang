@@ -1,16 +1,7 @@
 import { prisma } from "@/lib/prisma";
+import type { GroupJson } from "@/lib/group-types";
 
-export type GroupJson = {
-  id: string;
-  name: string;
-  image: string | null;
-  statusMessage: string;
-  description: string;
-  adminId: string;
-  isAdmin: boolean;
-  isMember: boolean;
-  joinStatus: "none" | "pending" | "member";
-};
+export type { GroupJson } from "@/lib/group-types";
 
 export function serializeGroup(
   g: {

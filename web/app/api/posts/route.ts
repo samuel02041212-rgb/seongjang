@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { feedDateRangeUtc, isFeedDateIso } from "@/lib/feed-date";
+import {
+  buildCreatedAtForFeedDate,
+  feedDateRangeUtc,
+  feedTodayIso,
+  isFeedDateIso,
+  isFeedDatePastOrToday,
+} from "@/lib/feed-date";
+import { buildGroupPostContent } from "@/lib/group-post-msg";
+import { assertGroupMember } from "@/lib/group-room";
 import { serializeFeedPost } from "@/lib/feed-serialize";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/server-auth";
@@ -14,9 +22,14 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const mine = searchParams.get("mine") === "1";
   const dateParam = searchParams.get("date");
+  const groupId = searchParams.get("groupId")?.trim() || null;
 
   if (dateParam && !isFeedDateIso(dateParam)) {
     return NextResponse.json({ error: "bad_date" }, { status: 400 });
+  }
+
+  if (groupId && !(await assertGroupMember(session.user.id, groupId))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   try {
@@ -26,12 +39,13 @@ export async function GET(req: Request) {
     const posts = await prisma.post.findMany({
       where: {
         ...(mine ? { authorId: session.user.id } : {}),
+        ...(groupId ? { visibleGroupIds: { has: groupId } } : {}),
         ...(dateRange
           ? { createdAt: { gte: dateRange.gte, lt: dateRange.lt } }
           : {}),
       },
       orderBy: { createdAt: "desc" },
-      take: mine ? 100 : 50,
+      take: mine || (groupId && !dateRange) ? 200 : 50,
       include: {
         _count: { select: { comments: true } },
         author: { select: { church: true } },
@@ -72,6 +86,7 @@ const createBody = z.object({
   imageUrls: z.array(z.string().min(1)).max(20).optional().default([]),
   imagesLarge: z.boolean().optional().default(false),
   visibleGroupIds: z.array(z.string()).optional().default([]),
+  feedDate: z.string().optional(),
 });
 
 export async function POST(req: Request) {
@@ -92,6 +107,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
 
+  const feedDate = parsed.data.feedDate?.trim();
+  if (feedDate && !isFeedDatePastOrToday(feedDate)) {
+    return NextResponse.json({ ok: false }, { status: 400 });
+  }
+
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { name: true, email: true },
@@ -99,7 +119,12 @@ export async function POST(req: Request) {
   const authorName = user?.name?.trim() || user?.email || "사용자";
 
   try {
-    await prisma.post.create({
+    const groupIds = [...new Set(parsed.data.visibleGroupIds)];
+    const createdAt =
+      feedDate && feedDate !== feedTodayIso()
+        ? buildCreatedAtForFeedDate(feedDate)
+        : undefined;
+    const post = await prisma.post.create({
       data: {
         authorId: session.user.id,
         authorName,
@@ -108,10 +133,24 @@ export async function POST(req: Request) {
         bibleRef: parsed.data.bibleRef,
         imageUrls: parsed.data.imageUrls,
         imagesLarge: parsed.data.imagesLarge,
-        visibleGroupIds: parsed.data.visibleGroupIds,
+        visibleGroupIds: groupIds,
+        ...(createdAt ? { createdAt } : {}),
       },
     });
-    return NextResponse.json({ ok: true });
+
+    for (const groupId of groupIds) {
+      if (!(await assertGroupMember(session.user.id, groupId))) continue;
+      await prisma.groupChatMessage.create({
+        data: {
+          groupId,
+          senderId: session.user.id,
+          kind: "post",
+          content: buildGroupPostContent(post),
+        },
+      });
+    }
+
+    return NextResponse.json({ ok: true, id: post.id });
   } catch (e) {
     console.error("[POST /api/posts]", e);
     return NextResponse.json({ ok: false }, { status: 503 });

@@ -6,7 +6,8 @@ import { GroupPicker } from "@/components/group/group-picker";
 import { useGroupPanel } from "@/components/group/group-panel";
 
 export function GroupPickerOverlay() {
-  const { groupOpen, closeGroup, joinedGroups, groupsLoaded } = useGroupPanel();
+  const { groupOpen, closeGroup, joinedGroups, groupsLoaded, activeGroup } =
+    useGroupPanel();
 
   if (!groupOpen) return null;
 
@@ -29,7 +30,7 @@ export function GroupPickerOverlay() {
           {!groupsLoaded ? (
             <p className="text-sm text-muted">불러오는 중…</p>
           ) : hasGroups ? (
-            <GroupPicker groups={joinedGroups} />
+            <GroupPicker groups={joinedGroups} showGrowthHome={!!activeGroup} />
           ) : (
             <p className="text-sm font-medium text-ink">소그룹에 가입해주세요</p>
           )}

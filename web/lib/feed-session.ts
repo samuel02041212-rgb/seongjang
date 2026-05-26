@@ -9,13 +9,21 @@ export type FeedBrowseState = {
   detailPostId: string | null;
 };
 
-function postsCacheKey(date: string) {
-  return `feedPosts:${date}`;
+function scopeKey(groupId?: string) {
+  return groupId ? `:g:${groupId}` : "";
 }
 
-export function readFeedBrowse(): FeedBrowseState | null {
+function postsCacheKey(date: string, groupId?: string) {
+  return `feedPosts:${date}${scopeKey(groupId)}`;
+}
+
+function browseKey(groupId?: string) {
+  return `${BROWSE_KEY}${scopeKey(groupId)}`;
+}
+
+export function readFeedBrowse(groupId?: string): FeedBrowseState | null {
   try {
-    const raw = sessionStorage.getItem(BROWSE_KEY);
+    const raw = sessionStorage.getItem(browseKey(groupId));
     if (!raw) return null;
     const v = JSON.parse(raw) as FeedBrowseState;
     if (typeof v.feedDate !== "string") return null;
@@ -30,17 +38,20 @@ export function readFeedBrowse(): FeedBrowseState | null {
   }
 }
 
-export function saveFeedBrowse(state: FeedBrowseState) {
+export function saveFeedBrowse(state: FeedBrowseState, groupId?: string) {
   try {
-    sessionStorage.setItem(BROWSE_KEY, JSON.stringify(state));
+    sessionStorage.setItem(browseKey(groupId), JSON.stringify(state));
   } catch {
     void 0;
   }
 }
 
-export function readFeedPostsCache(date: string): FeedPostJson[] | null {
+export function readFeedPostsCache(
+  date: string,
+  groupId?: string,
+): FeedPostJson[] | null {
   try {
-    const raw = sessionStorage.getItem(postsCacheKey(date));
+    const raw = sessionStorage.getItem(postsCacheKey(date, groupId));
     if (!raw) return null;
     const v = JSON.parse(raw) as FeedPostJson[];
     return Array.isArray(v) ? v : null;
@@ -49,9 +60,13 @@ export function readFeedPostsCache(date: string): FeedPostJson[] | null {
   }
 }
 
-export function saveFeedPostsCache(date: string, posts: FeedPostJson[]) {
+export function saveFeedPostsCache(
+  date: string,
+  posts: FeedPostJson[],
+  groupId?: string,
+) {
   try {
-    sessionStorage.setItem(postsCacheKey(date), JSON.stringify(posts));
+    sessionStorage.setItem(postsCacheKey(date, groupId), JSON.stringify(posts));
   } catch {
     void 0;
   }

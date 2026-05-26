@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { ProfileAvatar } from "@/components/me/profile-avatar";
-import type { GroupJson } from "@/lib/group";
+import { groupPath } from "@/lib/group-route";
+import type { GroupJson } from "@/lib/group-types";
 
 export function MyGroupsClient() {
   const [groups, setGroups] = useState<GroupJson[]>([]);
@@ -51,7 +52,7 @@ export function MyGroupsClient() {
       {groups.map((g) => (
         <li key={g.id}>
           <Link
-            href={`/group/${g.id}`}
+            href={groupPath(g.id, "feed")}
             className="flex items-center gap-3 rounded-lg border border-line bg-surface px-4 py-3 shadow-sm transition hover:border-accent"
           >
             {g.image ? (

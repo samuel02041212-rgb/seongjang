@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { ProfileAvatar } from "@/components/me/profile-avatar";
 import { resizeImage } from "@/lib/image-resize";
-import type { GroupJson } from "@/lib/group";
+import type { GroupJson } from "@/lib/group-types";
 
 type Props = {
   open: boolean;

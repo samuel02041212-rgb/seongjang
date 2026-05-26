@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { GroupEditModal } from "@/components/group/group-edit-modal";
 import { ProfileAvatar } from "@/components/me/profile-avatar";
-import type { GroupJson } from "@/lib/group";
+import type { GroupJson } from "@/lib/group-types";
 
 type AdminTab = "manage" | "schedule" | "group";
 

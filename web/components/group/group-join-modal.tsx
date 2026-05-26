@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-import type { GroupJson } from "@/lib/group";
+import type { GroupJson } from "@/lib/group-types";
+
+import { GroupAvatar } from "@/components/group/group-avatar";
 
 type GroupJoinModalProps = {
   open: boolean;
@@ -123,18 +125,7 @@ export function GroupJoinModal({ open, onClose, onJoined }: GroupJoinModalProps)
                 key={g.id}
                 className="flex items-center gap-3 rounded-md border border-line px-3 py-2.5"
               >
-                {g.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={g.image}
-                    alt=""
-                    className="h-10 w-10 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent-soft text-sm font-semibold text-accent">
-                    {g.name.slice(0, 1)}
-                  </div>
-                )}
+                <GroupAvatar image={g.image} className="h-10 w-10" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-ink">
                     {g.name}

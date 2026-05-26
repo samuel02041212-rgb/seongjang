@@ -1,9 +1,14 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { PostDetailModal } from "@/components/feed/post-detail-modal";
 import { ProfileAvatar } from "@/components/me/profile-avatar";
-import type { GroupChatMsgJson, GroupMemberRow } from "@/lib/group-room";
+import type { FeedPostJson } from "@/lib/feed-serialize";
+import { groupPath } from "@/lib/group-route";
+import type { GroupChatMsgJson, GroupMemberRow } from "@/lib/group-types";
+import { postDisplayTitle, parseGroupPostContent } from "@/lib/group-post-msg";
 import { resizeImage } from "@/lib/image-resize";
 
 const MSG_POLL_MS = 3000;
@@ -133,14 +138,51 @@ function ScheduleBubble({ content }: { content: string }) {
   );
 }
 
+function PostBubble({
+  content,
+  onOpen,
+}: {
+  content: string;
+  onOpen: (postId: string) => void;
+}) {
+  const data = parseGroupPostContent(content);
+  if (!data) return <p className="text-sm">말씀묵상</p>;
+  const label = postDisplayTitle(data);
+
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(data.postId)}
+      className="flex w-full max-w-[240px] gap-2 rounded-md border border-line/80 bg-bg/80 p-2 text-left transition hover:bg-accent-soft/60"
+    >
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-ink">{label}</p>
+        {data.bibleRef && data.title ? (
+          <p className="mt-0.5 truncate text-xs text-muted">{data.bibleRef}</p>
+        ) : null}
+      </div>
+      {data.imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={data.imageUrl}
+          alt=""
+          className="h-12 w-12 shrink-0 rounded object-cover"
+        />
+      ) : null}
+    </button>
+  );
+}
+
 function ChatBubble({
   msg,
   groupId,
   onPollVoted,
+  onPostOpen,
 }: {
   msg: GroupChatMsgJson;
   groupId: string;
   onPollVoted: () => void;
+  onPostOpen: (postId: string) => void;
 }) {
   const base = msg.mine
     ? "ml-auto bg-accent text-accent-foreground"
@@ -169,6 +211,8 @@ function ChatBubble({
         <PollBubble msg={msg} groupId={groupId} onVoted={onPollVoted} />
       ) : msg.kind === "schedule" ? (
         <ScheduleBubble content={msg.content} />
+      ) : msg.kind === "post" ? (
+        <PostBubble content={msg.content} onOpen={onPostOpen} />
       ) : (
         <p className="whitespace-pre-wrap break-words text-sm">{msg.content}</p>
       )}
@@ -177,6 +221,7 @@ function ChatBubble({
 }
 
 export function GroupRoomView({ groupId }: { groupId: string }) {
+  const router = useRouter();
   const [room, setRoom] = useState<RoomData | null>(null);
   const [messages, setMessages] = useState<GroupChatMsgJson[]>([]);
   const [text, setText] = useState("");
@@ -186,9 +231,26 @@ export function GroupRoomView({ groupId }: { groupId: string }) {
   const [pollOpts, setPollOpts] = useState(["", ""]);
   const [schedTitle, setSchedTitle] = useState("");
   const [schedStart, setSchedStart] = useState("");
+  const [attachOpen, setAttachOpen] = useState(false);
+  const [detailPost, setDetailPost] = useState<FeedPostJson | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const attachRef = useRef<HTMLDivElement>(null);
   const lastTimeRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!attachOpen) return;
+    function handle(e: MouseEvent | TouchEvent) {
+      const el = attachRef.current;
+      if (el && !el.contains(e.target as Node)) setAttachOpen(false);
+    }
+    document.addEventListener("mousedown", handle);
+    document.addEventListener("touchstart", handle);
+    return () => {
+      document.removeEventListener("mousedown", handle);
+      document.removeEventListener("touchstart", handle);
+    };
+  }, [attachOpen]);
 
   const loadRoom = useCallback(async () => {
     try {
@@ -331,6 +393,30 @@ export function GroupRoomView({ groupId }: { groupId: string }) {
     setSchedStart("");
   }
 
+  const openPostDetail = useCallback(async (postId: string) => {
+    try {
+      const res = await fetch(`/api/posts/${encodeURIComponent(postId)}`, {
+        credentials: "include",
+      });
+      if (!res.ok) return;
+      setDetailPost((await res.json()) as FeedPostJson);
+    } catch {
+      void 0;
+    }
+  }, []);
+
+  const refreshDetailPost = useCallback(async () => {
+    if (!detailPost) return;
+    try {
+      const res = await fetch(`/api/posts/${encodeURIComponent(detailPost.id)}`, {
+        credentials: "include",
+      });
+      if (res.ok) setDetailPost((await res.json()) as FeedPostJson);
+    } catch {
+      void 0;
+    }
+  }, [detailPost]);
+
   if (!room) {
     return (
       <div className="flex flex-1 items-center justify-center text-sm text-muted">
@@ -340,32 +426,9 @@ export function GroupRoomView({ groupId }: { groupId: string }) {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center gap-3 border-b border-line px-4 py-3">
-        {room.group.image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={room.group.image}
-            alt=""
-            className="h-9 w-9 rounded-full object-cover"
-          />
-        ) : (
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-soft text-sm font-semibold text-accent">
-            {room.group.name.slice(0, 1)}
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-medium text-ink">{room.group.name}</p>
-          {room.group.statusMessage ? (
-            <p className="truncate text-xs text-muted">
-              {room.group.statusMessage}
-            </p>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="flex min-h-0 flex-1">
-        <aside className="flex w-56 shrink-0 flex-col border-r border-line bg-surface/80 sm:w-64">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <aside className="flex min-h-0 w-56 shrink-0 flex-col border-r border-line bg-surface/80 sm:w-64">
           <p className="border-b border-line px-3 py-2 text-xs font-semibold text-muted">
             오늘 말씀묵상
           </p>
@@ -376,7 +439,7 @@ export function GroupRoomView({ groupId }: { groupId: string }) {
           </ul>
         </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col bg-bg">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-bg">
           <div
             ref={scrollRef}
             className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4"
@@ -387,6 +450,7 @@ export function GroupRoomView({ groupId }: { groupId: string }) {
                 msg={m}
                 groupId={groupId}
                 onPollVoted={() => void loadMessages(true)}
+                onPostOpen={(id) => void openPostDetail(id)}
               />
             ))}
           </div>
@@ -465,29 +529,6 @@ export function GroupRoomView({ groupId }: { groupId: string }) {
           ) : null}
 
           <div className="border-t border-line bg-surface px-3 py-2">
-            <div className="mb-2 flex gap-1">
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="rounded-md px-2 py-1 text-xs text-muted hover:bg-accent-soft hover:text-ink"
-              >
-                사진
-              </button>
-              <button
-                type="button"
-                onClick={() => setExtra("poll")}
-                className="rounded-md px-2 py-1 text-xs text-muted hover:bg-accent-soft hover:text-ink"
-              >
-                투표
-              </button>
-              <button
-                type="button"
-                onClick={() => setExtra("schedule")}
-                className="rounded-md px-2 py-1 text-xs text-muted hover:bg-accent-soft hover:text-ink"
-              >
-                일정
-              </button>
-            </div>
             <input
               ref={fileRef}
               type="file"
@@ -499,7 +540,76 @@ export function GroupRoomView({ groupId }: { groupId: string }) {
                 e.target.value = "";
               }}
             />
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              <div className="relative shrink-0" ref={attachRef}>
+                <button
+                  type="button"
+                  onClick={() => setAttachOpen((v) => !v)}
+                  className={`flex h-10 w-10 items-center justify-center rounded-xl text-ink transition hover:bg-accent-soft hover:text-accent-foreground ${
+                    attachOpen ? "bg-accent-soft text-accent-foreground" : ""
+                  }`}
+                  aria-label="첨부"
+                  aria-expanded={attachOpen}
+                >
+                  <svg
+                    width="22"
+                    height="22"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  >
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </button>
+                {attachOpen ? (
+                  <div className="absolute bottom-full left-0 z-10 mb-1 w-32 overflow-hidden rounded-lg border border-line bg-surface py-0.5 shadow-lg">
+                    <button
+                      type="button"
+                      className="block w-full px-3 py-2 text-left text-xs font-medium text-ink hover:bg-accent-soft"
+                      onClick={() => {
+                        setAttachOpen(false);
+                        router.push(groupPath(groupId, "meditation"));
+                      }}
+                    >
+                      말씀묵상
+                    </button>
+                    <button
+                      type="button"
+                      className="block w-full px-3 py-2 text-left text-xs font-medium text-ink hover:bg-accent-soft"
+                      onClick={() => {
+                        setAttachOpen(false);
+                        fileRef.current?.click();
+                      }}
+                    >
+                      사진
+                    </button>
+                    <button
+                      type="button"
+                      className="block w-full px-3 py-2 text-left text-xs font-medium text-ink hover:bg-accent-soft"
+                      onClick={() => {
+                        setAttachOpen(false);
+                        setExtra("poll");
+                      }}
+                    >
+                      투표
+                    </button>
+                    <button
+                      type="button"
+                      className="block w-full px-3 py-2 text-left text-xs font-medium text-ink hover:bg-accent-soft"
+                      onClick={() => {
+                        setAttachOpen(false);
+                        setExtra("schedule");
+                      }}
+                    >
+                      일정
+                    </button>
+                  </div>
+                ) : null}
+              </div>
               <input
                 value={text}
                 onChange={(e) => setText(e.target.value)}
@@ -524,6 +634,12 @@ export function GroupRoomView({ groupId }: { groupId: string }) {
           </div>
         </div>
       </div>
+      <PostDetailModal
+        post={detailPost}
+        open={!!detailPost}
+        onClose={() => setDetailPost(null)}
+        onCommentAdded={() => void refreshDetailPost()}
+      />
     </div>
   );
 }

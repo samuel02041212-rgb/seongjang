@@ -25,7 +25,7 @@ type MeJson = {
 
 export function MePageClient() {
   const { data: session, update: updateSession } = useSession();
-  const [tab, setTab] = useState<"posts" | "calendar" | "bookmarks">("posts");
+  const [tab, setTab] = useState<"posts" | "bookmarks">("posts");
   const [posts, setPosts] = useState<FeedPostJson[]>([]);
   const [loading, setLoading] = useState(true);
   const [detailPost, setDetailPost] = useState<FeedPostJson | null>(null);
@@ -191,32 +191,6 @@ export function MePageClient() {
         </button>
         <button
           type="button"
-          onClick={() => setTab("calendar")}
-          title="달력"
-          aria-label="달력"
-          className={`flex flex-1 items-center justify-center py-3 transition ${
-            tab === "calendar"
-              ? "border-b-2 border-accent text-ink"
-              : "text-muted hover:text-ink"
-          }`}
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-          >
-            <rect x="3" y="4" width="18" height="18" rx="2" />
-            <path d="M16 2v4M8 2v4M3 10h18" />
-          </svg>
-        </button>
-        <button
-          type="button"
           onClick={() => setTab("bookmarks")}
           title="책깔피"
           aria-label="책깔피"
@@ -288,31 +262,9 @@ export function MePageClient() {
             previewMode={false}
           />
         </>
-      ) : tab === "bookmarks" ? (
-        <div className="p-5 sm:p-8">
-          <BookmarksPanel />
-        </div>
       ) : (
         <div className="p-5 sm:p-8">
-          <div className="rounded-md border border-dashed border-line bg-bg p-8 text-center">
-            <p className="text-sm font-medium text-ink">일정 달력</p>
-            <p className="mt-2 text-xs text-muted">
-              관리자 일정·내 일정은 API 연결 후 표시됩니다.
-            </p>
-            <div className="mt-6 grid grid-cols-7 gap-1 text-center text-[10px] text-muted">
-              {["일", "월", "화", "수", "목", "금", "토"].map((d) => (
-                <span key={d}>{d}</span>
-              ))}
-              {Array.from({ length: 28 }, (_, i) => (
-                <div
-                  key={i}
-                  className="aspect-square rounded border border-line/60 bg-surface text-[11px] leading-tight text-ink"
-                >
-                  <span className="inline-block p-1">{(i % 28) + 1}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <BookmarksPanel />
         </div>
       )}
 

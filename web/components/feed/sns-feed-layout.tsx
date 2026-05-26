@@ -8,28 +8,23 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChatPanel } from "@/components/chat/chat-dock";
 import { GroupNavActions } from "@/components/group/group-nav-actions";
 import { useGroupPanel } from "@/components/group/group-panel";
+import { HeaderLogoGlyph } from "@/components/shell/header-logo-glyph";
 import { AppHeaderCenter } from "@/components/shell/app-header-center";
+import {
+  GroupPickerButton,
+  LogoPickerButton,
+} from "@/components/shell/header-brand-switch";
 import { FeedBrowseProvider } from "@/components/shell/feed-browse-context";
 import { appHeaderRowClassName, appHeaderShellClass } from "@/components/shell/app-header-classes";
-import { HeaderLogoGlyph } from "@/components/shell/header-logo-glyph";
 import { useTheme } from "@/lib/theme";
 import { meditationPageMaxWidthClass } from "@/lib/meditation-layout";
+import { groupPath, parseGroupRoute } from "@/lib/group-route";
 import { usePostViewMode } from "@/lib/view-mode";
-
-export type JoinedGroup = {
-  id: string;
-  name: string;
-  href?: string;
-};
 
 type SnsFeedLayoutProps = {
   children: React.ReactNode;
-  joinedGroups: JoinedGroup[];
-  userName?: string | null;
-  userImage?: string | null;
   isAuthenticated?: boolean;
   isAdmin?: boolean;
-  isGroupAdmin?: boolean;
 };
 
 function useClickOutside(
@@ -75,18 +70,17 @@ const BookHeartIcon = () => (
     <path d="M9.5 9.2a1.7 1.7 0 0 1 2.4 0l.1.1.1-.1a1.7 1.7 0 1 1 2.4 2.4L12 14l-2.5-2.4a1.7 1.7 0 0 1 0-2.4z" />
   </svg>
 );
-const BookIcon = () => (
+const RecordIcon = () => (
   <svg {...iconProps} aria-hidden>
-    <path d="M4 4h11a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3V4z" />
-    <path d="M8 9h7M8 13h7" />
+    <rect x="3" y="4" width="18" height="18" rx="2" />
+    <path d="M16 2v4M8 2v4M3 10h18" />
+    <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h8" />
   </svg>
 );
-const UsersIcon = () => (
+const ResourcesIcon = () => (
   <svg {...iconProps} aria-hidden>
-    <circle cx="9" cy="9" r="3.2" />
-    <path d="M3 19c0-2.8 2.7-5 6-5s6 2.2 6 5" />
-    <circle cx="17" cy="8" r="2.6" />
-    <path d="M15 14.5c.6-.3 1.3-.5 2-.5 2.2 0 4 1.6 4 4" />
+    <path d="M4 4h6l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
+    <path d="M8 12h8M8 16h5" />
   </svg>
 );
 const UserIcon = () => (
@@ -99,6 +93,11 @@ const ShieldIcon = () => (
   <svg {...iconProps} aria-hidden>
     <path d="M12 3l8 3v6c0 4.6-3.4 8.4-8 9-4.6-.6-8-4.4-8-9V6l8-3z" />
     <path d="M9 12l2 2 4-4" />
+  </svg>
+);
+const ChatIcon = () => (
+  <svg {...iconProps} aria-hidden>
+    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
   </svg>
 );
 
@@ -136,15 +135,17 @@ const SplitViewIcon = () => (
     <rect x="13" y="5" width="7" height="14" rx="1.5" />
   </svg>
 );
+const ResearchModeIcon = () => (
+  <svg {...headerIcon} aria-hidden>
+    <path d="M4 4h12a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3V4z" />
+    <path d="M8 8h6M8 12h6M8 16h4" />
+  </svg>
+);
 
 export function SnsFeedLayout({
   children,
-  joinedGroups: _joinedGroups,
-  userName: _userName,
-  userImage: _userImage,
   isAuthenticated = false,
   isAdmin = false,
-  isGroupAdmin = false,
 }: SnsFeedLayoutProps) {
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -157,32 +158,28 @@ export function SnsFeedLayout({
     groupOpen,
     setGroupOpen,
     closeGroup,
-    joinedGroups,
-    groupsLoaded,
     refreshPicker,
+    activeGroup,
   } = useGroupPanel();
   const [viewMode, setViewMode] = usePostViewMode();
   const pathname = usePathname();
-  const isGroupRoom =
-    pathname.startsWith("/group/") &&
-    pathname !== "/group/mygroups" &&
-    pathname !== "/group/manage";
+  const groupRoute = parseGroupRoute(pathname);
+  const groupId = groupRoute?.groupId ?? null;
+  const isGroupContext = !!groupId;
+  const isMeditationPage =
+    pathname === "/meditation" || pathname.includes("/meditation");
+  const isGroupChat =
+    !!groupId && pathname.startsWith(`/group/${groupId}/chat`);
   const showGroupPlus =
     isAuthenticated &&
-    groupOpen &&
-    groupsLoaded &&
-    joinedGroups.length === 0;
+    (pathname === "/group/mygroups" || groupOpen || isGroupContext);
   const mainMaxWidth =
-    pathname === "/meditation"
+    pathname === "/meditation" || pathname.includes("/meditation")
       ? meditationPageMaxWidthClass
-      : isGroupRoom
+      : isGroupChat
         ? "max-w-none"
         : "max-w-6xl";
   const [theme, setTheme] = useTheme();
-
-  void _joinedGroups;
-  void _userName;
-  void _userImage;
 
   const onGroupTabClick = useCallback(() => {
     setProfileOpen(false);
@@ -205,105 +202,165 @@ export function SnsFeedLayout({
     const items: { label: string; href: string; icon: React.ReactNode }[] = [
       { label: "게시글", href: "/feed", icon: <FeedIcon /> },
       { label: "말씀묵상", href: "/meditation", icon: <BookHeartIcon /> },
-      { label: "말씀연구", href: "/study", icon: <BookIcon /> },
+      { label: "말씀 기록", href: "/record", icon: <RecordIcon /> },
+      { label: "자료실", href: "/resources", icon: <ResourcesIcon /> },
       { label: "마이페이지", href: "/me", icon: <UserIcon /> },
     ];
-    if (isGroupAdmin) {
+    if (isAdmin) {
+      items.push({ label: "관리자", href: "/admin", icon: <ShieldIcon /> });
+    }
+    return items;
+  }, [isAdmin]);
+
+  const groupNavItems = useMemo(() => {
+    if (!groupId) return [];
+    const items: { label: string; href: string; icon: React.ReactNode }[] = [
+      { label: "소그룹 홈", href: groupPath(groupId, "feed"), icon: <FeedIcon /> },
+      {
+        label: "말씀묵상",
+        href: groupPath(groupId, "meditation"),
+        icon: <BookHeartIcon />,
+      },
+      {
+        label: "말씀 기록",
+        href: groupPath(groupId, "record"),
+        icon: <RecordIcon />,
+      },
+      { label: "채팅", href: groupPath(groupId, "chat"), icon: <ChatIcon /> },
+    ];
+    if (activeGroup?.isAdmin) {
       items.push({
         label: "소그룹 관리",
         href: "/group/manage",
         icon: <ShieldIcon />,
       });
     }
-    if (isAdmin) {
-      items.push({ label: "관리자", href: "/admin", icon: <ShieldIcon /> });
-    }
     return items;
-  }, [isAdmin, isGroupAdmin]);
+  }, [groupId, activeGroup?.isAdmin]);
+
+  const navBtnClass =
+    "relative flex h-11 w-11 items-center justify-center rounded-xl text-ink transition hover:bg-accent-soft hover:text-accent-foreground";
+
+  function navTip(label: string) {
+    return (
+      <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded-md border border-line bg-surface px-3 py-1 text-sm font-medium text-ink opacity-0 shadow-md transition-opacity duration-150 group-hover/nav:opacity-100">
+        {label}
+      </span>
+    );
+  }
+
+  function headerQuickTip(label: string) {
+    return (
+      <span className="pointer-events-none absolute right-full top-1/2 z-50 mr-2 -translate-y-1/2 whitespace-nowrap rounded-md border border-line bg-surface px-2.5 py-1 text-xs font-medium text-ink opacity-0 shadow-md transition-opacity duration-150 group-hover/quick:opacity-100">
+        {label}
+      </span>
+    );
+  }
 
   return (
-    <FeedBrowseProvider>
-    <div className="relative min-h-screen bg-bg pb-24 pt-[var(--app-header-height)]">
+    <FeedBrowseProvider groupId={groupId ?? undefined}>
+    <div
+      className={`relative bg-bg pt-[var(--app-header-height)] ${
+        isGroupChat ? "flex h-dvh flex-col overflow-hidden" : "min-h-screen pb-24"
+      }`}
+    >
       <header
         className={`fixed inset-x-0 top-0 z-40 ${appHeaderShellClass}`}
       >
         <div className={appHeaderRowClassName}>
-          <Link
-            href="/feed"
-            className="relative z-10 flex shrink-0 items-center gap-3"
-            aria-label="성경나눔장소"
-          >
-            <HeaderLogoGlyph />
-          </Link>
+          {isGroupContext && activeGroup ? (
+            <GroupPickerButton
+              name={activeGroup.name}
+              image={activeGroup.image}
+              onClick={onGroupTabClick}
+              expanded={groupOpen}
+            />
+          ) : isAuthenticated ? (
+            <LogoPickerButton onClick={onGroupTabClick} expanded={groupOpen} />
+          ) : (
+            <Link
+              href="/feed"
+              className="relative z-10 flex shrink-0 items-center gap-3"
+              aria-label="성경나눔장소"
+            >
+              <HeaderLogoGlyph />
+            </Link>
+          )}
           <AppHeaderCenter />
           <div className="relative z-10 flex shrink-0 items-center gap-2">
+            {isMeditationPage ? (
+              <button
+                type="button"
+                aria-disabled
+                className="group/quick relative flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-xl text-black opacity-50 dark:text-white"
+                aria-label="연구모드 coming soon.."
+              >
+                <ResearchModeIcon />
+                {headerQuickTip("연구모드 coming soon..")}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-black transition-colors hover:text-accent dark:text-white dark:hover:text-accent"
+              className="group/quick relative flex h-10 w-10 items-center justify-center rounded-xl text-black transition-colors hover:text-accent dark:text-white dark:hover:text-accent"
               aria-label={theme === "dark" ? "라이트 모드" : "다크 모드"}
             >
               {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+              {headerQuickTip("테마")}
             </button>
             <button
               type="button"
               onClick={() =>
                 setViewMode(viewMode === "popup" ? "split" : "popup")
               }
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-black transition-colors hover:text-accent dark:text-white dark:hover:text-accent"
+              className="group/quick relative flex h-10 w-10 items-center justify-center rounded-xl text-black transition-colors hover:text-accent dark:text-white dark:hover:text-accent"
               aria-label={viewMode === "popup" ? "이분할로 보기" : "팝업으로 보기"}
             >
               {viewMode === "popup" ? <SplitViewIcon /> : <PopupViewIcon />}
+              {headerQuickTip("뷰어 모드")}
             </button>
           </div>
         </div>
       </header>
 
       <aside className="group/nav fixed bottom-0 left-0 top-[var(--app-header-height)] z-50 hidden w-16 flex-col py-4 lg:flex">
-        <div className="min-h-0 flex-1" />
-
-        <nav className="flex flex-col items-center gap-2">
-          {navItems.slice(0, 3).map((item) => (
-            <Link
-              key={`${item.label}-${item.href}`}
-              href={item.href}
-              className="relative flex h-11 w-11 items-center justify-center rounded-xl text-ink transition hover:bg-accent-soft hover:text-accent-foreground"
-              aria-label={item.label}
-            >
-              {item.icon}
-              <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded-md border border-line bg-surface px-3 py-1 text-sm font-medium text-ink opacity-0 shadow-md transition-opacity duration-150 group-hover/nav:opacity-100">
-                {item.label}
-              </span>
-            </Link>
-          ))}
-          <button
-            type="button"
-            onClick={onGroupTabClick}
-            className="relative flex h-11 w-11 items-center justify-center rounded-xl text-ink transition hover:bg-accent-soft hover:text-accent-foreground"
-            aria-label="소그룹"
-            aria-expanded={groupOpen}
-          >
-            <UsersIcon />
-            <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded-md border border-line bg-surface px-3 py-1 text-sm font-medium text-ink opacity-0 shadow-md transition-opacity duration-150 group-hover/nav:opacity-100">
-              소그룹
-            </span>
-          </button>
-          {navItems.slice(3).map((item) => (
-            <Link
-              key={`${item.label}-${item.href}`}
-              href={item.href}
-              className="relative flex h-11 w-11 items-center justify-center rounded-xl text-ink transition hover:bg-accent-soft hover:text-accent-foreground"
-              aria-label={item.label}
-            >
-              {item.icon}
-              <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded-md border border-line bg-surface px-3 py-1 text-sm font-medium text-ink opacity-0 shadow-md transition-opacity duration-150 group-hover/nav:opacity-100">
-                {item.label}
-              </span>
-            </Link>
-          ))}
-        </nav>
-
-        <div className="flex-1" />
+        {isGroupContext ? (
+          <>
+            <div className="min-h-0 flex-1" />
+            <nav className="flex flex-col items-center gap-2">
+              {groupNavItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={navBtnClass}
+                  aria-label={item.label}
+                >
+                  {item.icon}
+                  {navTip(item.label)}
+                </Link>
+              ))}
+            </nav>
+            <div className="flex-1" />
+          </>
+        ) : (
+          <>
+            <div className="min-h-0 flex-1" />
+            <nav className="flex flex-col items-center gap-2">
+              {navItems.map((item) => (
+                <Link
+                  key={`${item.label}-${item.href}`}
+                  href={item.href}
+                  className={navBtnClass}
+                  aria-label={item.label}
+                >
+                  {item.icon}
+                  {navTip(item.label)}
+                </Link>
+              ))}
+            </nav>
+            <div className="flex-1" />
+          </>
+        )}
 
         {isAuthenticated ? (
           <div className="relative flex justify-center pb-1">
@@ -322,7 +379,7 @@ export function SnsFeedLayout({
                 }
                 toggleChat();
               }}
-              className="relative flex h-11 w-11 items-center justify-center rounded-xl text-ink transition hover:bg-accent-soft hover:text-accent-foreground focus:outline-none"
+              className={`${navBtnClass} focus:outline-none`}
               aria-label={chatOpen ? "채팅 닫기" : "채팅 열기"}
               aria-expanded={chatOpen}
             >
@@ -387,7 +444,7 @@ export function SnsFeedLayout({
               {isAuthenticated ? (
                 <>
                   <Link
-                    href="/settings"
+                    href={groupId ? groupPath(groupId, "settings") : "/settings"}
                     className="block px-3 py-2 text-xs font-medium text-ink hover:bg-accent-soft"
                     role="menuitem"
                     onClick={closeProfile}
@@ -449,7 +506,7 @@ export function SnsFeedLayout({
 
       <main
         className={`mx-auto w-full px-3 pt-[15px] sm:px-4 lg:pl-20 ${mainMaxWidth} ${
-          isGroupRoom ? "flex min-h-[calc(100dvh-var(--app-header-height))] flex-col" : ""
+          isGroupChat ? "flex min-h-0 flex-1 flex-col overflow-hidden" : ""
         }`}
       >
         {children}

@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -26,22 +27,38 @@ type FeedBrowseValue = {
 
 const FeedBrowseContext = createContext<FeedBrowseValue | null>(null);
 
-export function FeedBrowseProvider({ children }: { children: ReactNode }) {
+export function FeedBrowseProvider({
+  children,
+  groupId,
+}: {
+  children: ReactNode;
+  groupId?: string;
+}) {
   const [feedDate, setFeedDate] = useState(
-    () => readFeedBrowse()?.feedDate ?? feedTodayIso(),
+    () => readFeedBrowse(groupId)?.feedDate ?? feedTodayIso(),
   );
   const today = feedTodayIso();
   const canGoNewer = feedDate < today;
 
-  const pickDate = useCallback((next: string) => {
-    saveFeedBrowse({
-      feedDate: next,
-      scrollY: 0,
-      postId: null,
-      detailPostId: null,
-    });
-    setFeedDate(next);
-  }, []);
+  useEffect(() => {
+    setFeedDate(readFeedBrowse(groupId)?.feedDate ?? feedTodayIso());
+  }, [groupId]);
+
+  const pickDate = useCallback(
+    (next: string) => {
+      saveFeedBrowse(
+        {
+          feedDate: next,
+          scrollY: 0,
+          postId: null,
+          detailPostId: null,
+        },
+        groupId,
+      );
+      setFeedDate(next);
+    },
+    [groupId],
+  );
 
   const goOlder = useCallback(
     () => pickDate(feedDateAddDays(feedDate, -1)),

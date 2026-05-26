@@ -5,7 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import { GroupEditModal } from "@/components/group/group-edit-modal";
 import { ProfileAvatar } from "@/components/me/profile-avatar";
-import type { GroupJson } from "@/lib/group";
+import { groupPath } from "@/lib/group-route";
+import type { GroupJson } from "@/lib/group-types";
 
 type JoinReq = {
   id: string;
@@ -148,10 +149,10 @@ export function GroupManageClient() {
             <p className="mt-1 text-sm text-muted">{active.statusMessage}</p>
           ) : null}
           <Link
-            href={`/group/${active.id}`}
+            href={groupPath(active.id, "feed")}
             className="mt-3 text-xs font-medium text-accent-foreground hover:underline"
           >
-            소그룹 방 열기 →
+            소그룹 홈 열기 →
           </Link>
         </div>
       ) : null}

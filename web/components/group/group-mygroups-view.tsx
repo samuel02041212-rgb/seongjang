@@ -23,7 +23,7 @@ export function GroupMygroupsView() {
 
   return (
     <div className="flex min-h-[calc(100dvh-var(--app-header-height))] items-center justify-center bg-surface">
-      <p className="text-sm text-muted">왼쪽 소그룹 탭을 눌러 소그룹을 선택하세요.</p>
+      <p className="text-sm text-muted">왼쪽 상단 로고를 눌러 소그룹을 선택하세요.</p>
     </div>
   );
 }

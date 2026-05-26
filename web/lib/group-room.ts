@@ -1,27 +1,8 @@
 import { feedDateRangeUtc, feedTodayIso } from "@/lib/feed-date";
+import { postDisplayTitle } from "@/lib/group-post-msg";
+import type { GroupChatMsgJson, GroupMemberRow } from "@/lib/group-types";
+import { formatMemberName } from "@/lib/group-types";
 import { prisma } from "@/lib/prisma";
-
-export type GroupMemberRow = {
-  userId: string;
-  name: string;
-  image: string | null;
-  todayPostTitle: string | null;
-  hasPostedToday: boolean;
-};
-
-export function postDisplayTitle(post: {
-  title: string;
-  bibleRef: string;
-  content: string;
-}): string {
-  const title = post.title.trim();
-  if (title) return title;
-  const ref = post.bibleRef.trim();
-  if (ref) return ref;
-  const text = post.content.trim();
-  if (!text) return "말씀묵상";
-  return text.length > 36 ? `${text.slice(0, 36)}…` : text;
-}
 
 export async function assertGroupMember(userId: string, groupId: string) {
   const member = await prisma.groupMember.findUnique({
@@ -80,8 +61,7 @@ export async function loadGroupRoom(groupId: string, viewerId: string) {
     const post = postByAuthor.get(m.userId);
     return {
       userId: m.userId,
-      name:
-        m.user.name?.trim() || m.user.email.split("@")[0] || "회원",
+      name: formatMemberName(m.user.name, m.user.email),
       image: m.user.image,
       todayPostTitle: post ? postDisplayTitle(post) : null,
       hasPostedToday: !!post,
@@ -90,15 +70,6 @@ export async function loadGroupRoom(groupId: string, viewerId: string) {
 
   return { group, members };
 }
-
-export type GroupChatMsgJson = {
-  id: string;
-  mine: boolean;
-  kind: string;
-  content: string;
-  senderName: string;
-  time: string;
-};
 
 export function serializeGroupMessage(
   m: {
@@ -116,8 +87,7 @@ export function serializeGroupMessage(
     mine: m.senderId === viewerId,
     kind: m.kind,
     content: m.content,
-    senderName:
-      m.sender.name?.trim() || m.sender.email.split("@")[0] || "회원",
+    senderName: formatMemberName(m.sender.name, m.sender.email),
     time: m.createdAt.toISOString(),
   };
 }

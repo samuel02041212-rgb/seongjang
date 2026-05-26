@@ -162,8 +162,13 @@ function HeaderClock() {
   );
 }
 
+function isFeedPage(pathname: string) {
+  if (pathname === "/feed") return true;
+  return /^\/group\/[^/]+\/feed$/.test(pathname);
+}
+
 export function AppHeaderCenter() {
   const pathname = usePathname();
-  if (pathname === "/feed") return <FeedHeaderDateNav />;
+  if (isFeedPage(pathname)) return <FeedHeaderDateNav />;
   return <HeaderClock />;
 }
