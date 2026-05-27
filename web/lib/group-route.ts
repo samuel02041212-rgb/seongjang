@@ -11,7 +11,7 @@ export function parseGroupRoute(pathname: string): { groupId: string } | null {
 
 export function groupPath(
   groupId: string,
-  section: "feed" | "chat" | "meditation" | "record" | "settings",
+  section: "feed" | "chat" | "meditation" | "record" | "settings" | "manage",
 ) {
   return `/group/${groupId}/${section}`;
 }

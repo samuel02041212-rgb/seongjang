@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { AnnouncementPanel } from "@/components/announcement/announcement-panel";
 import { GroupEditModal } from "@/components/group/group-edit-modal";
 import { ProfileAvatar } from "@/components/me/profile-avatar";
 import type { GroupJson } from "@/lib/group-types";
 
-type AdminTab = "manage" | "schedule" | "group";
+type AdminTab = "manage" | "schedule" | "group" | "notice";
 
 type AdminUserRow = {
   _id: string;
@@ -129,7 +130,7 @@ export function AdminDashboard() {
           </Link>
         </h1>
         <p className="text-xs text-muted">
-          레거시 관리자 탭과 동일: 관리 · 달력/일정 · 소그룹
+          레거시 관리자 탭과 동일: 관리 · 달력/일정 · 소그룹 · 공지
         </p>
       </div>
 
@@ -139,6 +140,7 @@ export function AdminDashboard() {
             ["manage", "관리"],
             ["schedule", "달력/일정"],
             ["group", "소그룹"],
+            ["notice", "공지"],
           ] as const
         ).map(([k, label]) => (
           <button
@@ -160,6 +162,7 @@ export function AdminDashboard() {
         {tab === "manage" ? <AdminManagePanel /> : null}
         {tab === "schedule" ? <AdminSchedulePanel /> : null}
         {tab === "group" ? <AdminGroupPanel /> : null}
+        {tab === "notice" ? <AnnouncementPanel scope="site" /> : null}
       </div>
     </div>
   );

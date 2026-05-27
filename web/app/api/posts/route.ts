@@ -38,7 +38,7 @@ export async function GET(req: Request) {
 
     const posts = await prisma.post.findMany({
       where: {
-        ...(mine ? { authorId: session.user.id } : {}),
+        ...(mine ? { authorId: session.user.id, kind: "MEDITATION" as const } : {}),
         ...(groupId ? { visibleGroupIds: { has: groupId } } : {}),
         ...(dateRange
           ? { createdAt: { gte: dateRange.gte, lt: dateRange.lt } }

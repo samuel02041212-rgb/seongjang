@@ -2,6 +2,7 @@ import type { Post as PostModel } from "@/app/generated/prisma/client";
 
 export type FeedPostJson = {
   id: string;
+  kind: "meditation" | "announcement";
   title: string;
   content: string;
   authorName: string;
@@ -30,6 +31,7 @@ export function serializeFeedPost(
   const likedBy = p.likedBy ?? [];
   return {
     id: p.id,
+    kind: p.kind === "ANNOUNCEMENT" ? "announcement" : "meditation",
     title: p.title ?? "",
     content: p.content,
     authorName: p.authorName,

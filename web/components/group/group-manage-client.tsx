@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { AnnouncementPanel } from "@/components/announcement/announcement-panel";
 import { GroupEditModal } from "@/components/group/group-edit-modal";
 import { ProfileAvatar } from "@/components/me/profile-avatar";
 import { groupPath } from "@/lib/group-route";
@@ -14,7 +15,9 @@ type JoinReq = {
   user: { id: string; name: string; image: string | null; church: string };
 };
 
-export function GroupManageClient() {
+export function GroupManageClient({
+  defaultGroupId,
+}: { defaultGroupId?: string } = {}) {
   const [groups, setGroups] = useState<GroupJson[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [joinReqs, setJoinReqs] = useState<JoinReq[]>([]);
@@ -35,6 +38,12 @@ export function GroupManageClient() {
       const managed = all.filter((g) => g.isAdmin);
       setGroups(managed);
       setActiveId((id) => {
+        if (
+          defaultGroupId &&
+          managed.some((g) => g.id === defaultGroupId)
+        ) {
+          return defaultGroupId;
+        }
         if (id && managed.some((g) => g.id === id)) return id;
         return managed[0]?.id ?? null;
       });
@@ -43,7 +52,7 @@ export function GroupManageClient() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [defaultGroupId]);
 
   const loadJoinReqs = useCallback(async (groupId: string) => {
     try {
@@ -205,6 +214,17 @@ export function GroupManageClient() {
           )}
         </ul>
       </section>
+
+      {active ? (
+        <section className="mt-8">
+          <h3 className="mb-4 text-sm font-semibold text-ink">공지</h3>
+          <AnnouncementPanel
+            scope="group"
+            groupId={active.id}
+            groupName={active.name}
+          />
+        </section>
+      ) : null}
 
       <GroupEditModal
         open={editOpen}

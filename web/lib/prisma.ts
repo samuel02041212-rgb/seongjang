@@ -61,8 +61,9 @@ function createPrisma(): PrismaClient {
 
 function devSchemaKey(): string {
   const userFields = Object.keys(Prisma.UserScalarFieldEnum).sort().join(",");
+  const postFields = Object.keys(Prisma.PostScalarFieldEnum).sort().join(",");
   const models = Object.values(Prisma.ModelName).sort().join(",");
-  return `${userFields}|${models}`;
+  return `${userFields}|${postFields}|${models}`;
 }
 
 function getPrisma(): PrismaClient {

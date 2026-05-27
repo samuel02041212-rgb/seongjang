@@ -1,0 +1,1 @@
+ALTER TABLE "Post" ADD COLUMN "feedPinned" BOOLEAN NOT NULL DEFAULT false;

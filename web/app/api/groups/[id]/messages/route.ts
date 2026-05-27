@@ -47,10 +47,14 @@ export async function GET(
   }
 }
 
-const postBody = z.object({
-  kind: z.enum(["text", "image", "poll", "schedule"]).default("text"),
-  content: z.string().trim().min(1).max(4000),
-});
+const postBody = z
+  .object({
+    kind: z.enum(["text", "image", "poll", "schedule"]).default("text"),
+    content: z.string().trim().min(1).max(4000),
+  })
+  .refine((d) => d.kind !== "text" || d.content.length <= 500, {
+    path: ["content"],
+  });
 
 export async function POST(
   req: Request,

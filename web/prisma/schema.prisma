@@ -39,6 +39,11 @@ model User {
   updatedAt             DateTime  @updatedAt
 }
 
+enum PostKind {
+  MEDITATION
+  ANNOUNCEMENT
+}
+
 model Post {
   id               String   @id @default(cuid())
   authorId         String
@@ -48,6 +53,8 @@ model Post {
   imageUrls        String[] @default([])
   imagesLarge      Boolean  @default(false)
   bibleRef         String   @default("")
+  kind             PostKind @default(MEDITATION)
+  feedPinned       Boolean  @default(false)
   likedBy          String[] @default([])
   visibleGroupIds  String[] @default([])
   createdAt        DateTime @default(now())

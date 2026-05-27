@@ -117,6 +117,7 @@ export function PostDetailModal({
   if (!open || !post) return null;
 
   const isSide = variant === "side";
+  const isAnnouncement = post.kind === "announcement";
   const commentCountLabel = previewMode
     ? post.commentCount
     : loading
@@ -161,37 +162,61 @@ export function PostDetailModal({
         <div className="min-w-0 min-h-0 flex-1 overflow-y-auto">
           <div className={`mx-auto w-full ${feedCardMaxWidthClass}`}>
           <div className={feedPostInnerClass}>
-            <div className="flex items-start justify-between gap-x-2 gap-y-1">
-              <div className="min-w-0 flex-1">
-                {post.title ? (
-                  <h3 className={feedPostTitleClass}>{post.title}</h3>
+            {isAnnouncement ? (
+              <>
+                {post.authorName ? (
+                  <p className="text-center text-xs text-muted">{post.authorName}</p>
                 ) : null}
-              </div>
-              {post.authorName || post.authorChurch ? (
-                <span className="max-w-[45%] shrink-0 truncate text-right text-xs text-muted">
-                  {post.authorName}
-                  {post.authorChurch ? `, ${post.authorChurch}` : ""}
-                </span>
-              ) : null}
-            </div>
-            <div
-              className={`flex items-baseline justify-between gap-x-3 ${post.title || post.bibleRef ? "mt-1" : ""}`}
-            >
-              {post.bibleRef ? (
-                <p className={`min-w-0 flex-1 ${feedPostBibleRefClass}`}>
-                  {post.bibleRef}
-                </p>
-              ) : (
-                <span className="min-w-0 flex-1" aria-hidden />
-              )}
-              <time
-                className="shrink-0 text-right text-xs text-muted whitespace-nowrap"
-                dateTime={post.createdAt}
-              >
-                {formatFeedRelativeTime(post.createdAt)} ·{" "}
-                {new Date(post.createdAt).toLocaleString("ko-KR")}
-              </time>
-            </div>
+                {post.title ? (
+                  <h3 className={`${feedPostTitleClass} mt-1 text-center`}>
+                    {post.title}
+                  </h3>
+                ) : null}
+                <div className={`flex justify-end ${post.title ? "mt-1" : ""}`}>
+                  <time
+                    className="text-xs text-muted whitespace-nowrap"
+                    dateTime={post.createdAt}
+                  >
+                    {formatFeedRelativeTime(post.createdAt)} ·{" "}
+                    {new Date(post.createdAt).toLocaleString("ko-KR")}
+                  </time>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-start justify-between gap-x-2 gap-y-1">
+                  <div className="min-w-0 flex-1">
+                    {post.title ? (
+                      <h3 className={feedPostTitleClass}>{post.title}</h3>
+                    ) : null}
+                  </div>
+                  {post.authorName || post.authorChurch ? (
+                    <span className="max-w-[45%] shrink-0 truncate text-right text-xs text-muted">
+                      {post.authorName}
+                      {post.authorChurch ? `, ${post.authorChurch}` : ""}
+                    </span>
+                  ) : null}
+                </div>
+                <div
+                  className={`flex items-baseline justify-between gap-x-3 ${post.title || post.bibleRef ? "mt-1" : ""}`}
+                >
+                  {post.bibleRef ? (
+                    <p className={`min-w-0 flex-1 ${feedPostBibleRefClass}`}>
+                      {post.bibleRef}
+                    </p>
+                  ) : (
+                    <span className="min-w-0 flex-1" aria-hidden />
+                  )}
+                  <time
+                    className="shrink-0 text-right text-xs text-muted whitespace-nowrap"
+                    dateTime={post.createdAt}
+                  >
+                    {formatFeedRelativeTime(post.createdAt)} ·{" "}
+                    {new Date(post.createdAt).toLocaleString("ko-KR")}
+                  </time>
+                </div>
+              </>
+            )}
             {post.visibleGroupLabel ? (
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 <span className="inline-flex max-w-full items-center rounded-md border border-line bg-bg px-2 py-0.5 text-[11px] font-medium text-muted">

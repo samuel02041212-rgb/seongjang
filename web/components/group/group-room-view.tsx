@@ -13,6 +13,8 @@ import { resizeImage } from "@/lib/image-resize";
 
 const MSG_POLL_MS = 3000;
 const ROOM_POLL_MS = 30000;
+const TEXT_MSG_MAX = 500;
+const CARD_W = "w-[240px] shrink-0";
 
 type RoomData = {
   group: {
@@ -94,7 +96,7 @@ function PollBubble({
 
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium">{data.question}</p>
+      <p className="line-clamp-3 text-sm font-medium">{data.question}</p>
       <ul className="space-y-1">
         {data.options.map((opt, i) => (
           <li key={i}>
@@ -103,7 +105,7 @@ function PollBubble({
               onClick={() => void vote(i)}
               className="flex w-full items-center justify-between rounded-md border border-line bg-bg px-2 py-1.5 text-left text-xs hover:bg-accent-soft"
             >
-              <span>{opt}</span>
+              <span className="min-w-0 flex-1 truncate">{opt}</span>
               <span className="text-muted">
                 {total > 0
                   ? `${Math.round((voteCounts[i] / total) * 100)}%`
@@ -129,7 +131,7 @@ function ScheduleBubble({ content }: { content: string }) {
   return (
     <div className="rounded-md border border-accent/40 bg-accent-soft/50 px-3 py-2">
       <p className="text-xs font-medium text-accent-foreground">일정</p>
-      <p className="mt-1 text-sm font-medium text-ink">{data.title}</p>
+      <p className="mt-1 line-clamp-2 text-sm font-medium text-ink">{data.title}</p>
       <p className="mt-1 text-xs text-muted">
         {start.toLocaleString("ko-KR")}
         {end ? ` ~ ${end.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}` : ""}
@@ -153,7 +155,7 @@ function PostBubble({
     <button
       type="button"
       onClick={() => onOpen(data.postId)}
-      className="flex w-full max-w-[240px] gap-2 rounded-md border border-line/80 bg-bg/80 p-2 text-left transition hover:bg-accent-soft/60"
+      className="flex w-full gap-2 rounded-md border border-line/80 bg-bg/80 p-2 text-left transition hover:bg-accent-soft/60"
     >
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-ink">{label}</p>
@@ -185,23 +187,31 @@ function ChatBubble({
   onPostOpen: (postId: string) => void;
 }) {
   const base = msg.mine
-    ? "ml-auto bg-accent text-accent-foreground"
-    : "mr-auto bg-surface border border-line text-ink";
+    ? "bg-accent text-accent-foreground"
+    : "bg-surface border border-line text-ink";
 
   if (msg.kind === "image") {
     return (
-      <div className={`max-w-[75%] overflow-hidden rounded-lg ${base}`}>
+      <div className={`${CARD_W} overflow-hidden rounded-lg ${base}`}>
         {!msg.mine ? (
           <p className="px-2 pt-1 text-[10px] text-muted">{msg.senderName}</p>
         ) : null}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={msg.content} alt="" className="max-h-64 w-full object-cover" />
+        <img
+          src={msg.content}
+          alt=""
+          className="aspect-[4/3] w-full object-cover"
+        />
       </div>
     );
   }
 
+  const isCard =
+    msg.kind === "poll" || msg.kind === "schedule" || msg.kind === "post";
+  const bubbleSize = isCard ? CARD_W : "max-w-[min(70%,16rem)]";
+
   return (
-    <div className={`max-w-[85%] rounded-lg px-3 py-2 ${base}`}>
+    <div className={`${bubbleSize} rounded-lg px-3 py-2 ${base}`}>
       {!msg.mine ? (
         <p className="mb-0.5 text-[10px] font-medium opacity-70">
           {msg.senderName}
@@ -445,13 +455,17 @@ export function GroupRoomView({ groupId }: { groupId: string }) {
             className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4"
           >
             {messages.map((m) => (
-              <ChatBubble
+              <div
                 key={m.id}
-                msg={m}
-                groupId={groupId}
-                onPollVoted={() => void loadMessages(true)}
-                onPostOpen={(id) => void openPostDetail(id)}
-              />
+                className={`flex ${m.mine ? "justify-end" : "justify-start"}`}
+              >
+                <ChatBubble
+                  msg={m}
+                  groupId={groupId}
+                  onPollVoted={() => void loadMessages(true)}
+                  onPostOpen={(id) => void openPostDetail(id)}
+                />
+              </div>
             ))}
           </div>
 
@@ -612,6 +626,7 @@ export function GroupRoomView({ groupId }: { groupId: string }) {
               </div>
               <input
                 value={text}
+                maxLength={TEXT_MSG_MAX}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {

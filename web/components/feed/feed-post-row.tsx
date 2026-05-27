@@ -37,6 +37,8 @@ export function FeedPostRow({
   showBookmark,
   onBookmarkChange,
 }: FeedPostRowProps) {
+  const isAnnouncement = post.kind === "announcement";
+
   return (
     <div className={`group/card ${cardShellClass} bg-gradient-to-br from-accent/40 via-line to-accent/20 p-[2px] shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition hover:from-accent/60 hover:to-accent/40 hover:shadow-[0_4px_14px_rgba(0,0,0,0.08)] dark:from-accent/25 dark:via-line dark:to-accent/10 dark:hover:from-accent/40 dark:hover:to-accent/25`}>
     <article
@@ -52,28 +54,41 @@ export function FeedPostRow({
       }}
     >
       <div className={feedPostInnerClass}>
-        <div className="flex items-start justify-between gap-x-2 gap-y-1">
-          <div className="min-w-0 flex-1">
+        {isAnnouncement ? (
+          <>
+            {post.authorName ? (
+              <p className="text-center text-xs text-muted">{post.authorName}</p>
+            ) : null}
             {post.title ? (
-              <h2 className={feedPostTitleClass}>
+              <h2 className={`${feedPostTitleClass} mt-1 text-center`}>
                 {post.title}
               </h2>
             ) : null}
-            {post.bibleRef ? (
-              <p
-                className={`${feedPostBibleRefClass} ${post.title ? "mt-1" : ""}`}
-              >
-                {post.bibleRef}
-              </p>
+          </>
+        ) : (
+          <div className="flex items-start justify-between gap-x-2 gap-y-1">
+            <div className="min-w-0 flex-1">
+              {post.title ? (
+                <h2 className={feedPostTitleClass}>
+                  {post.title}
+                </h2>
+              ) : null}
+              {post.bibleRef ? (
+                <p
+                  className={`${feedPostBibleRefClass} ${post.title ? "mt-1" : ""}`}
+                >
+                  {post.bibleRef}
+                </p>
+              ) : null}
+            </div>
+            {post.authorName || post.authorChurch ? (
+              <span className="max-w-[45%] shrink-0 truncate text-right text-xs text-muted">
+                {post.authorName}
+                {post.authorChurch ? `, ${post.authorChurch}` : ""}
+              </span>
             ) : null}
           </div>
-          {post.authorName || post.authorChurch ? (
-            <span className="max-w-[45%] shrink-0 truncate text-right text-xs text-muted">
-              {post.authorName}
-              {post.authorChurch ? `, ${post.authorChurch}` : ""}
-            </span>
-          ) : null}
-        </div>
+        )}
         {post.visibleGroupLabel ? (
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             <span className="inline-flex max-w-full items-center rounded-md border border-line bg-bg px-2 py-0.5 text-[11px] font-medium text-muted">

@@ -231,7 +231,7 @@ export function SnsFeedLayout({
     if (activeGroup?.isAdmin) {
       items.push({
         label: "소그룹 관리",
-        href: "/group/manage",
+        href: groupPath(groupId, "manage"),
         icon: <ShieldIcon />,
       });
     }
