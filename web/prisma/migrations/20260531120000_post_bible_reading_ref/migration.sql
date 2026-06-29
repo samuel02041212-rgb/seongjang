@@ -1,0 +1,6 @@
+ALTER TABLE "Post" ADD COLUMN "bibleBookKey" TEXT;
+ALTER TABLE "Post" ADD COLUMN "otherReadingRef" TEXT;
+ALTER TABLE "Post" ADD COLUMN "bibleChapterStart" INTEGER;
+ALTER TABLE "Post" ADD COLUMN "bibleVerseStart" INTEGER;
+ALTER TABLE "Post" ADD COLUMN "bibleChapterEnd" INTEGER;
+ALTER TABLE "Post" ADD COLUMN "bibleVerseEnd" INTEGER;

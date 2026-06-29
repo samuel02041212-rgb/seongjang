@@ -1,5 +1,6 @@
 "use client";
 
+import { usePinnedAnnouncement } from "@/components/announcement/pinned-announcement-context";
 import { useChatPanel } from "@/components/chat/chat-dock";
 import { feedTodayIso } from "@/lib/feed-date";
 import {
@@ -12,7 +13,6 @@ import {
 import type { FeedPostJson } from "@/lib/feed-serialize";
 import { feedPostListClass } from "@/lib/feed-card-layout";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FeedPinnedNotice } from "./feed-pinned-notice";
 import { FeedPostRow } from "./feed-post-row";
 import { PostDetailModal } from "./post-detail-modal";
 
@@ -36,6 +36,7 @@ export function FeedStream({
   onDetailOpenChange?: (open: boolean) => void;
 }) {
   const { bringPostDockToFront } = useChatPanel();
+  const pinned = usePinnedAnnouncement();
   const initialCache = readFeedPostsCache(feedDate, groupId);
   const [source, setSource] = useState<FeedSource>(
     initialCache?.length ? "ready" : "loading",
@@ -355,6 +356,14 @@ export function FeedStream({
 
   const openDetail = useCallback(
     (p: FeedPostJson) => {
+      if (p.kind === "announcement") {
+        if (!groupId && pinned) {
+          void pinned.openPost(p.id);
+          return;
+        }
+        setDetailPost(p);
+        return;
+      }
       if (viewerVariant === "side") bringPostDockToFront();
       setDetailPost(p);
       saveFeedBrowse(
@@ -367,22 +376,7 @@ export function FeedStream({
         groupId,
       );
     },
-    [viewerVariant, bringPostDockToFront, groupId],
-  );
-
-  const openPinnedDetail = useCallback(
-    async (id: string) => {
-      try {
-        const res = await fetch(`/api/posts/${encodeURIComponent(id)}`, {
-          credentials: "include",
-        });
-        if (!res.ok) return;
-        openDetail((await res.json()) as FeedPostJson);
-      } catch {
-        void 0;
-      }
-    },
-    [openDetail],
+    [viewerVariant, bringPostDockToFront, groupId, pinned],
   );
 
   const closeDetail = useCallback(() => {
@@ -392,9 +386,6 @@ export function FeedStream({
 
   return (
     <>
-      {!groupId ? (
-        <FeedPinnedNotice onOpen={(id) => void openPinnedDetail(id)} />
-      ) : null}
       {source === "loading" ? (
         <p className="py-10 text-center text-sm text-muted">
           피드를 불러오는 중…
@@ -492,7 +483,9 @@ export function FeedStream({
         onClose={closeDetail}
         onCommentAdded={() => detailPost && bumpCommentCount(detailPost.id)}
         previewMode={false}
-        variant={viewerVariant}
+        variant={
+          detailPost?.kind === "announcement" ? "popup" : viewerVariant
+        }
       />
     </>
   );

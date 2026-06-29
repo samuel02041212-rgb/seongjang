@@ -27,15 +27,20 @@ function SwitchIcon() {
 export function LogoPickerButton({
   onClick,
   expanded,
+  tip,
+  dataTour,
 }: {
   onClick: () => void;
   expanded?: boolean;
+  tip?: React.ReactNode;
+  dataTour?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group/switch relative z-10 shrink-0 rounded-xl transition hover:opacity-90"
+      data-tour={dataTour}
+      className="group/switch group/navbtn relative z-10 shrink-0 rounded-xl transition hover:opacity-90"
       aria-label="소그룹 선택"
       aria-expanded={expanded}
     >
@@ -43,6 +48,7 @@ export function LogoPickerButton({
       <span className={switchOverlayClass}>
         <SwitchIcon />
       </span>
+      {tip}
     </button>
   );
 }
@@ -52,16 +58,19 @@ export function GroupPickerButton({
   image,
   onClick,
   expanded,
+  dataTour,
 }: {
   name: string;
   image: string | null;
   onClick: () => void;
   expanded?: boolean;
+  dataTour?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      data-tour={dataTour}
       className="group/switch relative z-10 flex min-w-0 max-w-[min(100%,10rem)] items-center gap-2.5 rounded-xl transition hover:opacity-90 sm:max-w-xs"
       aria-label="소그룹 선택"
       aria-expanded={expanded}

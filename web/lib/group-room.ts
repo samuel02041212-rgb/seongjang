@@ -91,3 +91,26 @@ export function serializeGroupMessage(
     time: m.createdAt.toISOString(),
   };
 }
+
+export function groupMessagePreview(kind: string, content: string): string {
+  if (kind === "text") return content.trim().slice(0, 80);
+  if (kind === "image") return "사진";
+  if (kind === "post") return "말씀묵상";
+  if (kind === "poll") {
+    try {
+      const data = JSON.parse(content) as { question?: string };
+      return data.question ? `투표: ${data.question}` : "투표";
+    } catch {
+      return "투표";
+    }
+  }
+  if (kind === "schedule") {
+    try {
+      const data = JSON.parse(content) as { title?: string };
+      return data.title ? `일정: ${data.title}` : "일정";
+    } catch {
+      return "일정";
+    }
+  }
+  return content.trim().slice(0, 80);
+}

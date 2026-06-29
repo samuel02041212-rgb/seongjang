@@ -15,6 +15,7 @@ function formatHeaderDate(iso: string) {
 }
 
 import { useFeedBrowse } from "./feed-browse-context";
+import { useFeedLayoutMode } from "@/lib/feed-layout-mode";
 
 const headerCenterTextClass =
   "min-w-0 truncate text-center text-xs text-muted sm:text-sm";
@@ -57,6 +58,7 @@ function FeedHeaderDateNav() {
 
   return (
     <div
+      data-tour="header-date"
       className="pointer-events-auto absolute left-1/2 top-1/2 flex max-w-[min(100vw-11rem,28rem)] -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-0.5 px-1 sm:gap-1.5 sm:px-2"
       onClick={(e) => e.stopPropagation()}
     >
@@ -169,6 +171,9 @@ function isFeedPage(pathname: string) {
 
 export function AppHeaderCenter() {
   const pathname = usePathname();
-  if (isFeedPage(pathname)) return <FeedHeaderDateNav />;
+  const [layoutMode] = useFeedLayoutMode();
+  if (isFeedPage(pathname) && layoutMode === "daily") {
+    return <FeedHeaderDateNav />;
+  }
   return <HeaderClock />;
 }

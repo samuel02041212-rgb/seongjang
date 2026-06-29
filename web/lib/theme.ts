@@ -11,7 +11,7 @@ function readStored(): Theme {
     const v = localStorage.getItem(KEY);
     if (v === "light" || v === "dark") return v;
   } catch {}
-  return document.documentElement.classList.contains("dark") ? "dark" : "light";
+  return "light";
 }
 
 function applyTheme(t: Theme) {

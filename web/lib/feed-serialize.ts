@@ -1,14 +1,26 @@
 import type { Post as PostModel } from "@/app/generated/prisma/client";
+import {
+  parseBibleReadingRanges,
+  type BibleReadingRange,
+} from "@/lib/bible-reading-ref";
 
 export type FeedPostJson = {
   id: string;
   kind: "meditation" | "announcement";
+  authorId: string;
   title: string;
   content: string;
   authorName: string;
   authorChurch?: string;
   createdAt: string;
   bibleRef: string;
+  bibleBookKey?: string | null;
+  otherReadingRef?: string | null;
+  bibleChapterStart?: number | null;
+  bibleVerseStart?: number | null;
+  bibleChapterEnd?: number | null;
+  bibleVerseEnd?: number | null;
+  bibleReadingRanges: BibleReadingRange[];
   imageUrls: string[];
   imagesLarge: boolean;
   likeCount: number;
@@ -32,12 +44,20 @@ export function serializeFeedPost(
   return {
     id: p.id,
     kind: p.kind === "ANNOUNCEMENT" ? "announcement" : "meditation",
+    authorId: p.authorId,
     title: p.title ?? "",
     content: p.content,
     authorName: p.authorName,
     authorChurch: p.author?.church?.trim() || undefined,
     createdAt: p.createdAt.toISOString(),
     bibleRef: p.bibleRef ?? "",
+    bibleBookKey: p.bibleBookKey ?? null,
+    otherReadingRef: p.otherReadingRef ?? null,
+    bibleChapterStart: p.bibleChapterStart ?? null,
+    bibleVerseStart: p.bibleVerseStart ?? null,
+    bibleChapterEnd: p.bibleChapterEnd ?? null,
+    bibleVerseEnd: p.bibleVerseEnd ?? null,
+    bibleReadingRanges: parseBibleReadingRanges(p.bibleReadingRanges),
     imageUrls: normalizeImageUrls(p.imageUrls),
     imagesLarge: p.imagesLarge ?? false,
     likeCount: likedBy.length,

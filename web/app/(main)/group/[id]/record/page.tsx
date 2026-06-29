@@ -25,7 +25,12 @@ export default async function GroupRecordPage({
   }
   return (
     <div className="mx-auto w-full pb-12">
-      <RecordPageClient groupId={id} />
+      <RecordPageClient
+        postsUrl={`/api/posts?groupId=${encodeURIComponent(id)}`}
+        showCalendarPosts
+        showPostAuthor
+        showTodos={false}
+      />
     </div>
   );
 }

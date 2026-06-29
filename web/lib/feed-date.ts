@@ -53,6 +53,19 @@ export function buildCreatedAtForFeedDate(feedDateIso: string): Date {
   return new Date(`${feedDateIso}T${h}:${m}:${s}+09:00`);
 }
 
+export function postFeedDateIso(createdAt: string): string {
+  return new Date(createdAt).toLocaleDateString("en-CA", { timeZone: FEED_TZ });
+}
+
+export function formatFeedDividerDate(iso: string): string {
+  return new Date(`${iso}T12:00:00+09:00`).toLocaleDateString("ko-KR", {
+    timeZone: FEED_TZ,
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
 export function formatComposerFeedDate(iso: string): string {
   return new Date(`${iso}T12:00:00+09:00`).toLocaleDateString("ko-KR", {
     timeZone: FEED_TZ,

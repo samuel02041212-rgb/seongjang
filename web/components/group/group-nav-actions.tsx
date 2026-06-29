@@ -47,6 +47,7 @@ export function GroupNavActions({ className }: GroupNavActionsProps) {
       <div className={`relative ${className ?? ""}`} ref={menuRef}>
         <button
           type="button"
+          data-tour="group-plus"
           onClick={() => setMenuOpen((v) => !v)}
           className={`relative flex h-11 w-11 items-center justify-center rounded-xl text-ink transition hover:bg-accent-soft hover:text-accent-foreground focus:outline-none ${
             menuOpen ? "bg-accent-soft text-accent-foreground" : ""

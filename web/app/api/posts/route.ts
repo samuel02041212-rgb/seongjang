@@ -8,6 +8,7 @@ import {
   isFeedDatePastOrToday,
 } from "@/lib/feed-date";
 import { buildGroupPostContent } from "@/lib/group-post-msg";
+import { resolveReadingRef } from "@/lib/bible-reading-ref";
 import { assertGroupMember } from "@/lib/group-room";
 import { serializeFeedPost } from "@/lib/feed-serialize";
 import { prisma } from "@/lib/prisma";
@@ -21,31 +22,72 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const mine = searchParams.get("mine") === "1";
+  const authorIdParam = searchParams.get("authorId")?.trim() || null;
   const dateParam = searchParams.get("date");
+  const timeline = searchParams.get("timeline") === "1";
+  const cursor = searchParams.get("cursor")?.trim() || null;
   const groupId = searchParams.get("groupId")?.trim() || null;
+
+  if (mine && authorIdParam) {
+    return NextResponse.json({ error: "bad_request" }, { status: 400 });
+  }
+
+  if (authorIdParam && (timeline || groupId)) {
+    return NextResponse.json({ error: "bad_request" }, { status: 400 });
+  }
 
   if (dateParam && !isFeedDateIso(dateParam)) {
     return NextResponse.json({ error: "bad_date" }, { status: 400 });
+  }
+
+  if (timeline && dateParam) {
+    return NextResponse.json({ error: "bad_request" }, { status: 400 });
+  }
+
+  if (cursor) {
+    const d = new Date(cursor);
+    if (Number.isNaN(d.getTime())) {
+      return NextResponse.json({ error: "bad_cursor" }, { status: 400 });
+    }
   }
 
   if (groupId && !(await assertGroupMember(session.user.id, groupId))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  if (authorIdParam) {
+    const author = await prisma.user.findUnique({
+      where: { id: authorIdParam },
+      select: { id: true, registrationApproved: true },
+    });
+    if (!author?.registrationApproved) {
+      return NextResponse.json({ error: "not_found" }, { status: 404 });
+    }
+  }
+
   try {
     const dateRange =
-      !mine && dateParam ? feedDateRangeUtc(dateParam) : null;
+      !timeline && dateParam ? feedDateRangeUtc(dateParam) : null;
+    const cursorDate = timeline && cursor ? new Date(cursor) : null;
 
     const posts = await prisma.post.findMany({
       where: {
         ...(mine ? { authorId: session.user.id, kind: "MEDITATION" as const } : {}),
+        ...(authorIdParam
+          ? { authorId: authorIdParam, kind: "MEDITATION" as const }
+          : {}),
         ...(groupId ? { visibleGroupIds: { has: groupId } } : {}),
         ...(dateRange
           ? { createdAt: { gte: dateRange.gte, lt: dateRange.lt } }
           : {}),
+        ...(cursorDate ? { createdAt: { lt: cursorDate } } : {}),
       },
       orderBy: { createdAt: "desc" },
-      take: mine || (groupId && !dateRange) ? 200 : 50,
+      take: timeline
+        ? 30
+        : mine || authorIdParam || (groupId && !dateRange)
+          ? 200
+          : 50,
       include: {
         _count: { select: { comments: true } },
         author: { select: { church: true } },
@@ -79,10 +121,25 @@ export async function GET(req: Request) {
   }
 }
 
+const bibleReadingRangeBody = z.object({
+  bibleBookKey: z.string().trim().min(1),
+  bibleChapterStart: z.number().int().positive(),
+  bibleVerseStart: z.number().int().positive(),
+  bibleChapterEnd: z.number().int().positive().optional().nullable(),
+  bibleVerseEnd: z.number().int().positive().optional().nullable(),
+});
+
 const createBody = z.object({
   title: z.string().trim().min(1),
   content: z.string().min(1, "내용을 입력해 주세요."),
-  bibleRef: z.string().trim().min(1),
+  bibleRef: z.string().trim().optional(),
+  bibleReadingRanges: z.array(bibleReadingRangeBody).max(10).optional(),
+  bibleBookKey: z.string().trim().optional(),
+  otherReadingRef: z.string().trim().optional(),
+  bibleChapterStart: z.number().int().positive().optional(),
+  bibleVerseStart: z.number().int().positive().optional(),
+  bibleChapterEnd: z.number().int().positive().optional(),
+  bibleVerseEnd: z.number().int().positive().optional(),
   imageUrls: z.array(z.string().min(1)).max(20).optional().default([]),
   imagesLarge: z.boolean().optional().default(false),
   visibleGroupIds: z.array(z.string()).optional().default([]),
@@ -105,6 +162,11 @@ export async function POST(req: Request) {
   const parsed = createBody.safeParse(json);
   if (!parsed.success) {
     return NextResponse.json({ ok: false }, { status: 400 });
+  }
+
+  const reading = resolveReadingRef(parsed.data);
+  if (!reading.ok) {
+    return NextResponse.json({ ok: false, error: reading.error }, { status: 400 });
   }
 
   const feedDate = parsed.data.feedDate?.trim();
@@ -130,7 +192,17 @@ export async function POST(req: Request) {
         authorName,
         title: parsed.data.title,
         content: parsed.data.content,
-        bibleRef: parsed.data.bibleRef,
+        bibleRef: reading.data.bibleRef,
+        bibleBookKey: reading.data.bibleBookKey,
+        otherReadingRef: reading.data.otherReadingRef,
+        bibleChapterStart: reading.data.bibleChapterStart,
+        bibleVerseStart: reading.data.bibleVerseStart,
+        bibleChapterEnd: reading.data.bibleChapterEnd,
+        bibleVerseEnd: reading.data.bibleVerseEnd,
+        bibleReadingRanges:
+          reading.data.bibleReadingRanges.length > 0
+            ? reading.data.bibleReadingRanges
+            : undefined,
         imageUrls: parsed.data.imageUrls,
         imagesLarge: parsed.data.imagesLarge,
         visibleGroupIds: groupIds,

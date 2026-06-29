@@ -2,15 +2,26 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { useUserTodos } from "@/components/me/use-user-todos";
+import { UserTodoAddForm, UserTodoList } from "@/components/me/user-todo-list";
 import { PostDetailModal } from "@/components/feed/post-detail-modal";
-import { FEED_TZ, feedTodayIso } from "@/lib/feed-date";
+import { mePageRecordPanelWidthClass } from "@/lib/feed-card-layout";
+import { type UserTodoJson } from "@/lib/user-todo";
+import { FEED_TZ, feedTodayIso, postFeedDateIso } from "@/lib/feed-date";
+import {
+  isKrPublicHoliday,
+  recordCalendarDayColorClass,
+  recordCalendarWeekdayColorClass,
+} from "@/lib/kr-public-holidays";
 import type { FeedPostJson } from "@/lib/feed-serialize";
 import { postDisplayTitle } from "@/lib/group-post-msg";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"] as const;
+const CALENDAR_POST_PREVIEW_LIMIT = 3;
+const CALENDAR_TODO_PREVIEW_LIMIT = 2;
 
 function postFeedDate(createdAt: string): string {
-  return new Date(createdAt).toLocaleDateString("en-CA", { timeZone: FEED_TZ });
+  return postFeedDateIso(createdAt);
 }
 
 function monthLabel(year: number, month: number) {
@@ -51,8 +62,159 @@ function briefTitle(post: FeedPostJson): string {
   return label.length > 14 ? `${label.slice(0, 14)}…` : label;
 }
 
-export function RecordPageClient({ groupId }: { groupId?: string } = {}) {
+function briefTodo(text: string): string {
+  return text.length > 14 ? `${text.slice(0, 14)}…` : text;
+}
+
+function briefAuthorName(name: string): string {
+  const label = name.trim() || "회원";
+  return label.length > 6 ? `${label.slice(0, 6)}…` : label;
+}
+
+function calendarPostLabel(post: FeedPostJson, showAuthor: boolean): string {
+  const title = briefTitle(post);
+  if (!showAuthor) return title;
+  return `${briefAuthorName(post.authorName)} · ${title}`;
+}
+
+function RecordDayPanel({
+  selectedDate,
+  posts,
+  todos,
+  todosEditable = false,
+  todosLoading = false,
+  todoPending = false,
+  onToggleTodo,
+  onAddTodo,
+  onClose,
+  onSelectPost,
+  showPostAuthor = false,
+  showTodos = false,
+  className = "",
+}: {
+  selectedDate: string;
+  posts: FeedPostJson[];
+  todos?: UserTodoJson[];
+  todosEditable?: boolean;
+  todosLoading?: boolean;
+  todoPending?: boolean;
+  onToggleTodo?: (id: string, done: boolean) => void;
+  onAddTodo?: (text: string) => void;
+  onClose: () => void;
+  onSelectPost: (post: FeedPostJson) => void;
+  showPostAuthor?: boolean;
+  showTodos?: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`flex h-full flex-col overflow-hidden rounded-lg border border-line bg-surface shadow-sm ${className}`}
+    >
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line px-4 py-3">
+        <h2 className="text-sm font-semibold text-ink">
+          {dayPanelLabel(selectedDate)}
+        </h2>
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition hover:bg-accent-soft hover:text-ink"
+          aria-label="패널 닫기"
+        >
+          ×
+        </button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        {posts.length === 0 ? (
+          <p className="px-4 py-6 text-center text-sm text-muted">
+            올라온 게시글이 없습니다.
+          </p>
+        ) : (
+          <ul className="divide-y divide-line">
+            {posts.map((post) => {
+              const thumb = post.imageUrls[0];
+              return (
+                <li key={post.id}>
+                  <button
+                    type="button"
+                    onClick={() => onSelectPost(post)}
+                    className="flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-accent-soft/50"
+                  >
+                    {thumb ? (
+                      <img
+                        src={thumb}
+                        alt=""
+                        className="h-14 w-14 shrink-0 rounded-md border border-line object-cover"
+                      />
+                    ) : null}
+                    <div className="min-w-0 flex-1">
+                      {showPostAuthor ? (
+                        <p className="truncate text-xs text-muted">
+                          {post.authorName.trim() || "회원"}
+                        </p>
+                      ) : null}
+                      <p className="truncate text-sm font-medium text-ink">
+                        {postDisplayTitle(post)}
+                      </p>
+                      {post.bibleRef ? (
+                        <p className="mt-0.5 truncate text-xs text-muted">
+                          {post.bibleRef}
+                        </p>
+                      ) : null}
+                      <p className="mt-1 text-[11px] text-muted">
+                        {formatPostDateTime(post.createdAt)}
+                      </p>
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {showTodos ? (
+          <div className="border-t border-line">
+            <p className="px-4 pb-1 pt-3 text-[11px] font-medium text-muted">
+              할 일
+            </p>
+            <UserTodoList
+              todos={todos ?? []}
+              editable={todosEditable}
+              loading={todosLoading}
+              emptyMessage="등록된 할 일이 없습니다."
+              onToggle={onToggleTodo ?? (() => {})}
+            />
+          </div>
+        ) : null}
+      </div>
+      {showTodos && todosEditable && onAddTodo ? (
+        <UserTodoAddForm
+          onAdd={(text) => onAddTodo(text)}
+          pending={todoPending}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+export function RecordPageClient({
+  postsUrl,
+  embedded = false,
+  todoUserId,
+  todosEditable = false,
+  showCalendarPosts = false,
+  showPostAuthor = false,
+  showTodos = Boolean(todoUserId),
+}: {
+  postsUrl: string;
+  embedded?: boolean;
+  todoUserId?: string;
+  todosEditable?: boolean;
+  showCalendarPosts?: boolean;
+  showPostAuthor?: boolean;
+  showTodos?: boolean;
+}) {
   const today = feedTodayIso();
+  const { todos, loading: todosLoading, pending: todoPending, addTodo, toggleTodo } =
+    useUserTodos(showTodos ? (todoUserId ?? "") : "");
   const [year, setYear] = useState(() => Number(today.slice(0, 4)));
   const [month, setMonth] = useState(() => Number(today.slice(5, 7)));
   const [posts, setPosts] = useState<FeedPostJson[]>([]);
@@ -65,10 +227,7 @@ export function RecordPageClient({ groupId }: { groupId?: string } = {}) {
     (async () => {
       setLoading(true);
       try {
-        const url = groupId
-          ? `/api/posts?groupId=${encodeURIComponent(groupId)}`
-          : "/api/posts?mine=1";
-        const res = await fetch(url, { credentials: "include" });
+        const res = await fetch(postsUrl, { credentials: "include" });
         const data = (await res.json()) as unknown;
         if (!cancelled) {
           setPosts(res.ok && Array.isArray(data) ? (data as FeedPostJson[]) : []);
@@ -82,7 +241,7 @@ export function RecordPageClient({ groupId }: { groupId?: string } = {}) {
     return () => {
       cancelled = true;
     };
-  }, [groupId]);
+  }, [postsUrl]);
 
   useEffect(() => {
     setSelectedDate(null);
@@ -100,6 +259,19 @@ export function RecordPageClient({ groupId }: { groupId?: string } = {}) {
   }, [posts]);
 
   const selectedPosts = selectedDate ? (postsByDate.get(selectedDate) ?? []) : [];
+
+  const todosByDate = useMemo(() => {
+    if (!showTodos) return new Map<string, UserTodoJson[]>();
+    const map = new Map<string, UserTodoJson[]>();
+    for (const t of todos) {
+      const list = map.get(t.date) ?? [];
+      list.push(t);
+      map.set(t.date, list);
+    }
+    return map;
+  }, [showTodos, todos]);
+
+  const selectedTodos = selectedDate ? (todosByDate.get(selectedDate) ?? []) : [];
 
   const grid = useMemo(() => {
     const firstDow = new Date(
@@ -121,15 +293,42 @@ export function RecordPageClient({ groupId }: { groupId?: string } = {}) {
     setMonth(next.month);
   }, [year, month]);
 
-  const toggleDate = useCallback((iso: string, hasPosts: boolean) => {
-    if (!hasPosts) return;
+  const toggleDate = useCallback((iso: string) => {
     setSelectedDate((prev) => (prev === iso ? null : iso));
   }, []);
 
+  const closeDayPanel = useCallback(() => setSelectedDate(null), []);
+
+  const dayPanel = selectedDate ? (
+    <RecordDayPanel
+      selectedDate={selectedDate}
+      posts={selectedPosts}
+      showTodos={showTodos}
+      todos={showTodos ? selectedTodos : undefined}
+      todosEditable={showTodos && todosEditable}
+      todosLoading={showTodos && todosLoading}
+      todoPending={showTodos && todoPending}
+      onToggleTodo={showTodos ? (id, done) => void toggleTodo(id, done) : undefined}
+      onAddTodo={
+        showTodos && todosEditable
+          ? (text) => void addTodo(text, selectedDate)
+          : undefined
+      }
+      onClose={closeDayPanel}
+      onSelectPost={setDetailPost}
+      showPostAuthor={showPostAuthor}
+    />
+  ) : null;
+
   return (
-    <div
-      className={`mx-auto w-full pb-12 ${selectedDate ? "max-w-6xl" : "max-w-3xl"}`}
-    >
+    <>
+      <div
+        className={
+          embedded
+            ? "px-4 pb-6 pt-4 sm:px-6"
+            : `mx-auto w-full pb-12 ${selectedDate ? "max-w-6xl" : "max-w-3xl"}`
+        }
+      >
       <div className="mb-4 flex items-center justify-between gap-2">
         <button
           type="button"
@@ -150,15 +349,24 @@ export function RecordPageClient({ groupId }: { groupId?: string } = {}) {
         </button>
       </div>
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-        <div className="min-w-0 flex-1">
+      <div
+        className={
+          embedded
+            ? "relative min-w-0"
+            : "flex flex-col gap-4 lg:flex-row lg:items-stretch"
+        }
+      >
+        <div className={embedded ? "min-w-0" : "min-w-0 flex-1"}>
           {loading ? (
             <p className="py-16 text-center text-sm text-muted">불러오는 중…</p>
           ) : (
             <div className="overflow-hidden rounded-lg border border-line bg-surface shadow-sm">
-              <div className="grid grid-cols-7 border-b border-line bg-bg/80 text-center text-xs font-medium text-muted">
-                {WEEKDAYS.map((d) => (
-                  <div key={d} className="py-2.5">
+              <div className="grid grid-cols-7 border-b border-line bg-bg/80 text-center text-xs font-medium">
+                {WEEKDAYS.map((d, i) => (
+                  <div
+                    key={d}
+                    className={`py-2.5 ${recordCalendarWeekdayColorClass(i)}`}
+                  >
                     {d}
                   </div>
                 ))}
@@ -174,40 +382,83 @@ export function RecordPageClient({ groupId }: { groupId?: string } = {}) {
                     );
                   }
                   const dayPosts = postsByDate.get(cell.iso) ?? [];
+                  const dayTodos = showTodos ? (todosByDate.get(cell.iso) ?? []) : [];
+                  const previewPosts = showCalendarPosts
+                    ? dayPosts.slice(0, CALENDAR_POST_PREVIEW_LIMIT)
+                    : [];
+                  const hiddenPostCount = showCalendarPosts
+                    ? Math.max(0, dayPosts.length - previewPosts.length)
+                    : 0;
+                  const previewTodos = showTodos
+                    ? dayTodos.slice(0, CALENDAR_TODO_PREVIEW_LIMIT)
+                    : [];
+                  const hiddenTodoCount = showTodos
+                    ? Math.max(0, dayTodos.length - previewTodos.length)
+                    : 0;
                   const isToday = cell.iso === today;
                   const isSelected = cell.iso === selectedDate;
                   const hasPosts = dayPosts.length > 0;
+                  const hasTodos = showTodos && dayTodos.length > 0;
+                  const hasPreview =
+                    previewPosts.length > 0 ||
+                    previewTodos.length > 0 ||
+                    hiddenPostCount > 0 ||
+                    hiddenTodoCount > 0;
+                  const hasActivity = hasPosts || hasTodos;
+                  const dayColor = recordCalendarDayColorClass(cell.iso);
+                  const holiday = isKrPublicHoliday(cell.iso);
                   return (
                     <button
                       key={cell.iso}
                       type="button"
-                      disabled={!hasPosts}
-                      onClick={() => toggleDate(cell.iso, hasPosts)}
-                      className={`flex min-h-[5.5rem] flex-col border-b border-r border-line/50 p-1.5 text-left transition sm:min-h-[6.25rem] sm:p-2 ${
-                        hasPosts
-                          ? "bg-accent-soft/40 hover:bg-accent-soft/70"
-                          : "cursor-default bg-surface"
+                      onClick={() => toggleDate(cell.iso)}
+                      className={`flex min-h-[5.5rem] flex-col border-b border-r border-line/50 p-1.5 text-left transition hover:bg-accent-soft/50 sm:min-h-[6.25rem] sm:p-2 ${
+                        hasActivity ? "bg-accent-soft/40" : "bg-surface"
                       } ${isToday ? "ring-1 ring-inset ring-accent/50" : ""} ${
                         isSelected ? "bg-accent-soft ring-2 ring-inset ring-accent" : ""
                       }`}
                     >
                       <span
                         className={`text-xs font-medium sm:text-sm ${
-                          isToday ? "text-accent-foreground" : "text-ink"
+                          isToday && !holiday
+                            ? "text-accent-foreground"
+                            : dayColor
                         }`}
                       >
                         {cell.day}
                       </span>
-                      {hasPosts ? (
+                      {hasPreview ? (
                         <div className="pointer-events-none mt-1 flex min-h-0 flex-1 flex-col gap-0.5 overflow-hidden">
-                          {dayPosts.map((post) => (
+                          {previewPosts.map((post) => (
                             <span
                               key={post.id}
                               className="truncate text-[10px] leading-snug text-ink sm:text-xs"
                             >
-                              {briefTitle(post)}
+                              {calendarPostLabel(post, showPostAuthor)}
                             </span>
                           ))}
+                          {hiddenPostCount > 0 ? (
+                            <span className="text-[10px] leading-snug text-muted sm:text-xs">
+                              +{hiddenPostCount}건
+                            </span>
+                          ) : null}
+                          {previewTodos.map((todo) => (
+                            <span
+                              key={todo.id}
+                              className={`truncate text-[10px] leading-snug sm:text-xs ${
+                                todo.done
+                                  ? "text-muted line-through"
+                                  : "text-ink/80"
+                              }`}
+                            >
+                              {briefTodo(todo.text)}
+                            </span>
+                          ))}
+                          {hiddenTodoCount > 0 ? (
+                            <span className="text-[10px] leading-snug text-muted sm:text-xs">
+                              +{hiddenTodoCount}건
+                            </span>
+                          ) : null}
                         </div>
                       ) : null}
                     </button>
@@ -218,64 +469,19 @@ export function RecordPageClient({ groupId }: { groupId?: string } = {}) {
           )}
         </div>
 
-        {selectedDate ? (
-          <aside className="w-full shrink-0 lg:sticky lg:top-[calc(var(--app-header-height)+0.5rem)] lg:w-80 xl:w-96">
-            <div className="overflow-hidden rounded-lg border border-line bg-surface shadow-sm">
-              <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
-                <h2 className="text-sm font-semibold text-ink">
-                  {dayPanelLabel(selectedDate)}
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setSelectedDate(null)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-muted transition hover:bg-accent-soft hover:text-ink"
-                  aria-label="패널 닫기"
-                >
-                  ×
-                </button>
-              </div>
-              {selectedPosts.length === 0 ? (
-                <p className="px-4 py-8 text-center text-sm text-muted">
-                  이 날짜의 기록이 없습니다.
-                </p>
-              ) : (
-                <ul className="divide-y divide-line">
-                  {selectedPosts.map((post) => {
-                    const thumb = post.imageUrls[0];
-                    return (
-                      <li key={post.id}>
-                        <button
-                          type="button"
-                          onClick={() => setDetailPost(post)}
-                          className="flex w-full gap-3 px-4 py-3 text-left transition hover:bg-accent-soft/50"
-                        >
-                          {thumb ? (
-                            <img
-                              src={thumb}
-                              alt=""
-                              className="h-14 w-14 shrink-0 rounded-md border border-line object-cover"
-                            />
-                          ) : null}
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium text-ink">
-                              {postDisplayTitle(post)}
-                            </p>
-                            {post.bibleRef ? (
-                              <p className="mt-0.5 truncate text-xs text-muted">
-                                {post.bibleRef}
-                              </p>
-                            ) : null}
-                            <p className="mt-1 text-[11px] text-muted">
-                              {formatPostDateTime(post.createdAt)}
-                            </p>
-                          </div>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
+        {embedded && selectedDate && dayPanel ? (
+          <aside
+            className={`absolute left-full top-0 z-10 ml-[5px] h-full ${mePageRecordPanelWidthClass}`}
+            role="region"
+            aria-label={dayPanelLabel(selectedDate)}
+          >
+            {dayPanel}
+          </aside>
+        ) : null}
+
+        {!embedded && selectedDate && dayPanel ? (
+          <aside className="w-full shrink-0 lg:w-80 lg:self-stretch xl:w-96">
+            {dayPanel}
           </aside>
         ) : null}
       </div>
@@ -286,6 +492,7 @@ export function RecordPageClient({ groupId }: { groupId?: string } = {}) {
         onClose={() => setDetailPost(null)}
         onCommentAdded={() => void 0}
       />
-    </div>
+      </div>
+    </>
   );
 }

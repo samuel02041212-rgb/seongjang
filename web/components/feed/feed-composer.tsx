@@ -4,12 +4,19 @@ import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { FeedPostImages } from "@/components/feed/feed-post-images";
+import {
+  BibleRefInput,
+  bibleRefInputToPayload,
+  emptyBibleRefInputValue,
+  isBibleRefInputFilled,
+  validateBibleRefInput,
+  type BibleRefInputValue,
+} from "@/components/feed/bible-ref-input";
 import { GroupPostShareModal } from "@/components/group/group-post-share-modal";
 import { useGroupPanel } from "@/components/group/group-panel";
 import { feedCardSizeClass } from "@/lib/feed-card-layout";
 import {
   feedPostBodyTextClass,
-  feedPostBibleRefClass,
   feedPostFooterClass,
   feedPostImageRowClass,
   feedPostInnerClass,
@@ -43,7 +50,9 @@ export function FeedComposer({
   const { joinedGroups } = useGroupPanel();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [bibleRef, setBibleRef] = useState("");
+  const [readingRef, setReadingRef] = useState<BibleRefInputValue>(
+    emptyBibleRefInputValue,
+  );
   const [images, setImages] = useState<PendingImg[]>([]);
   const [imagesLarge, setImagesLarge] = useState(false);
   const [previewIdx, setPreviewIdx] = useState(0);
@@ -147,7 +156,7 @@ export function FeedComposer({
     setPreviewIdx(0);
     setTitle("");
     setContent("");
-    setBibleRef("");
+    setReadingRef(emptyBibleRefInputValue());
     setFeedDate(feedTodayIso());
   }
 
@@ -172,7 +181,7 @@ export function FeedComposer({
       body: JSON.stringify({
         title: title.trim(),
         content,
-        bibleRef: bibleRef.trim(),
+        ...bibleRefInputToPayload(readingRef),
         imageUrls,
         imagesLarge: imagesLarge && imageUrls.length > 0,
         visibleGroupIds,
@@ -210,8 +219,11 @@ export function FeedComposer({
       setError("제목을 입력해 주세요.");
       return;
     }
-    if (!bibleRef.trim()) {
-      setError("성경 구절을 입력해 주세요.");
+    if (!isBibleRefInputFilled(readingRef)) {
+      const refError = validateBibleRefInput(readingRef);
+      setError(
+        refError ?? "성경 범위 또는 기타 읽은 범위를 입력해 주세요.",
+      );
       return;
     }
     if (!content.trim()) {
@@ -261,12 +273,10 @@ export function FeedComposer({
               onChange={(e) => setTitle(e.target.value)}
               className={`${feedPostTitleClass} w-full shrink-0 border-0 bg-transparent p-0 outline-none placeholder:text-muted focus:ring-0`}
             />
-            <input
-              type="text"
-              placeholder="성경 구절 (예: 시편 23:1)"
-              value={bibleRef}
-              onChange={(e) => setBibleRef(e.target.value)}
-              className={`w-full shrink-0 border-0 bg-transparent p-0 outline-none placeholder:text-muted focus:ring-0 ${feedPostBibleRefClass} ${title ? "mt-1" : ""}`}
+            <BibleRefInput
+              value={readingRef}
+              onChange={setReadingRef}
+              titleSet={!!title.trim()}
             />
           </div>
           <div className={composerScrollClass}>
@@ -403,7 +413,7 @@ export function FeedComposer({
               disabled={
                 pending ||
                 !title.trim() ||
-                !bibleRef.trim() ||
+                !isBibleRefInputFilled(readingRef) ||
                 !content.trim()
               }
               className="rounded-full bg-accent px-5 py-2 text-sm font-semibold text-accent-foreground shadow-sm transition hover:bg-accent/90 disabled:opacity-50"

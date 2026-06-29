@@ -11,11 +11,11 @@ function readStored(): PostViewMode {
     const v = localStorage.getItem(KEY);
     if (v === "popup" || v === "split") return v;
   } catch {}
-  return "popup";
+  return "split";
 }
 
 export function usePostViewMode(): [PostViewMode, (m: PostViewMode) => void] {
-  const [mode, setMode] = useState<PostViewMode>("popup");
+  const [mode, setMode] = useState<PostViewMode>("split");
 
   useEffect(() => {
     setMode(readStored());

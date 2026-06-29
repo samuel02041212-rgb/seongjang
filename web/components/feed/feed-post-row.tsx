@@ -15,6 +15,7 @@ import {
 } from "@/lib/feed-post-body-layout";
 import { FeedPostImages } from "@/components/feed/feed-post-images";
 import { PostBookmarkButton } from "@/components/feed/post-bookmark-button";
+import { AuthorProfileLink } from "@/components/me/author-profile-link";
 import {
   type FeedPostJson,
   formatFeedRelativeTime,
@@ -27,6 +28,7 @@ type FeedPostRowProps = {
   likePending?: boolean;
   showBookmark?: boolean;
   onBookmarkChange?: (postId: string, folderIds: string[]) => void;
+  cardSizeClass?: string;
 };
 
 export function FeedPostRow({
@@ -36,13 +38,18 @@ export function FeedPostRow({
   likePending,
   showBookmark,
   onBookmarkChange,
+  cardSizeClass = feedCardSizeClass,
 }: FeedPostRowProps) {
   const isAnnouncement = post.kind === "announcement";
 
+  const shellFrameClass = isAnnouncement
+    ? "border border-black shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition hover:shadow-[0_4px_14px_rgba(0,0,0,0.08)] dark:border-white"
+    : "bg-gradient-to-br from-accent/40 via-line to-accent/20 p-[2px] shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition hover:from-accent/60 hover:to-accent/40 hover:shadow-[0_4px_14px_rgba(0,0,0,0.08)] dark:from-accent/25 dark:via-line dark:to-accent/10 dark:hover:from-accent/40 dark:hover:to-accent/25";
+
   return (
-    <div className={`group/card ${cardShellClass} bg-gradient-to-br from-accent/40 via-line to-accent/20 p-[2px] shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition hover:from-accent/60 hover:to-accent/40 hover:shadow-[0_4px_14px_rgba(0,0,0,0.08)] dark:from-accent/25 dark:via-line dark:to-accent/10 dark:hover:from-accent/40 dark:hover:to-accent/25`}>
+    <div className={`group/card ${cardShellClass} ${shellFrameClass}`}>
     <article
-      className={`feed-post-card flex cursor-pointer flex-col overflow-hidden ${cardInnerClass} bg-surface ${feedCardSizeClass}`}
+      className={`feed-post-card flex cursor-pointer flex-col overflow-hidden ${cardInnerClass} bg-surface ${cardSizeClass}`}
       role="button"
       tabIndex={0}
       onClick={() => onOpenDetail(post)}
@@ -82,10 +89,13 @@ export function FeedPostRow({
               ) : null}
             </div>
             {post.authorName || post.authorChurch ? (
-              <span className="max-w-[45%] shrink-0 truncate text-right text-xs text-muted">
-                {post.authorName}
-                {post.authorChurch ? `, ${post.authorChurch}` : ""}
-              </span>
+              <AuthorProfileLink
+                authorId={post.authorId}
+                authorName={post.authorName}
+                authorChurch={post.authorChurch}
+                linkable={!isAnnouncement}
+                className="max-w-[45%] shrink-0 truncate text-right text-xs text-muted"
+              />
             ) : null}
           </div>
         )}

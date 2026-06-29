@@ -13,6 +13,8 @@ import {
 
 import { usePostViewMode } from "@/lib/view-mode";
 
+import { GroupRoomView } from "@/components/group/group-room-view";
+
 const MAX_WINDOWS = 3;
 const PINS_KEY = "chat.ui.pinned";
 const ROOM_LIST_POLL_MS = 10000;
@@ -40,7 +42,26 @@ type OpenWindow = {
   messages: Msg[];
 };
 
-type SearchUser = { id: string; name: string; image: string | null };
+type GroupListRoom = {
+  groupId: string;
+  groupName: string;
+  groupImage: string | null;
+  preview: string;
+  lastMessageAt: string | null;
+  pinned: boolean;
+};
+
+type GroupRoomApi = {
+  groupId: string;
+  groupName: string;
+  groupImage: string | null;
+  preview: string;
+  lastMessageAt: string | null;
+};
+
+function groupPinKey(groupId: string) {
+  return `g:${groupId}`;
+}
 
 type RoomApi = {
   roomId: string;
@@ -77,6 +98,11 @@ type ChatPanelContextValue = {
   chatOpen: boolean;
   setChatOpen: (v: boolean) => void;
   toggleChat: () => void;
+  openChatWithUser: (user: {
+    id: string;
+    name: string;
+    image: string | null;
+  }) => Promise<void>;
   totalUnread: number;
   splitDockTop: "chat" | "post";
   bringPostDockToFront: () => void;
@@ -106,15 +132,23 @@ function ChatChrome({
 }) {
   if (variant === "split") {
     return (
-      <div
-        className="chat-side-panel-wrap fixed right-0 top-[var(--app-header-height)] bottom-0 flex w-[min(90.25vw,45.6rem)] min-h-0 flex-col overflow-hidden border-l border-t border-line bg-surface shadow-xl"
-        style={{ zIndex: splitDockZ ?? 30 }}
-        role="dialog"
-        aria-label="채팅"
-        onPointerDownCapture={onSplitPointerDown}
-      >
-        {children}
-      </div>
+      <>
+        <button
+          type="button"
+          className="fixed inset-0 z-[29] cursor-default bg-transparent"
+          aria-label="채팅 닫기"
+          onClick={onClose}
+        />
+        <div
+          className="chat-side-panel-wrap fixed right-0 top-[var(--app-header-height)] bottom-0 flex w-[min(90.25vw,45.6rem)] min-h-0 flex-col overflow-hidden border-l border-t border-line bg-surface shadow-xl"
+          style={{ zIndex: splitDockZ ?? 30 }}
+          role="dialog"
+          aria-label="채팅"
+          onPointerDownCapture={onSplitPointerDown}
+        >
+          {children}
+        </div>
+      </>
     );
   }
   return (
@@ -154,9 +188,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [rooms, setRooms] = useState<ChatListRoom[]>([]);
+  const [groupRooms, setGroupRooms] = useState<GroupListRoom[]>([]);
   const [windows, setWindows] = useState<OpenWindow[]>([]);
   const [pinned, setPinned] = useState<Set<string>>(new Set());
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [menu, setMenu] = useState<{
     x: number;
     y: number;
@@ -196,6 +232,45 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const sortGroups = useCallback(
+    (list: GroupListRoom[]) =>
+      [...list].sort((a, b) => {
+        if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+        const at = a.lastMessageAt ?? "";
+        const bt = b.lastMessageAt ?? "";
+        if (at !== bt) return bt.localeCompare(at);
+        return a.groupName.localeCompare(b.groupName);
+      }),
+    [],
+  );
+
+  const loadGroupRooms = useCallback(async () => {
+    if (!authed) return;
+    try {
+      const res = await fetch("/api/chat/group-rooms", {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as GroupRoomApi[];
+      if (!Array.isArray(data)) return;
+      setGroupRooms(
+        sortGroups(
+          data.map<GroupListRoom>((g) => ({
+            groupId: g.groupId,
+            groupName: g.groupName,
+            groupImage: g.groupImage,
+            preview: g.preview,
+            lastMessageAt: g.lastMessageAt,
+            pinned: pinned.has(groupPinKey(g.groupId)),
+          })),
+        ),
+      );
+    } catch {
+      void 0;
+    }
+  }, [pinned, sortGroups, authed]);
+
   const loadRooms = useCallback(async () => {
     if (!authed) return;
     try {
@@ -225,9 +300,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!authed) return;
     void loadRooms();
-    const id = window.setInterval(loadRooms, ROOM_LIST_POLL_MS);
+    void loadGroupRooms();
+    const id = window.setInterval(() => {
+      void loadRooms();
+      void loadGroupRooms();
+    }, ROOM_LIST_POLL_MS);
     return () => window.clearInterval(id);
-  }, [authed, loadRooms]);
+  }, [authed, loadRooms, loadGroupRooms]);
 
   useEffect(() => {
     if (!authed) return;
@@ -301,6 +380,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       otherName: string;
       otherImage: string | null;
     }) => {
+      setActiveGroupId(null);
       setActiveRoomId(target.roomId);
       setWindows((prev) => {
         const existing = prev.find((w) => w.roomId === target.roomId);
@@ -324,6 +404,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     },
     [loadMessages],
   );
+
+  const openGroup = useCallback((g: GroupListRoom) => {
+    setActiveGroupId(g.groupId);
+    setActiveRoomId(null);
+  }, []);
 
   const openByRoom = useCallback(
     (r: ChatListRoom) => {
@@ -364,16 +449,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [openWindow, loadRooms],
   );
 
-  const closeWindow = (roomId: string) => {
-    setWindows((prev) => {
-      const next = prev.filter((w) => w.roomId !== roomId);
-      setActiveRoomId((cur) => {
-        if (cur !== roomId) return cur;
-        return next[0]?.roomId ?? null;
-      });
-      return next;
-    });
-  };
+  const openChatWithUser = useCallback(
+    async (u: SearchUser) => {
+      setChatOpen(true);
+      bringChatDockToFront();
+      await openByUser(u);
+    },
+    [openByUser, bringChatDockToFront],
+  );
 
   const toggleMinimize = (roomId: string) => {
     setWindows((prev) =>
@@ -420,18 +503,27 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const togglePin = (roomId: string) => {
+  const togglePin = (pinKey: string) => {
     setPinned((prev) => {
       const next = new Set(prev);
-      if (next.has(roomId)) next.delete(roomId);
-      else next.add(roomId);
+      if (next.has(pinKey)) next.delete(pinKey);
+      else next.add(pinKey);
       persistPinned(next);
       return next;
     });
     setRooms((rs) =>
       sortRooms(
         rs.map((r) =>
-          r.roomId === roomId ? { ...r, pinned: !r.pinned } : r,
+          r.roomId === pinKey ? { ...r, pinned: !r.pinned } : r,
+        ),
+      ),
+    );
+    setGroupRooms((gs) =>
+      sortGroups(
+        gs.map((g) =>
+          groupPinKey(g.groupId) === pinKey
+            ? { ...g, pinned: !g.pinned }
+            : g,
         ),
       ),
     );
@@ -446,6 +538,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       toggleChat: () => {
         if (authed) setChatOpen((x) => !x);
       },
+      openChatWithUser,
       totalUnread,
       splitDockTop,
       bringPostDockToFront,
@@ -458,6 +551,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       splitDockTop,
       bringPostDockToFront,
       bringChatDockToFront,
+      openChatWithUser,
     ],
   );
 
@@ -558,66 +652,137 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
                   </div>
                 ) : null}
                 <div className="chat-room-list min-h-0 flex-1">
-                  {rooms.length === 0 ? (
+                  {rooms.length === 0 && groupRooms.length === 0 ? (
                     <div className="chat-empty-list">
                       대화 목록이 비어 있어요.
                       <br />
-                      위에서 사용자를 검색해 대화를 시작해 보세요.
+                      위에서 사용자를 검색하거나 소그룹 대화를 선택해 보세요.
                     </div>
                   ) : (
-                    rooms.map((r) => {
-                      const isOpen = windows.some((w) => w.roomId === r.roomId);
-                      const isActive = isOpen && r.roomId === activeWin?.roomId;
-                      return (
-                        <div
-                          key={r.roomId}
-                          className={`chat-room-item ${isActive ? "chat-room-item-active" : ""}`}
-                          data-pinned={r.pinned ? "true" : "false"}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => openByRoom(r)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ")
-                              openByRoom(r);
-                          }}
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                            setMenu({
-                              x: e.clientX,
-                              y: e.clientY,
-                              roomId: r.roomId,
-                              pinned: r.pinned,
-                            });
-                          }}
-                        >
-                          <div className="chat-room-avatar">
-                            {r.otherImage ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={r.otherImage}
-                                alt=""
-                                className="h-full w-full rounded-full object-cover"
-                              />
-                            ) : (
-                              r.otherName.charAt(0)
-                            )}
+                    <>
+                      {groupRooms.length > 0 ? (
+                        <>
+                          <div className="border-b border-line bg-bg/80 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
+                            소그룹
                           </div>
-                          <div className="chat-room-body">
-                            <div className="chat-room-name">{r.otherName}</div>
-                            <div className="chat-room-preview">
-                              {r.preview || "대화를 시작하세요."}
-                            </div>
+                          {groupRooms.map((g) => {
+                            const pinKey = groupPinKey(g.groupId);
+                            const isActive = activeGroupId === g.groupId;
+                            return (
+                              <div
+                                key={g.groupId}
+                                className={`chat-room-item ${isActive ? "chat-room-item-active" : ""}`}
+                                data-pinned={g.pinned ? "true" : "false"}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => openGroup(g)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ")
+                                    openGroup(g);
+                                }}
+                                onContextMenu={(e) => {
+                                  e.preventDefault();
+                                  setMenu({
+                                    x: e.clientX,
+                                    y: e.clientY,
+                                    roomId: pinKey,
+                                    pinned: g.pinned,
+                                  });
+                                }}
+                              >
+                                <div className="chat-room-avatar">
+                                  {g.groupImage ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      src={g.groupImage}
+                                      alt=""
+                                      className="h-full w-full rounded-full object-cover"
+                                    />
+                                  ) : (
+                                    g.groupName.charAt(0)
+                                  )}
+                                </div>
+                                <div className="chat-room-body">
+                                  <div className="chat-room-name">
+                                    {g.groupName}
+                                  </div>
+                                  <div className="chat-room-preview">
+                                    {g.preview || "대화를 시작하세요."}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </>
+                      ) : null}
+                      {rooms.length > 0 ? (
+                        <>
+                          <div className="border-b border-line bg-bg/80 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
+                            개인
                           </div>
-                          <div className="chat-room-meta">
-                            {r.unreadCount > 0 ? (
-                              <span className="chat-room-badge">
-                                {r.unreadCount}
-                              </span>
-                            ) : null}
-                          </div>
-                        </div>
-                      );
-                    })
+                          {rooms.map((r) => {
+                            const isOpen = windows.some(
+                              (w) => w.roomId === r.roomId,
+                            );
+                            const isActive =
+                              isOpen &&
+                              r.roomId === activeWin?.roomId &&
+                              !activeGroupId;
+                            return (
+                              <div
+                                key={r.roomId}
+                                className={`chat-room-item ${isActive ? "chat-room-item-active" : ""}`}
+                                data-pinned={r.pinned ? "true" : "false"}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => openByRoom(r)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ")
+                                    openByRoom(r);
+                                }}
+                                onContextMenu={(e) => {
+                                  e.preventDefault();
+                                  setMenu({
+                                    x: e.clientX,
+                                    y: e.clientY,
+                                    roomId: r.roomId,
+                                    pinned: r.pinned,
+                                  });
+                                }}
+                              >
+                                <div className="chat-room-avatar">
+                                  {r.otherImage ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      src={r.otherImage}
+                                      alt=""
+                                      className="h-full w-full rounded-full object-cover"
+                                    />
+                                  ) : (
+                                    r.otherName.charAt(0)
+                                  )}
+                                </div>
+                                <div className="chat-room-body">
+                                  <div className="chat-room-name">
+                                    {r.otherName}
+                                  </div>
+                                  <div className="chat-room-preview">
+                                    {r.preview || "대화를 시작하세요."}
+                                  </div>
+                                </div>
+                                <div className="chat-room-meta">
+                                  {r.unreadCount > 0 ? (
+                                    <span className="chat-room-badge">
+                                      {r.unreadCount}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </>
+                      ) : null}
+                    </>
                   )}
                 </div>
               </div>
@@ -629,56 +794,37 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
                     : "chat-pane-right flex min-h-0 min-w-0 flex-[4] flex-col bg-bg"
                 }
               >
-                {windows.length === 0 ? (
+                {activeGroupId ? (
+                  <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                    <GroupRoomView groupId={activeGroupId} compact />
+                  </div>
+                ) : windows.length === 0 ? (
                   <div className="flex flex-1 items-center justify-center px-4 text-center text-sm text-muted">
                     왼쪽 목록에서 대화를 선택하거나
                     <br />
                     검색으로 새 대화를 시작하세요.
                   </div>
-                ) : (
-                  <>
-                    {windows.length > 1 ? (
-                      <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-line bg-surface px-2 py-2">
-                        {windows.map((w) => (
-                          <button
-                            key={w.roomId}
-                            type="button"
-                            onClick={() => setActiveRoomId(w.roomId)}
-                            className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                              w.roomId === activeWin?.roomId
-                                ? "border-accent bg-accent-soft text-ink"
-                                : "border-transparent text-muted hover:bg-accent-soft/60 hover:text-ink"
-                            }`}
-                          >
-                            {w.otherName}
-                          </button>
-                        ))}
-                      </div>
-                    ) : null}
-                    {activeWin ? (
-                      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                        <ChatWindow
-                          window={activeWin}
-                          embedded
-                          initialDraft={
-                            draftsRef.current[activeWin.roomId] ?? ""
-                          }
-                          onDraftChange={(text) => {
-                            draftsRef.current[activeWin.roomId] = text;
-                          }}
-                          onClose={() => closeWindow(activeWin.roomId)}
-                          onToggleMinimize={() =>
-                            toggleMinimize(activeWin.roomId)
-                          }
-                          onSend={(text) => {
-                            draftsRef.current[activeWin.roomId] = "";
-                            void sendMessage(activeWin.roomId, text);
-                          }}
-                        />
-                      </div>
-                    ) : null}
-                  </>
-                )}
+                ) : activeWin ? (
+                  <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                    <ChatWindow
+                      window={activeWin}
+                      embedded
+                      initialDraft={
+                        draftsRef.current[activeWin.roomId] ?? ""
+                      }
+                      onDraftChange={(text) => {
+                        draftsRef.current[activeWin.roomId] = text;
+                      }}
+                      onToggleMinimize={() =>
+                        toggleMinimize(activeWin.roomId)
+                      }
+                      onSend={(text) => {
+                        draftsRef.current[activeWin.roomId] = "";
+                        void sendMessage(activeWin.roomId, text);
+                      }}
+                    />
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
@@ -717,7 +863,6 @@ function ChatWindow({
   window: w,
   embedded = false,
   initialDraft,
-  onClose,
   onToggleMinimize,
   onSend,
   onDraftChange,
@@ -725,7 +870,6 @@ function ChatWindow({
   window: OpenWindow;
   embedded?: boolean;
   initialDraft: string;
-  onClose: () => void;
   onToggleMinimize: () => void;
   onSend: (text: string) => void;
   onDraftChange: (text: string) => void;
@@ -751,8 +895,8 @@ function ChatWindow({
         onDoubleClick={embedded ? undefined : onToggleMinimize}
       >
         <span className="chat-window-title">{w.otherName}</span>
-        <div className="chat-window-actions">
-          {embedded ? null : (
+        {!embedded ? (
+          <div className="chat-window-actions">
             <button
               type="button"
               className="chat-window-minimize"
@@ -764,19 +908,8 @@ function ChatWindow({
             >
               −
             </button>
-          )}
-          <button
-            type="button"
-            className="chat-window-close"
-            aria-label="닫기"
-            onClick={(e) => {
-              e.stopPropagation();
-              onClose();
-            }}
-          >
-            ✕
-          </button>
-        </div>
+          </div>
+        ) : null}
       </div>
       <div className="chat-window-body" ref={bodyRef}>
         {w.messages.length === 0 ? (

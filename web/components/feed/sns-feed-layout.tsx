@@ -8,6 +8,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChatPanel } from "@/components/chat/chat-dock";
 import { GroupNavActions } from "@/components/group/group-nav-actions";
 import { useGroupPanel } from "@/components/group/group-panel";
+import {
+  PinnedAnnouncementProvider,
+  PinnedNoticeHeaderTitle,
+  PinnedNoticeNavButton,
+} from "@/components/announcement/pinned-announcement-context";
 import { HeaderLogoGlyph } from "@/components/shell/header-logo-glyph";
 import { AppHeaderCenter } from "@/components/shell/app-header-center";
 import {
@@ -16,7 +21,14 @@ import {
 } from "@/components/shell/header-brand-switch";
 import { FeedBrowseProvider } from "@/components/shell/feed-browse-context";
 import { appHeaderRowClassName, appHeaderShellClass } from "@/components/shell/app-header-classes";
+import {
+  SiteTourProvider,
+  groupNavTourId,
+  mainNavTourId,
+  useSiteTour,
+} from "@/components/shell/site-tour";
 import { useTheme } from "@/lib/theme";
+import { useFeedLayoutMode } from "@/lib/feed-layout-mode";
 import { meditationPageMaxWidthClass } from "@/lib/meditation-layout";
 import { groupPath, parseGroupRoute } from "@/lib/group-route";
 import { usePostViewMode } from "@/lib/view-mode";
@@ -141,12 +153,41 @@ const ResearchModeIcon = () => (
     <path d="M8 8h6M8 12h6M8 16h4" />
   </svg>
 );
+const FeedDailyIcon = () => (
+  <svg {...headerIcon} aria-hidden>
+    <rect x="3" y="4" width="18" height="18" rx="2" />
+    <path d="M16 2v4M8 2v4M3 10h18" />
+  </svg>
+);
+const FeedTimelineIcon = () => (
+  <svg {...headerIcon} aria-hidden>
+    <path d="M4 6h16M4 12h10M4 18h14" />
+  </svg>
+);
 
 export function SnsFeedLayout({
   children,
   isAuthenticated = false,
   isAdmin = false,
 }: SnsFeedLayoutProps) {
+  return (
+    <SiteTourProvider isAdmin={isAdmin}>
+      <SnsFeedLayoutInner
+        isAuthenticated={isAuthenticated}
+        isAdmin={isAdmin}
+      >
+        {children}
+      </SnsFeedLayoutInner>
+    </SiteTourProvider>
+  );
+}
+
+function SnsFeedLayoutInner({
+  children,
+  isAuthenticated = false,
+  isAdmin = false,
+}: SnsFeedLayoutProps) {
+  const { startTour } = useSiteTour() ?? {};
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const closeProfile = useCallback(() => setProfileOpen(false), []);
@@ -170,6 +211,8 @@ export function SnsFeedLayout({
     pathname === "/meditation" || pathname.includes("/meditation");
   const isGroupChat =
     !!groupId && pathname.startsWith(`/group/${groupId}/chat`);
+  const isFeedPage =
+    pathname === "/feed" || /^\/group\/[^/]+\/feed$/.test(pathname);
   const showGroupPlus =
     isAuthenticated &&
     (pathname === "/group/mygroups" || groupOpen || isGroupContext);
@@ -180,6 +223,7 @@ export function SnsFeedLayout({
         ? "max-w-none"
         : "max-w-6xl";
   const [theme, setTheme] = useTheme();
+  const [feedLayoutMode, setFeedLayoutMode] = useFeedLayoutMode();
 
   const onGroupTabClick = useCallback(() => {
     setProfileOpen(false);
@@ -202,7 +246,6 @@ export function SnsFeedLayout({
     const items: { label: string; href: string; icon: React.ReactNode }[] = [
       { label: "게시글", href: "/feed", icon: <FeedIcon /> },
       { label: "말씀묵상", href: "/meditation", icon: <BookHeartIcon /> },
-      { label: "말씀 기록", href: "/record", icon: <RecordIcon /> },
       { label: "자료실", href: "/resources", icon: <ResourcesIcon /> },
       { label: "마이페이지", href: "/me", icon: <UserIcon /> },
     ];
@@ -239,11 +282,11 @@ export function SnsFeedLayout({
   }, [groupId, activeGroup?.isAdmin]);
 
   const navBtnClass =
-    "relative flex h-11 w-11 items-center justify-center rounded-xl text-ink transition hover:bg-accent-soft hover:text-accent-foreground";
+    "group/navbtn relative flex h-11 w-11 items-center justify-center rounded-xl text-ink transition hover:bg-accent-soft hover:text-accent-foreground";
 
   function navTip(label: string) {
     return (
-      <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded-md border border-line bg-surface px-3 py-1 text-sm font-medium text-ink opacity-0 shadow-md transition-opacity duration-150 group-hover/nav:opacity-100">
+      <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded-md border border-line bg-surface px-3 py-1 text-sm font-medium text-ink opacity-0 shadow-md transition-opacity duration-150 group-hover/navbtn:opacity-100">
         {label}
       </span>
     );
@@ -259,6 +302,7 @@ export function SnsFeedLayout({
 
   return (
     <FeedBrowseProvider groupId={groupId ?? undefined}>
+    <PinnedAnnouncementProvider>
     <div
       className={`relative bg-bg pt-[var(--app-header-height)] ${
         isGroupChat ? "flex h-dvh flex-col overflow-hidden" : "min-h-screen pb-24"
@@ -274,9 +318,18 @@ export function SnsFeedLayout({
               image={activeGroup.image}
               onClick={onGroupTabClick}
               expanded={groupOpen}
+              dataTour="logo"
             />
           ) : isAuthenticated ? (
-            <LogoPickerButton onClick={onGroupTabClick} expanded={groupOpen} />
+            <div className="relative z-10 flex min-w-0 items-center gap-2 sm:gap-3">
+              <LogoPickerButton
+                onClick={onGroupTabClick}
+                expanded={groupOpen}
+                tip={navTip("소그룹")}
+                dataTour="logo"
+              />
+              {!isGroupContext ? <PinnedNoticeHeaderTitle /> : null}
+            </div>
           ) : (
             <Link
               href="/feed"
@@ -288,9 +341,36 @@ export function SnsFeedLayout({
           )}
           <AppHeaderCenter />
           <div className="relative z-10 flex shrink-0 items-center gap-2">
+            {isFeedPage ? (
+              <button
+                type="button"
+                data-tour="header-feed-layout"
+                onClick={() =>
+                  setFeedLayoutMode(
+                    feedLayoutMode === "daily" ? "timeline" : "daily",
+                  )
+                }
+                className="group/quick relative flex h-10 w-10 items-center justify-center rounded-xl text-black transition-colors hover:text-accent dark:text-white dark:hover:text-accent"
+                aria-label={
+                  feedLayoutMode === "daily"
+                    ? "연속 보기로 전환"
+                    : "날짜별 보기로 전환"
+                }
+              >
+                {feedLayoutMode === "daily" ? (
+                  <FeedTimelineIcon />
+                ) : (
+                  <FeedDailyIcon />
+                )}
+                {headerQuickTip(
+                  feedLayoutMode === "daily" ? "연속 보기" : "날짜별 보기",
+                )}
+              </button>
+            ) : null}
             {isMeditationPage ? (
               <button
                 type="button"
+                data-tour="header-research"
                 aria-disabled
                 className="group/quick relative flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-xl text-black opacity-50 dark:text-white"
                 aria-label="연구모드 coming soon.."
@@ -301,6 +381,7 @@ export function SnsFeedLayout({
             ) : null}
             <button
               type="button"
+              data-tour="header-theme"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               className="group/quick relative flex h-10 w-10 items-center justify-center rounded-xl text-black transition-colors hover:text-accent dark:text-white dark:hover:text-accent"
               aria-label={theme === "dark" ? "라이트 모드" : "다크 모드"}
@@ -310,6 +391,7 @@ export function SnsFeedLayout({
             </button>
             <button
               type="button"
+              data-tour="header-view"
               onClick={() =>
                 setViewMode(viewMode === "popup" ? "split" : "popup")
               }
@@ -323,7 +405,7 @@ export function SnsFeedLayout({
         </div>
       </header>
 
-      <aside className="group/nav fixed bottom-0 left-0 top-[var(--app-header-height)] z-50 hidden w-16 flex-col py-4 lg:flex">
+      <aside className="fixed bottom-0 left-0 top-[var(--app-header-height)] z-50 hidden w-16 flex-col py-4 lg:flex">
         {isGroupContext ? (
           <>
             <div className="min-h-0 flex-1" />
@@ -334,6 +416,7 @@ export function SnsFeedLayout({
                   href={item.href}
                   className={navBtnClass}
                   aria-label={item.label}
+                  data-tour={groupNavTourId(item.href)}
                 >
                   {item.icon}
                   {navTip(item.label)}
@@ -347,15 +430,23 @@ export function SnsFeedLayout({
             <div className="min-h-0 flex-1" />
             <nav className="flex flex-col items-center gap-2">
               {navItems.map((item) => (
-                <Link
-                  key={`${item.label}-${item.href}`}
-                  href={item.href}
-                  className={navBtnClass}
-                  aria-label={item.label}
-                >
-                  {item.icon}
-                  {navTip(item.label)}
-                </Link>
+                <span key={`${item.label}-${item.href}`} className="contents">
+                  <Link
+                    href={item.href}
+                    className={navBtnClass}
+                    aria-label={item.label}
+                    data-tour={mainNavTourId(item.href)}
+                  >
+                    {item.icon}
+                    {navTip(item.label)}
+                  </Link>
+                  {item.href === "/me" && !isGroupContext ? (
+                    <PinnedNoticeNavButton
+                      navBtnClass={navBtnClass}
+                      navTip={navTip}
+                    />
+                  ) : null}
+                </span>
               ))}
             </nav>
             <div className="flex-1" />
@@ -371,6 +462,7 @@ export function SnsFeedLayout({
             ) : null}
             <button
               type="button"
+              data-tour="nav-chat"
               onClick={() => {
                 setProfileOpen(false);
                 if (chatOpen && viewMode === "split" && splitDockTop !== "chat") {
@@ -411,6 +503,7 @@ export function SnsFeedLayout({
         >
           <button
             type="button"
+            data-tour="nav-more"
             onClick={() => {
               setProfileOpen((v) => !v);
               setChatOpen(false);
@@ -465,6 +558,17 @@ export function SnsFeedLayout({
                     role="menuitem"
                     onClick={() => {
                       closeProfile();
+                      startTour?.();
+                    }}
+                  >
+                    이용방법
+                  </button>
+                  <button
+                    type="button"
+                    className="block w-full px-3 py-2 text-left text-xs font-medium text-ink hover:bg-accent-soft"
+                    role="menuitem"
+                    onClick={() => {
+                      closeProfile();
                       void signOut({ callbackUrl: "/" });
                     }}
                   >
@@ -497,6 +601,17 @@ export function SnsFeedLayout({
                   >
                     성장 소개
                   </Link>
+                  <button
+                    type="button"
+                    className="block w-full px-3 py-2 text-left text-xs font-medium text-ink hover:bg-accent-soft"
+                    role="menuitem"
+                    onClick={() => {
+                      closeProfile();
+                      startTour?.();
+                    }}
+                  >
+                    이용방법
+                  </button>
                 </>
               )}
             </div>
@@ -512,6 +627,7 @@ export function SnsFeedLayout({
         {children}
       </main>
     </div>
+    </PinnedAnnouncementProvider>
     </FeedBrowseProvider>
   );
 }

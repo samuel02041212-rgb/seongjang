@@ -2,10 +2,12 @@
 
 import { useChatPanel } from "@/components/chat/chat-dock";
 import { FeedStream } from "@/components/feed/feed-stream";
+import { FeedTimelineStream } from "@/components/feed/feed-timeline-stream";
 import { FEED_CARD_MAX_WIDTH_PX, feedCardMaxWidthClass } from "@/lib/feed-card-layout";
+import { useFeedLayoutMode } from "@/lib/feed-layout-mode";
 import { useFeedBrowse } from "@/components/shell/feed-browse-context";
 import { usePostViewMode } from "@/lib/view-mode";
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 const SPLIT_DOCK_PULL_EXTRA_PX = 95;
 
@@ -16,13 +18,45 @@ function pullMarginPx(): number {
   return 72;
 }
 
-function SplitFeedSlide({
-  feedDate,
+function FeedBody({
   groupId,
+  viewerVariant,
+  onDetailOpenChange,
 }: {
-  feedDate: string;
   groupId?: string;
+  viewerVariant: "popup" | "side";
+  onDetailOpenChange?: (open: boolean) => void;
 }) {
+  const [layoutMode] = useFeedLayoutMode();
+  const { feedDate } = useFeedBrowse();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [layoutMode]);
+
+  if (layoutMode === "timeline") {
+    return (
+      <FeedTimelineStream
+        key="timeline"
+        groupId={groupId}
+        viewerVariant={viewerVariant}
+        onDetailOpenChange={onDetailOpenChange}
+      />
+    );
+  }
+
+  return (
+    <FeedStream
+      key={`daily-${feedDate}`}
+      feedDate={feedDate}
+      groupId={groupId}
+      viewerVariant={viewerVariant}
+      onDetailOpenChange={onDetailOpenChange}
+    />
+  );
+}
+
+function SplitFeedSlide({ groupId }: { groupId?: string }) {
   const { chatOpen } = useChatPanel();
   const [detailOpen, setDetailOpen] = useState(false);
   const dockOpen = detailOpen || chatOpen;
@@ -77,8 +111,7 @@ function SplitFeedSlide({
               }
         }
       >
-        <FeedStream
-          feedDate={feedDate}
+        <FeedBody
           groupId={groupId}
           viewerVariant="side"
           onDetailOpenChange={setDetailOpen}
@@ -91,15 +124,14 @@ function SplitFeedSlide({
 export function FeedClient({ groupId }: { groupId?: string } = {}) {
   const [mode] = usePostViewMode();
   const split = mode === "split";
-  const { feedDate } = useFeedBrowse();
 
   if (!split) {
     return (
       <div className={`mx-auto w-full ${feedCardMaxWidthClass}`}>
-        <FeedStream feedDate={feedDate} groupId={groupId} viewerVariant="popup" />
+        <FeedBody groupId={groupId} viewerVariant="popup" />
       </div>
     );
   }
 
-  return <SplitFeedSlide feedDate={feedDate} groupId={groupId} />;
+  return <SplitFeedSlide groupId={groupId} />;
 }

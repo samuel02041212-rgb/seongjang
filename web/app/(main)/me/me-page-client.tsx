@@ -1,19 +1,15 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { BookmarksPanel } from "@/components/me/bookmarks-panel";
-import { FeedPostRow } from "@/components/feed/feed-post-row";
-import { PostDetailModal } from "@/components/feed/post-detail-modal";
 import { ProfileEditModal } from "@/components/me/profile-edit-modal";
+import { ProfilePageShell } from "@/components/me/profile-page-shell";
+import { ProfilePostsPanel } from "@/components/me/profile-posts-panel";
 import { ProfileAvatar } from "@/components/me/profile-avatar";
-import {
-  feedPostListClass,
-  feedPostListWrapClass,
-} from "@/lib/feed-card-layout";
-import type { FeedPostJson } from "@/lib/feed-serialize";
+import { RecordPageClient } from "@/components/record/record-page-client";
 
 type MeJson = {
   id: string;
@@ -23,14 +19,43 @@ type MeJson = {
   image: string | null;
 };
 
+type MeTab = "posts" | "record" | "bookmarks";
+
+function parseMeTab(value: string | null): MeTab {
+  if (value === "record" || value === "bookmarks") return value;
+  return "posts";
+}
+
+function RecordTabIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+      <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h8" />
+    </svg>
+  );
+}
+
 export function MePageClient() {
+  const searchParams = useSearchParams();
   const { data: session, update: updateSession } = useSession();
-  const [tab, setTab] = useState<"posts" | "bookmarks">("posts");
-  const [posts, setPosts] = useState<FeedPostJson[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [detailPost, setDetailPost] = useState<FeedPostJson | null>(null);
+  const [tab, setTab] = useState<MeTab>(() => parseMeTab(searchParams.get("tab")));
   const [me, setMe] = useState<MeJson | null>(null);
   const [editOpen, setEditOpen] = useState(false);
+
+  useEffect(() => {
+    setTab(parseMeTab(searchParams.get("tab")));
+  }, [searchParams]);
 
   const displayName =
     me?.name?.trim() ||
@@ -54,95 +79,16 @@ export function MePageClient() {
     void loadMe();
   }, [loadMe]);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const res = await fetch("/api/posts?mine=1", { credentials: "include" });
-        const data = (await res.json()) as unknown;
-        if (cancelled) return;
-        if (!res.ok || !Array.isArray(data)) {
-          setPosts([]);
-          return;
-        }
-        setPosts(data as FeedPostJson[]);
-      } catch {
-        if (!cancelled) setPosts([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const userId = me?.id ?? session?.user?.id ?? "";
 
-  const onLike = useCallback(async (postId: string) => {
-    try {
-      const res = await fetch(
-        `/api/posts/${encodeURIComponent(postId)}/like`,
-        { method: "POST", credentials: "include" },
-      );
-      if (!res.ok) return;
-      const body = (await res.json()) as {
-        ok?: boolean;
-        liked?: boolean;
-        likeCount?: number;
-      };
-      if (!body.ok) return;
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === postId
-            ? {
-                ...p,
-                isLikedByMe: body.liked ?? !p.isLikedByMe,
-                likeCount: body.likeCount ?? p.likeCount,
-              }
-            : p,
-        ),
-      );
-      setDetailPost((p) =>
-        p?.id === postId
-          ? {
-              ...p,
-              isLikedByMe: body.liked ?? !p.isLikedByMe,
-              likeCount: body.likeCount ?? p.likeCount,
-            }
-          : p,
-      );
-    } catch {
-      void 0;
-    }
-  }, []);
-
-  const onBookmarkChange = useCallback(
-    (postId: string, folderIds: string[]) => {
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === postId ? { ...p, bookmarkFolderIds: folderIds } : p,
-        ),
-      );
-      setDetailPost((p) =>
-        p?.id === postId ? { ...p, bookmarkFolderIds: folderIds } : p,
-      );
-    },
-    [],
-  );
-
-  const bumpCommentCount = useCallback((postId: string) => {
-    setPosts((prev) =>
-      prev.map((p) =>
-        p.id === postId ? { ...p, commentCount: p.commentCount + 1 } : p,
-      ),
-    );
-    setDetailPost((p) =>
-      p?.id === postId ? { ...p, commentCount: p.commentCount + 1 } : p,
-    );
-  }, []);
+  const tabClass = (active: boolean) =>
+    `flex flex-1 items-center justify-center py-3 transition ${
+      active ? "border-b-2 border-accent text-ink" : "text-muted hover:text-ink"
+    }`;
 
   return (
-    <section className="w-full overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
+    <ProfilePageShell userId={userId} sidePanelEditable>
+      <section className="w-full overflow-visible rounded-xl border border-line bg-surface shadow-sm">
       <div className="border-b border-line p-5 sm:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
           <ProfileAvatar
@@ -168,11 +114,7 @@ export function MePageClient() {
           onClick={() => setTab("posts")}
           title="내 게시글"
           aria-label="내 게시글"
-          className={`flex flex-1 items-center justify-center py-3 transition ${
-            tab === "posts"
-              ? "border-b-2 border-accent text-ink"
-              : "text-muted hover:text-ink"
-          }`}
+          className={tabClass(tab === "posts")}
         >
           <svg
             width="20"
@@ -191,14 +133,20 @@ export function MePageClient() {
         </button>
         <button
           type="button"
+          onClick={() => setTab("record")}
+          title="말씀 기록"
+          aria-label="말씀 기록"
+          data-tour="profile-record-tab"
+          className={tabClass(tab === "record")}
+        >
+          <RecordTabIcon />
+        </button>
+        <button
+          type="button"
           onClick={() => setTab("bookmarks")}
           title="책깔피"
           aria-label="책깔피"
-          className={`flex flex-1 items-center justify-center py-3 transition ${
-            tab === "bookmarks"
-              ? "border-b-2 border-accent text-ink"
-              : "text-muted hover:text-ink"
-          }`}
+          className={tabClass(tab === "bookmarks")}
         >
           <svg
             width="20"
@@ -217,51 +165,18 @@ export function MePageClient() {
       </div>
 
       {tab === "posts" ? (
-        <>
-          {loading ? (
-            <p className="px-4 pb-6 pt-6 text-center text-sm text-muted sm:px-6 sm:pt-8">
-              불러오는 중…
-            </p>
-          ) : posts.length === 0 ? (
-            <div className="px-4 pb-6 pt-6 sm:px-6 sm:pt-8">
-              <p className="text-center text-sm text-muted">
-                아직 작성한 글이 없습니다.
-              </p>
-              <div className="mt-6 flex justify-center">
-                <Link
-                  href="/meditation"
-                  className="rounded-full bg-accent px-5 py-2 text-sm font-semibold text-accent-foreground"
-                >
-                  말씀묵상 쓰기
-                </Link>
-              </div>
-            </div>
-          ) : (
-            <div
-              className={`${feedPostListWrapClass} ${feedPostListClass} pt-6 sm:pt-8`}
-            >
-              {posts.map((p) => (
-                <FeedPostRow
-                  key={p.id}
-                  post={p}
-                  onOpenDetail={setDetailPost}
-                  onLike={onLike}
-                  showBookmark
-                  onBookmarkChange={onBookmarkChange}
-                />
-              ))}
-            </div>
-          )}
-          <PostDetailModal
-            post={detailPost}
-            open={!!detailPost}
-            onClose={() => setDetailPost(null)}
-            onCommentAdded={() =>
-              detailPost && bumpCommentCount(detailPost.id)
-            }
-            previewMode={false}
-          />
-        </>
+        <ProfilePostsPanel
+          postsUrl="/api/posts?mine=1"
+          emptyMessage="아직 작성한 글이 없습니다."
+          emptyAction={{ href: "/meditation", label: "말씀묵상 쓰기" }}
+        />
+      ) : tab === "record" ? (
+        <RecordPageClient
+          postsUrl="/api/posts?mine=1"
+          embedded
+          todoUserId={userId}
+          todosEditable
+        />
       ) : (
         <div className="p-5 sm:p-8">
           <BookmarksPanel />
@@ -283,6 +198,7 @@ export function MePageClient() {
           }
         }}
       />
-    </section>
+        </section>
+    </ProfilePageShell>
   );
 }

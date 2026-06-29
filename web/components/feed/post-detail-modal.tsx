@@ -18,6 +18,7 @@ import { createPortal } from "react-dom";
 
 import { FeedPostImages } from "./feed-post-images";
 import { ImageViewerModal } from "./image-viewer-modal";
+import { AuthorProfileLink } from "@/components/me/author-profile-link";
 
 type CommentItem = {
   id: string;
@@ -191,10 +192,13 @@ export function PostDetailModal({
                     ) : null}
                   </div>
                   {post.authorName || post.authorChurch ? (
-                    <span className="max-w-[45%] shrink-0 truncate text-right text-xs text-muted">
-                      {post.authorName}
-                      {post.authorChurch ? `, ${post.authorChurch}` : ""}
-                    </span>
+                    <AuthorProfileLink
+                      authorId={post.authorId}
+                      authorName={post.authorName}
+                      authorChurch={post.authorChurch}
+                      linkable={!isAnnouncement}
+                      className="max-w-[45%] shrink-0 truncate text-right text-xs text-muted"
+                    />
                   ) : null}
                 </div>
                 <div

@@ -1,4 +1,5 @@
 import { PostViewModeToggle } from "@/components/settings/post-view-mode-toggle";
+import { FeedLayoutModeToggle } from "@/components/settings/feed-layout-mode-toggle";
 import { ThemeToggle } from "@/components/settings/theme-toggle";
 
 export function SettingsPageContent() {
@@ -15,6 +16,13 @@ export function SettingsPageContent() {
           <p className="mt-3 text-sm text-muted">연구모드 coming soon..</p>
         </section>
         <section className="px-4 py-4 sm:px-6">
+          <h2 className="text-sm font-semibold text-ink">게시글 보기</h2>
+          <p className="mt-1 text-xs text-muted">
+            날짜별로 하루씩 보거나, 최신순으로 이어서 볼 수 있습니다.
+          </p>
+          <FeedLayoutModeToggle />
+        </section>
+        <section className="px-4 py-4 sm:px-6">
           <h2 className="text-sm font-semibold text-ink">게시글·채팅 뷰어</h2>
           <p className="mt-1 text-xs text-muted">
             피드에서 게시글을 열 때와 채팅을 열 때 같은 방식이 적용됩니다.
@@ -22,19 +30,6 @@ export function SettingsPageContent() {
             있습니다.
           </p>
           <PostViewModeToggle />
-        </section>
-        <section className="px-4 py-4 sm:px-6">
-          <h2 className="text-sm font-semibold text-ink">알림</h2>
-          <p className="mt-1 text-xs text-muted">
-            푸시·이메일 알림 (연결 예정)
-          </p>
-          <button
-            type="button"
-            disabled
-            className="mt-3 rounded-full border border-line px-4 py-2 text-xs font-medium text-muted"
-          >
-            알림 설정
-          </button>
         </section>
         <section className="px-4 py-4 sm:px-6">
           <h2 className="text-sm font-semibold text-ink">계정</h2>
@@ -48,10 +43,6 @@ export function SettingsPageContent() {
           >
             계정 관리
           </button>
-        </section>
-        <section className="px-4 py-4 sm:px-6">
-          <h2 className="text-sm font-semibold text-ink">앱 정보</h2>
-          <p className="mt-1 font-mono text-xs text-muted">성장 웹 · 미리보기</p>
         </section>
       </div>
     </div>
