@@ -15,15 +15,27 @@ const prisma = new PrismaClient({ adapter });
 
 async function main() {
   await prisma.$transaction([
+    prisma.postBookmark.deleteMany(),
+    prisma.bookmarkFolder.deleteMany(),
     prisma.comment.deleteMany(),
     prisma.post.deleteMany(),
+    prisma.chatMessage.deleteMany(),
+    prisma.chatRoom.deleteMany(),
+    prisma.groupChatMessage.deleteMany(),
+    prisma.groupJoinRequest.deleteMany(),
+    prisma.groupMember.deleteMany(),
+    prisma.groupCreationRequest.deleteMany(),
+    prisma.smallGroup.deleteMany(),
+    prisma.userTodo.deleteMany(),
+    prisma.globalScheduleEvent.deleteMany(),
     prisma.session.deleteMany(),
     prisma.account.deleteMany(),
     prisma.verificationToken.deleteMany(),
-    prisma.globalScheduleEvent.deleteMany(),
     prisma.user.deleteMany(),
   ]);
-  console.log("OK: all users and related data removed. Sign up again, then set isAdmin in DB.");
+  console.log(
+    "OK: all users, posts, groups, and related data removed. Sign up via Kakao, then set isAdmin in DB.",
+  );
 }
 
 main()

@@ -15,7 +15,6 @@
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset",
-    "db:reset-admin-only": "npx tsx prisma/reset-users-admin-only.ts",
     "db:delete-all-users": "npx tsx prisma/delete-all-users.ts"
   },
   "prisma": {

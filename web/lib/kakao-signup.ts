@@ -1,6 +1,5 @@
 import { ADMIN_USER_EMAIL } from "@/lib/auth-constants";
 import { prisma } from "@/lib/prisma";
-import { devKakaoLoginAsAdmin } from "@/lib/dev-kakao-admin";
 
 async function findOrCreateKakaoUser(
   email: string,
@@ -42,8 +41,6 @@ export async function detachKakaoFromAdminIfNeeded(
     image?: string | null;
   },
 ) {
-  if (devKakaoLoginAsAdmin()) return;
-
   const acc = await prisma.account.findUnique({
     where: {
       provider_providerAccountId: {

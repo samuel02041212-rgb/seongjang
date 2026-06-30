@@ -3,11 +3,6 @@ import NextAuth from "next-auth";
 import Kakao from "next-auth/providers/kakao";
 import { authConfig } from "@/auth.config";
 import { ADMIN_USER_EMAIL } from "@/lib/auth-constants";
-import {
-  devKakaoLoginAsAdmin,
-  getDevAdminUser,
-  relinkKakaoAccountToAdmin,
-} from "@/lib/dev-kakao-admin";
 import { kakaoClientId, kakaoClientSecret } from "@/lib/kakao-auth-env";
 import {
   kakaoProfileFields,
@@ -78,17 +73,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user, account, profile }) {
       try {
         if (account?.provider === "kakao" && user.id && profile) {
-          if (!devKakaoLoginAsAdmin()) {
-            await syncKakaoUserProfile(user.id, profile);
-          }
-        }
-        if (
-          devKakaoLoginAsAdmin() &&
-          account?.provider === "kakao" &&
-          account.providerAccountId &&
-          user.id
-        ) {
-          await relinkKakaoAccountToAdmin(user.id, account);
+          await syncKakaoUserProfile(user.id, profile);
         }
       } catch (e) {
         console.error("[auth] signIn event", e);
@@ -100,7 +85,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user, account }) {
       if (account?.provider !== "kakao") return false;
       try {
-        if (!devKakaoLoginAsAdmin() && account.providerAccountId) {
+        if (account.providerAccountId) {
           await detachKakaoFromAdminIfNeeded(account, user);
         }
       } catch (e) {
@@ -116,15 +101,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         } else if (token.devEpoch !== devEpoch) {
           return { devEpoch, exp: 0 };
         }
-      }
-
-      if (user?.id && devKakaoLoginAsAdmin()) {
-        const admin = await getDevAdminUser();
-        token.sub = admin.id;
-        token.isAdmin = true;
-        token.registrationApproved = true;
-        token.profileComplete = true;
-        return token;
       }
 
       if (user?.id && account?.provider === "kakao") {
