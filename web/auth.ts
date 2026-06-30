@@ -49,11 +49,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientId: kakaoClientId(),
       clientSecret: kakaoClientSecret(),
       allowDangerousEmailAccountLinking: true,
-      authorization: {
-        params: {
-          scope: "profile_nickname profile_image account_email",
-        },
-      },
       profile(profile) {
         const fields = kakaoProfileFields(profile);
         return {
@@ -68,27 +63,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   events: {
     async createUser({ user }) {
       if (!user.id) return;
-      await prisma.user.updateMany({
-        where: { id: user.id, signupSource: "" },
-        data: {
-          registrationApproved: false,
-          signupSource: "kakao",
-        },
-      });
+      try {
+        await prisma.user.updateMany({
+          where: { id: user.id, signupSource: "" },
+          data: {
+            registrationApproved: false,
+            signupSource: "kakao",
+          },
+        });
+      } catch (e) {
+        console.error("[auth] createUser event", e);
+      }
     },
     async signIn({ user, account, profile }) {
-      if (account?.provider === "kakao" && user.id && profile) {
-        if (!devKakaoLoginAsAdmin()) {
-          await syncKakaoUserProfile(user.id, profile);
+      try {
+        if (account?.provider === "kakao" && user.id && profile) {
+          if (!devKakaoLoginAsAdmin()) {
+            await syncKakaoUserProfile(user.id, profile);
+          }
         }
-      }
-      if (
-        devKakaoLoginAsAdmin() &&
-        account?.provider === "kakao" &&
-        account.providerAccountId &&
-        user.id
-      ) {
-        await relinkKakaoAccountToAdmin(user.id, account);
+        if (
+          devKakaoLoginAsAdmin() &&
+          account?.provider === "kakao" &&
+          account.providerAccountId &&
+          user.id
+        ) {
+          await relinkKakaoAccountToAdmin(user.id, account);
+        }
+      } catch (e) {
+        console.error("[auth] signIn event", e);
       }
     },
   },

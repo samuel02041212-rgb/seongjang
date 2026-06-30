@@ -51,15 +51,19 @@ export async function syncKakaoUserProfile(
   profile: unknown,
 ) {
   const fields = kakaoProfileFields(profile as KakaoOAuthProfile);
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      name: fields.name,
-      image: fields.image,
-      ...(fields.gender ? { gender: fields.gender } : {}),
-      ...(fields.birthDate ? { birthDate: fields.birthDate } : {}),
-    },
-  });
+  try {
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        name: fields.name,
+        image: fields.image,
+        ...(fields.gender ? { gender: fields.gender } : {}),
+        ...(fields.birthDate ? { birthDate: fields.birthDate } : {}),
+      },
+    });
+  } catch (e) {
+    console.error("[auth] syncKakaoUserProfile", userId, e);
+  }
 }
 
 export function formatBirthDateLabel(birthDate: Date | null): string | null {

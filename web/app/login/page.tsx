@@ -5,6 +5,7 @@ import { Suspense } from "react";
 
 import { auth } from "@/lib/server-auth";
 import { isKakaoAuthConfigured } from "@/lib/kakao-auth-env";
+import { loginAuthErrorMessage } from "@/lib/auth-login-error";
 import { safeCallbackUrl } from "@/lib/safe-callback-url";
 
 import { LoginForm } from "./login-form";
@@ -26,14 +27,7 @@ export default async function LoginPage({
   const session = await auth();
   const sp = await searchParams;
   const nextPath = safeCallbackUrl(sp?.callbackUrl, "/feed");
-  const authError =
-    sp?.error === "AccessDenied"
-      ? "로그인에 실패했습니다. 잠시 후 다시 시도해 주세요."
-      : sp?.error === "OAuthAccountNotLinked"
-        ? "이미 다른 방식으로 가입된 이메일입니다. 관리자에게 문의해 주세요."
-        : sp?.error
-          ? "로그인에 실패했습니다. 다시 시도해 주세요."
-          : null;
+  const authError = loginAuthErrorMessage(sp?.error);
 
   if (session?.user?.id) {
     if (!session.user.profileComplete) {

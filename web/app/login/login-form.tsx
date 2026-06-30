@@ -33,11 +33,32 @@ export function LoginForm({
   const callbackUrl = safeCallbackUrl(searchParams.get("callbackUrl"), "/feed");
   const [kakaoPending, setKakaoPending] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
+  const [clientError, setClientError] = useState("");
 
   async function onKakaoLogin() {
     if (!kakaoConfigured) return;
     setKakaoPending(true);
-    await signIn("kakao", { callbackUrl });
+    try {
+      const res = await signIn("kakao", { callbackUrl, redirect: false });
+      if (res?.error) {
+        setClientError(
+          res.error === "Configuration"
+            ? "로그인 설정 오류입니다. 서버 환경 변수를 확인해 주세요."
+            : "카카오 로그인을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        );
+        setKakaoPending(false);
+        return;
+      }
+      if (res?.url) {
+        window.location.href = res.url;
+        return;
+      }
+      setClientError("카카오 로그인을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+      setKakaoPending(false);
+    } catch {
+      setClientError("카카오 로그인을 시작하지 못했습니다.");
+      setKakaoPending(false);
+    }
   }
 
   return (
@@ -73,9 +94,9 @@ export function LoginForm({
           </p>
         ) : null}
 
-        {authError ? (
+        {(authError || clientError) ? (
           <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-800">
-            {authError}
+            {authError ?? clientError}
           </p>
         ) : null}
 
