@@ -91,14 +91,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         await detachKakaoFromAdminIfNeeded(account, user);
       }
 
-      if (devKakaoLoginAsAdmin()) return true;
-
-      const userId = await kakaoLinkedUserId(account, user.id!);
-      const dbUser = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { id: true },
-      });
-      return Boolean(dbUser);
+      return true;
     },
     async jwt({ token, user, account }) {
       const devEpoch = process.env.AUTH_DEV_SESSION_EPOCH;
