@@ -1,88 +1,121 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
-import Credentials from "next-auth/providers/credentials";
-import { z } from "zod";
+import Kakao from "next-auth/providers/kakao";
 import { authConfig } from "@/auth.config";
-import { ADMIN_LOGIN_HANDLE, ADMIN_USER_EMAIL } from "@/lib/auth-constants";
-import { ensureDevAdminAaAccount } from "@/lib/ensure-dev-admin-aa";
+import { ADMIN_USER_EMAIL } from "@/lib/auth-constants";
+import {
+  devKakaoLoginAsAdmin,
+  getDevAdminUser,
+  relinkKakaoAccountToAdmin,
+} from "@/lib/dev-kakao-admin";
 import { prisma } from "@/lib/prisma";
+import { registrationAutoApprove } from "@/lib/registration-auto-approve";
+
+function kakaoProfileEmail(profile: {
+  id: number;
+  kakao_account?: { email?: string | null };
+}): string {
+  const email = profile.kakao_account?.email?.trim().toLowerCase();
+  if (email) return email;
+  return `kakao_${profile.id}@kakao.local`;
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma),
   providers: [
-    Credentials({
-      credentials: {
-        email: { label: "아이디 또는 이메일", type: "text" },
-        password: { label: "비밀번호", type: "password" },
-      },
-      authorize: async (credentials) => {
-        const parsed = z
-          .object({
-            email: z.string().min(1),
-            password: z.string().min(1),
-          })
-          .safeParse(credentials);
-        if (!parsed.success) return null;
-
-        const login = parsed.data.email.trim();
-        const password = parsed.data.password;
-
-        if (login === ADMIN_LOGIN_HANDLE && password === ADMIN_LOGIN_HANDLE) {
-          await ensureDevAdminAaAccount();
-          const user = await prisma.user.findUnique({
-            where: { email: ADMIN_USER_EMAIL },
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              image: true,
-              password: true,
-              isAdmin: true,
-            },
-          });
-          if (!user?.password) return null;
-          const ok = await bcrypt.compare(password, user.password);
-          if (!ok) return null;
-          return {
-            id: user.id,
-            name: user.name ?? "관리자",
-            email: user.email,
-            image: user.image,
-            isAdmin: user.isAdmin,
-          };
-        }
-
-        const emailParsed = z.string().email().safeParse(login.toLowerCase());
-        if (!emailParsed.success) return null;
-
-        const user = await prisma.user.findUnique({
-          where: { email: emailParsed.data },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-            password: true,
-            registrationApproved: true,
-            isAdmin: true,
-          },
-        });
-        if (!user?.password) return null;
-
-        const ok = await bcrypt.compare(password, user.password);
-        if (!ok) return null;
-        if (!user.registrationApproved) return null;
-
+    Kakao({
+      clientId: process.env.AUTH_KAKAO_ID!,
+      clientSecret: process.env.AUTH_KAKAO_SECRET!,
+      profile(profile) {
+        const acc = profile.kakao_account;
         return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          image: user.image,
-          isAdmin: user.isAdmin,
+          id: String(profile.id),
+          name: acc?.profile?.nickname?.trim() || "회원",
+          email: kakaoProfileEmail(profile),
+          image: acc?.profile?.profile_image_url ?? null,
         };
       },
     }),
   ],
+  events: {
+    async createUser({ user }) {
+      if (!user.id) return;
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          registrationApproved: registrationAutoApprove(),
+          signupSource: "kakao",
+        },
+      });
+    },
+    async signIn({ user, account }) {
+      if (
+        !devKakaoLoginAsAdmin() ||
+        account?.provider !== "kakao" ||
+        !account.providerAccountId ||
+        !user.id
+      ) {
+        return;
+      }
+      await relinkKakaoAccountToAdmin(user.id, account);
+    },
+  },
+  callbacks: {
+    ...authConfig.callbacks,
+    async signIn({ user, account }) {
+      if (account?.provider !== "kakao") return false;
+
+      if (registrationAutoApprove()) return true;
+
+      if (account.providerAccountId) {
+        const linked = await prisma.account.findUnique({
+          where: {
+            provider_providerAccountId: {
+              provider: "kakao",
+              providerAccountId: account.providerAccountId,
+            },
+          },
+          include: { user: { select: { registrationApproved: true } } },
+        });
+        if (linked) return linked.user.registrationApproved;
+      }
+
+      if (user.email) {
+        const byEmail = await prisma.user.findUnique({
+          where: { email: user.email },
+          select: { registrationApproved: true },
+        });
+        if (byEmail) return byEmail.registrationApproved;
+      }
+
+      return false;
+    },
+    async jwt({ token, user }) {
+      const devEpoch = process.env.AUTH_DEV_SESSION_EPOCH;
+      if (devEpoch) {
+        if (user) {
+          token.devEpoch = devEpoch;
+        } else if (token.devEpoch !== devEpoch) {
+          return { devEpoch, exp: 0 };
+        }
+      }
+      if (user?.id) {
+        if (devKakaoLoginAsAdmin()) {
+          const admin = await getDevAdminUser();
+          token.sub = admin.id;
+          token.isAdmin = true;
+        } else {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: { email: true, isAdmin: true },
+          });
+          token.sub = user.id;
+          token.isAdmin =
+            dbUser?.email === ADMIN_USER_EMAIL || Boolean(dbUser?.isAdmin);
+        }
+      }
+      return token;
+    },
+  },
 });

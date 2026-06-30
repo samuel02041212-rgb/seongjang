@@ -59,6 +59,12 @@ type GroupRoomApi = {
   lastMessageAt: string | null;
 };
 
+type SearchUser = {
+  id: string;
+  name: string;
+  image: string | null;
+};
+
 function groupPinKey(groupId: string) {
   return `g:${groupId}`;
 }

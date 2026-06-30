@@ -176,11 +176,17 @@ function centerStepCardTop(h: number) {
 }
 
 function spotlightBox(rect: DOMRect, pad = 8) {
+  const top = rect.top - pad;
+  const left = rect.left - pad;
+  const width = rect.width + pad * 2;
+  const height = rect.height + pad * 2;
   return {
-    top: rect.top - pad,
-    left: rect.left - pad,
-    width: rect.width + pad * 2,
-    height: rect.height + pad * 2,
+    top,
+    left,
+    width,
+    height,
+    right: left + width,
+    bottom: top + height,
   };
 }
 

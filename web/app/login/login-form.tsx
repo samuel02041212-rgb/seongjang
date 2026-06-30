@@ -1,113 +1,95 @@
 "use client";
 
-import Link from "next/link";
 import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { safeCallbackUrl } from "@/lib/safe-callback-url";
 
+function KakaoIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M12 3c5.799 0 10.5 3.664 10.5 8.185 0 4.52-4.701 8.184-10.5 8.184a13.5 13.5 0 0 1-1.727-.11l-4.408 2.883c-.501.265-.678.236-.472-.413l.892-3.678c-2.848-1.995-4.785-5.078-4.785-8.866C1.5 6.665 6.201 3 12 3z" />
+    </svg>
+  );
+}
+
 export function LoginForm({
   showRegisteredNotice,
+  authError,
 }: {
   showRegisteredNotice?: boolean;
+  authError?: string | null;
 }) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = safeCallbackUrl(searchParams.get("callbackUrl"), "/feed");
-  const [loginId, setLoginId] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [pending, setPending] = useState(false);
+  const [kakaoPending, setKakaoPending] = useState(false);
+  const [logoFailed, setLogoFailed] = useState(false);
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setPending(true);
-    const res = await signIn("credentials", {
-      email: loginId.trim(),
-      password,
-      redirect: false,
-    });
-    setPending(false);
-    if (res?.error) {
-      setError(
-        "로그인에 실패했습니다. 아이디(이메일)·비밀번호를 확인하거나 승인 대기 중인지 확인해 주세요.",
-      );
-      return;
-    }
-    router.push(callbackUrl);
-    router.refresh();
+  async function onKakaoLogin() {
+    setKakaoPending(true);
+    await signIn("kakao", { callbackUrl });
   }
 
   return (
-    <div className="w-full max-w-md rounded-lg border border-line bg-surface p-6 shadow-sm sm:p-8">
-      <h1 className="font-display text-xl text-ink">로그인</h1>
-      <p className="mt-1 text-sm text-muted">
-        성경나눔장소에 오신 것을 환영합니다.
-      </p>
-
-      {showRegisteredNotice ? (
-        <p className="mt-4 rounded-lg bg-accent-soft px-3 py-2 text-sm text-accent-foreground">
-          가입이 완료되었습니다. 로그인해 주세요.
+    <div className="flex aspect-square w-[min(100vw-2rem,20rem)] flex-col items-center justify-center overflow-hidden rounded-2xl border border-line/80 bg-surface p-6 shadow-lg shadow-ink/5">
+      <div className="flex w-full flex-1 flex-col items-center justify-center text-center">
+        <div className="mb-3 flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-line/60 bg-gradient-to-b from-accent-soft/50 to-surface shadow-sm">
+          {logoFailed ? (
+            <span className="font-display text-xl text-accent-foreground">
+              성
+            </span>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src="/logo.png"
+              alt=""
+              width={56}
+              height={56}
+              className="h-full w-full object-contain p-1.5"
+              onError={() => setLogoFailed(true)}
+            />
+          )}
+        </div>
+        <h1 className="font-display text-2xl text-ink">성장</h1>
+        <p className="mt-1.5 text-xs leading-relaxed text-muted">
+          믿음 안에서 함께 자라는 공간
         </p>
-      ) : null}
+      </div>
 
-      <form onSubmit={onSubmit} className="mt-6 space-y-4">
-        {error ? (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
-            {error}
+      <div className="w-full shrink-0">
+        {showRegisteredNotice ? (
+          <p className="mb-3 rounded-xl bg-accent-soft px-3 py-2 text-xs text-accent-foreground">
+            가입이 완료되었습니다. 카카오로 로그인해 주세요.
           </p>
         ) : null}
-        <div>
-          <label htmlFor="login-id" className="text-sm font-medium text-ink">
-            아이디 또는 이메일
-          </label>
-          <input
-            id="login-id"
-            name="email"
-            type="text"
-            autoComplete="username"
-            required
-            value={loginId}
-            onChange={(e) => setLoginId(e.target.value)}
-            placeholder="가입 시 이메일"
-            className="mt-1 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
-          />
-        </div>
-        <div>
-          <label htmlFor="login-password" className="text-sm font-medium text-ink">
-            비밀번호
-          </label>
-          <input
-            id="login-password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={pending}
-          className="w-full rounded-md bg-accent py-3 text-sm font-semibold text-accent-foreground shadow-sm transition hover:bg-accent/90 disabled:opacity-60"
-        >
-          {pending ? "확인 중…" : "로그인"}
-        </button>
-      </form>
 
-      <p className="mt-6 text-center text-sm text-muted">
-        계정이 없으신가요?{" "}
-        <Link
-          href="/register"
-          className="font-semibold text-ink underline underline-offset-2"
+        {authError ? (
+          <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-800">
+            {authError}
+          </p>
+        ) : null}
+
+        <button
+          type="button"
+          disabled={kakaoPending}
+          onClick={() => void onKakaoLogin()}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#FEE500] py-3 text-sm font-semibold text-[#191919] shadow-sm transition hover:bg-[#f5dc00] active:scale-[0.99] disabled:opacity-60"
         >
-          회원가입
-        </Link>
-      </p>
+          <KakaoIcon />
+          {kakaoPending ? "이동 중…" : "카카오로 시작하기"}
+        </button>
+
+        <p className="mt-3 text-center text-[11px] leading-snug text-muted">
+          처음 로그인 시 자동 가입
+        </p>
+      </div>
     </div>
   );
 }
