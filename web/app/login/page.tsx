@@ -11,7 +11,7 @@ import { safeCallbackUrl } from "@/lib/safe-callback-url";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = {
-  title: "로그인 — 성장",
+  title: "로그인 — 성경나눔장소",
   description: "성경나눔장소 로그인",
 };
 
@@ -40,14 +40,14 @@ export default async function LoginPage({
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-bg px-4 py-12">
+    <div className="relative flex min-h-screen flex-col items-center justify-start overflow-hidden bg-bg px-4 pt-[min(7rem,16vh)]">
       <div
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,var(--color-accent-soft),transparent)]"
         aria-hidden
       />
       <Link
         href="/"
-        className="relative mb-8 text-sm font-medium text-muted transition hover:text-ink"
+        className="relative mb-6 text-sm font-medium text-muted transition hover:text-ink"
       >
         ← 처음으로
       </Link>

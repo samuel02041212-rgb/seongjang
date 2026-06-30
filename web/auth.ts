@@ -1,8 +1,14 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import NextAuth from "next-auth";
 import Kakao from "next-auth/providers/kakao";
+import { cookies } from "next/headers";
 import { authConfig } from "@/auth.config";
 import { ADMIN_USER_EMAIL } from "@/lib/auth-constants";
+import {
+  AUTH_REMEMBER_COOKIE,
+  readRememberFromCookie,
+  sessionExpirySec,
+} from "@/lib/auth-session";
 import { kakaoClientId, kakaoClientSecret } from "@/lib/kakao-auth-env";
 import {
   kakaoProfileFields,
@@ -104,6 +110,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
 
       if (user?.id && account?.provider === "kakao") {
+        const jar = await cookies();
+        const remember = readRememberFromCookie(
+          jar.get(AUTH_REMEMBER_COOKIE)?.value,
+        );
+        jar.delete(AUTH_REMEMBER_COOKIE);
+        token.remember = remember;
+        token.exp = sessionExpirySec(remember);
+
         const userId = await kakaoLinkedUserId(account, user.id);
         await applyUserToToken(token, userId);
         return token;

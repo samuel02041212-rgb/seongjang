@@ -18,6 +18,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     isAdmin?: boolean;
     devEpoch?: string;
+    remember?: boolean;
     registrationApproved?: boolean;
     profileComplete?: boolean;
   }

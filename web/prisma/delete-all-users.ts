@@ -4,35 +4,51 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../app/generated/prisma/client";
 import { Pool } from "pg";
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
+const rawUrl =
+  process.env.DIRECT_URL?.trim() ?? process.env.DATABASE_URL?.trim();
+if (!rawUrl) {
   throw new Error("DATABASE_URL is not set");
 }
+const connectionString = rawUrl;
 
-const pool = new Pool({ connectionString });
+const pool = new Pool({
+  connectionString,
+  max: 1,
+  connectionTimeoutMillis: 30_000,
+});
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  await prisma.$transaction([
-    prisma.postBookmark.deleteMany(),
-    prisma.bookmarkFolder.deleteMany(),
-    prisma.comment.deleteMany(),
-    prisma.post.deleteMany(),
-    prisma.chatMessage.deleteMany(),
-    prisma.chatRoom.deleteMany(),
-    prisma.groupChatMessage.deleteMany(),
-    prisma.groupJoinRequest.deleteMany(),
-    prisma.groupMember.deleteMany(),
-    prisma.groupCreationRequest.deleteMany(),
-    prisma.smallGroup.deleteMany(),
-    prisma.userTodo.deleteMany(),
-    prisma.globalScheduleEvent.deleteMany(),
-    prisma.session.deleteMany(),
-    prisma.account.deleteMany(),
-    prisma.verificationToken.deleteMany(),
-    prisma.user.deleteMany(),
-  ]);
+  if (!process.env.DIRECT_URL?.trim() && /-pooler\./i.test(connectionString)) {
+    console.warn(
+      "Tip: set DIRECT_URL (Neon non-pooler) in .env for faster, more reliable wipes.",
+    );
+  }
+
+  await prisma.postBookmark.deleteMany();
+  await prisma.bookmarkFolder.deleteMany();
+  await prisma.comment.deleteMany();
+  await prisma.post.deleteMany();
+  await prisma.chatMessage.deleteMany();
+  await prisma.chatRoom.deleteMany();
+  await prisma.groupChatMessage.deleteMany();
+  await prisma.groupJoinRequest.deleteMany();
+  await prisma.groupMember.deleteMany();
+  await prisma.groupCreationRequest.deleteMany();
+  await prisma.smallGroup.deleteMany();
+  await prisma.userTodo.deleteMany();
+  await prisma.globalScheduleEvent.deleteMany();
+  await prisma.session.deleteMany();
+  await prisma.account.deleteMany();
+  await prisma.verificationToken.deleteMany();
+  await prisma.user.deleteMany();
+
+  const remaining = await prisma.user.count();
+  if (remaining > 0) {
+    throw new Error(`Wipe incomplete: ${remaining} user(s) still in DB.`);
+  }
+
   console.log(
     "OK: all users, posts, groups, and related data removed. Sign up via Kakao, then set isAdmin in DB.",
   );

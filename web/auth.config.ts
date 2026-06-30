@@ -2,6 +2,7 @@ import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 
 import { ADMIN_USER_EMAIL } from "@/lib/auth-constants";
+import { SESSION_MAX_AGE_REMEMBER } from "@/lib/auth-session";
 
 const noopCredentials = Credentials({
   credentials: {
@@ -13,7 +14,7 @@ const noopCredentials = Credentials({
 
 export const authConfig = {
   trustHost: true,
-  session: { strategy: "jwt", maxAge: 5 * 60 },
+  session: { strategy: "jwt", maxAge: SESSION_MAX_AGE_REMEMBER },
   pages: { signIn: "/login", error: "/login", newUser: "/register/kakao" },
   providers: [noopCredentials],
   callbacks: {

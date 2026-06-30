@@ -139,27 +139,27 @@ export function LandingMain() {
       </section>
 
       <section className={`w-full space-y-10 border-t border-line pb-20 pt-10 sm:space-y-12 sm:pt-14 ${padX}`}>
-        <div className="grid gap-8 lg:grid-cols-12 lg:items-end lg:gap-10 xl:gap-12">
-          <div className="space-y-3 lg:col-span-4 xl:col-span-3">
+        <div className="space-y-6 sm:space-y-8">
+          <div className="space-y-3">
             <SectionLabel>About</SectionLabel>
-            <h2 className="font-display text-[clamp(1.75rem,4vw,2.75rem)] leading-snug text-ink">
-              그저 &apos;성경을 나누는&apos; 장소
+            <h2 className="whitespace-nowrap font-display text-[clamp(1.75rem,4vw,2.75rem)] leading-snug text-ink">
+              그저 성경을 나누는 &apos;장소&apos;
             </h2>
-            <p className="hidden text-[15px] leading-relaxed text-muted lg:block xl:text-base">
+            <p className="text-[15px] leading-relaxed text-muted sm:text-base">
               청년들이 함께 말씀을 나누고 성장하는 공동체입니다.
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:col-span-8 lg:grid-cols-4 xl:col-span-9">
+          <div className="grid w-full grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4 lg:gap-4">
             {facts.map((item) => (
               <div
                 key={item.label}
-                className="rounded-xl border border-line bg-surface px-4 py-4 shadow-sm sm:px-5 sm:py-5"
+                className="min-w-0 rounded-xl border border-line bg-surface px-3 py-4 shadow-sm sm:px-5 sm:py-5"
               >
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
                   {item.label}
                 </p>
-                <p className="mt-2 text-[15px] font-semibold leading-snug text-ink sm:text-base">
+                <p className="mt-2 text-[14px] font-semibold leading-snug text-ink sm:text-base">
                   {item.value}
                 </p>
               </div>

@@ -2,9 +2,18 @@
 
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { AUTH_REMEMBER_COOKIE } from "@/lib/auth-session";
 import { safeCallbackUrl } from "@/lib/safe-callback-url";
+
+const REMEMBER_STORAGE_KEY = "auth-remember";
+
+function setRememberPreference(remember: boolean) {
+  const value = remember ? "1" : "0";
+  localStorage.setItem(REMEMBER_STORAGE_KEY, value);
+  document.cookie = `${AUTH_REMEMBER_COOKIE}=${value}; path=/; max-age=600; SameSite=Lax`;
+}
 
 function KakaoIcon() {
   return (
@@ -34,10 +43,23 @@ export function LoginForm({
   const [kakaoPending, setKakaoPending] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
   const [clientError, setClientError] = useState("");
+  const [remember, setRemember] = useState(true);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(REMEMBER_STORAGE_KEY);
+      if (saved === "0" || saved === "1") {
+        setRemember(saved === "1");
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   async function onKakaoLogin() {
     if (!kakaoConfigured) return;
     setKakaoPending(true);
+    setRememberPreference(remember);
     try {
       const res = await signIn("kakao", { callbackUrl, redirect: false });
       if (res?.error) {
@@ -64,7 +86,7 @@ export function LoginForm({
   return (
     <div className="flex aspect-square w-[min(100vw-2rem,20rem)] flex-col items-center justify-center overflow-hidden rounded-2xl border border-line/80 bg-surface p-6 shadow-lg shadow-ink/5">
       <div className="flex w-full flex-1 flex-col items-center justify-center text-center">
-        <div className="mb-3 flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-line/60 bg-gradient-to-b from-accent-soft/50 to-surface shadow-sm">
+        <div className="mb-3 flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-line/60 bg-surface">
           {logoFailed ? (
             <span className="font-display text-xl text-accent-foreground">
               성
@@ -81,10 +103,7 @@ export function LoginForm({
             />
           )}
         </div>
-        <h1 className="font-display text-2xl text-ink">성장</h1>
-        <p className="mt-1.5 text-xs leading-relaxed text-muted">
-          믿음 안에서 함께 자라는 공간
-        </p>
+        <h1 className="font-display text-2xl text-ink">성경나눔장소</h1>
       </div>
 
       <div className="w-full shrink-0">
@@ -106,6 +125,16 @@ export function LoginForm({
             AUTH_KAKAO_SECRET을 확인해 주세요.
           </p>
         ) : null}
+
+        <label className="mb-3 flex cursor-pointer items-center gap-2 text-xs text-muted">
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={(e) => setRemember(e.target.checked)}
+            className="size-3.5 rounded border-line accent-accent"
+          />
+          자동 로그인
+        </label>
 
         <button
           type="button"
