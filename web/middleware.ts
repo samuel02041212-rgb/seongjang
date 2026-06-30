@@ -5,11 +5,24 @@ import { authConfig } from "@/auth.config";
 
 const { auth } = NextAuth(authConfig);
 
+type SessionUser = {
+  id?: string;
+  registrationApproved?: boolean;
+  profileComplete?: boolean;
+};
+
 function isPublicPath(pathname: string) {
-  if (pathname === "/" || pathname.startsWith("/login") || pathname.startsWith("/register")) {
+  if (pathname === "/" || pathname.startsWith("/login")) {
     return true;
   }
   return false;
+}
+
+function isSignupPath(pathname: string) {
+  return (
+    pathname.startsWith("/register/kakao") ||
+    pathname.startsWith("/register/pending")
+  );
 }
 
 function isSkippablePath(pathname: string) {
@@ -25,15 +38,43 @@ function isSkippablePath(pathname: string) {
 export default auth((req: NextRequest & { auth: unknown }) => {
   const { pathname } = req.nextUrl;
 
-  if (isSkippablePath(pathname) || isPublicPath(pathname)) {
+  if (isSkippablePath(pathname)) {
     return NextResponse.next();
   }
 
-  const session = req.auth as { user?: { id?: string } } | null;
-  if (!session?.user?.id) {
+  const session = req.auth as { user?: SessionUser } | null;
+  const user = session?.user;
+
+  if (pathname.startsWith("/register") && !isSignupPath(pathname)) {
+    return NextResponse.redirect(new URL("/login", req.url));
+  }
+
+  if (isPublicPath(pathname)) {
+    return NextResponse.next();
+  }
+
+  if (!user?.id) {
     const login = new URL("/login", req.url);
     login.searchParams.set("callbackUrl", `${pathname}${req.nextUrl.search}`);
     return NextResponse.redirect(login);
+  }
+
+  if (!user.profileComplete) {
+    if (!pathname.startsWith("/register/kakao")) {
+      return NextResponse.redirect(new URL("/register/kakao", req.url));
+    }
+    return NextResponse.next();
+  }
+
+  if (!user.registrationApproved) {
+    if (!pathname.startsWith("/register/pending")) {
+      return NextResponse.redirect(new URL("/register/pending", req.url));
+    }
+    return NextResponse.next();
+  }
+
+  if (isSignupPath(pathname)) {
+    return NextResponse.redirect(new URL("/feed", req.url));
   }
 
   return NextResponse.next();

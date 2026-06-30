@@ -23,9 +23,11 @@ function KakaoIcon() {
 export function LoginForm({
   showRegisteredNotice,
   authError,
+  kakaoConfigured = true,
 }: {
   showRegisteredNotice?: boolean;
   authError?: string | null;
+  kakaoConfigured?: boolean;
 }) {
   const searchParams = useSearchParams();
   const callbackUrl = safeCallbackUrl(searchParams.get("callbackUrl"), "/feed");
@@ -33,6 +35,7 @@ export function LoginForm({
   const [logoFailed, setLogoFailed] = useState(false);
 
   async function onKakaoLogin() {
+    if (!kakaoConfigured) return;
     setKakaoPending(true);
     await signIn("kakao", { callbackUrl });
   }
@@ -76,9 +79,16 @@ export function LoginForm({
           </p>
         ) : null}
 
+        {!kakaoConfigured ? (
+          <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-800">
+            카카오 로그인 설정이 서버에 없습니다. AUTH_KAKAO_ID와
+            AUTH_KAKAO_SECRET을 확인해 주세요.
+          </p>
+        ) : null}
+
         <button
           type="button"
-          disabled={kakaoPending}
+          disabled={kakaoPending || !kakaoConfigured}
           onClick={() => void onKakaoLogin()}
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#FEE500] py-3 text-sm font-semibold text-[#191919] shadow-sm transition hover:bg-[#f5dc00] active:scale-[0.99] disabled:opacity-60"
         >
@@ -87,7 +97,7 @@ export function LoginForm({
         </button>
 
         <p className="mt-3 text-center text-[11px] leading-snug text-muted">
-          처음 로그인 시 자동 가입
+          처음 로그인 시 추가 정보 입력 후 승인됩니다
         </p>
       </div>
     </div>

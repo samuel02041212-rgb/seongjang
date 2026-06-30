@@ -2,15 +2,24 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useEffect, useMemo, useState } from "react";
 
 function pad2(n: string): string {
   return n.length >= 2 ? n : `0${n}`;
 }
 
-export function RegisterForm() {
+export function RegisterForm({
+  mode = "email",
+  initialName = "",
+}: {
+  mode?: "email" | "kakao";
+  initialName?: string;
+}) {
   const router = useRouter();
-  const [name, setName] = useState("");
+  const { update } = useSession();
+  const isKakao = mode === "kakao";
+  const [name, setName] = useState(initialName);
   const [gender, setGender] = useState<"" | "M" | "F">("");
   const maxYear = useMemo(() => new Date().getFullYear() - 10, []);
   const minYear = 1920;
@@ -40,6 +49,10 @@ export function RegisterForm() {
     const d = Number(birthDay);
     if (d > daysInMonth) setBirthDay(String(daysInMonth));
   }, [birthYear, birthMonth, daysInMonth, birthDay]);
+
+  useEffect(() => {
+    if (initialName) setName(initialName);
+  }, [initialName]);
 
   const birthDate = useMemo(() => {
     if (!birthYear || !birthMonth || !birthDay) return "";
@@ -80,22 +93,35 @@ export function RegisterForm() {
     }
     setPending(true);
     try {
-      const res = await fetch("/api/register", {
+      const payload = {
+        name: name.trim(),
+        gender: gender || undefined,
+        birthDate,
+        church: church.trim(),
+        signupSource: signupSource.trim() || undefined,
+        ...(isKakao
+          ? {}
+          : { email: email.trim(), password }),
+      };
+
+      const res = await fetch(isKakao ? "/api/register/kakao" : "/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          gender: gender || undefined,
-          birthDate,
-          church: church.trim(),
-          email: email.trim(),
-          password,
-          signupSource: signupSource.trim() || undefined,
-        }),
+        body: JSON.stringify(payload),
       });
-      const data = (await res.json()) as { ok?: boolean; error?: string; message?: string };
+      const data = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        message?: string;
+      };
       if (!res.ok) {
         setError(data.error ?? "가입에 실패했습니다.");
+        return;
+      }
+      if (isKakao) {
+        await update();
+        router.push("/register/pending");
+        router.refresh();
         return;
       }
       router.push("/login?registered=1");
@@ -108,7 +134,14 @@ export function RegisterForm() {
 
   return (
     <div className="w-full max-w-md rounded-lg border border-line bg-surface p-6 shadow-sm sm:p-8">
-      <h1 className="font-display text-xl text-ink">회원가입</h1>
+      <h1 className="font-display text-xl text-ink">
+        {isKakao ? "카카오 회원가입" : "회원가입"}
+      </h1>
+      {isKakao ? (
+        <p className="mt-1 text-sm text-muted">
+          추가 정보를 입력해 주세요. 관리자 승인 후 이용할 수 있습니다.
+        </p>
+      ) : null}
 
       <form onSubmit={onSubmit} className="mt-6 space-y-4">
         {error ? (
@@ -247,37 +280,41 @@ export function RegisterForm() {
             className="mt-1 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
           />
         </div>
-        <div>
-          <label htmlFor="reg-email" className="text-sm font-medium text-ink">
-            이메일 (로그인 ID)
-          </label>
-          <input
-            id="reg-email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
-          />
-        </div>
-        <div>
-          <label htmlFor="reg-password" className="text-sm font-medium text-ink">
-            비밀번호 (8자 이상)
-          </label>
-          <input
-            id="reg-password"
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            required
-            minLength={8}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
-          />
-        </div>
+        {!isKakao ? (
+          <>
+            <div>
+              <label htmlFor="reg-email" className="text-sm font-medium text-ink">
+                이메일 (로그인 ID)
+              </label>
+              <input
+                id="reg-email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="mt-1 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
+              />
+            </div>
+            <div>
+              <label htmlFor="reg-password" className="text-sm font-medium text-ink">
+                비밀번호 (8자 이상)
+              </label>
+              <input
+                id="reg-password"
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                required
+                minLength={8}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="mt-1 w-full rounded-md border border-line bg-bg px-3 py-2.5 text-sm text-ink outline-none ring-accent/30 focus:ring-2"
+              />
+            </div>
+          </>
+        ) : null}
         <div>
           <label htmlFor="reg-source" className="text-sm font-medium text-ink">
             가입 경로 <span className="font-normal text-muted">(선택)</span>
@@ -297,19 +334,21 @@ export function RegisterForm() {
           disabled={pending}
           className="w-full rounded-md bg-accent py-3 text-sm font-semibold text-accent-foreground shadow-sm transition hover:bg-accent/90 disabled:opacity-60"
         >
-          {pending ? "처리 중…" : "가입하기"}
+          {pending ? "처리 중…" : isKakao ? "가입 신청하기" : "가입하기"}
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-muted">
-        이미 계정이 있으신가요?{" "}
-        <Link
-          href="/login"
-          className="font-semibold text-ink underline underline-offset-2"
-        >
-          로그인
-        </Link>
-      </p>
+      {!isKakao ? (
+        <p className="mt-6 text-center text-sm text-muted">
+          이미 계정이 있으신가요?{" "}
+          <Link
+            href="/login"
+            className="font-semibold text-ink underline underline-offset-2"
+          >
+            로그인
+          </Link>
+        </p>
+      ) : null}
     </div>
   );
 }

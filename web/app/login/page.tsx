@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { auth } from "@/lib/server-auth";
+import { isKakaoAuthConfigured } from "@/lib/kakao-auth-env";
 import { safeCallbackUrl } from "@/lib/safe-callback-url";
 
 import { LoginForm } from "./login-form";
@@ -33,6 +34,12 @@ export default async function LoginPage({
         : null;
 
   if (session?.user?.id) {
+    if (!session.user.profileComplete) {
+      redirect("/register/kakao");
+    }
+    if (!session.user.registrationApproved) {
+      redirect("/register/pending");
+    }
     redirect(nextPath);
   }
 
@@ -53,6 +60,7 @@ export default async function LoginPage({
           <LoginForm
             showRegisteredNotice={sp?.registered === "1"}
             authError={authError}
+            kakaoConfigured={isKakaoAuthConfigured()}
           />
         </Suspense>
       </div>

@@ -8,8 +8,13 @@ import {
   getDevAdminUser,
   relinkKakaoAccountToAdmin,
 } from "@/lib/dev-kakao-admin";
+import { kakaoClientId, kakaoClientSecret } from "@/lib/kakao-auth-env";
+import {
+  detachKakaoFromAdminIfNeeded,
+  kakaoLinkedUserId,
+} from "@/lib/kakao-signup";
 import { prisma } from "@/lib/prisma";
-import { registrationAutoApprove } from "@/lib/registration-auto-approve";
+import { isProfileComplete, profileUserSelect } from "@/lib/user-profile";
 
 function kakaoProfileEmail(profile: {
   id: number;
@@ -20,13 +25,29 @@ function kakaoProfileEmail(profile: {
   return `kakao_${profile.id}@kakao.local`;
 }
 
+async function applyUserToToken(
+  token: { sub?: string; isAdmin?: boolean; registrationApproved?: boolean; profileComplete?: boolean },
+  userId: string,
+) {
+  const dbUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: profileUserSelect,
+  });
+  if (!dbUser) return;
+  token.sub = userId;
+  token.isAdmin =
+    dbUser.email === ADMIN_USER_EMAIL || Boolean(dbUser.isAdmin);
+  token.registrationApproved = dbUser.registrationApproved;
+  token.profileComplete = isProfileComplete(dbUser);
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma),
   providers: [
     Kakao({
-      clientId: process.env.AUTH_KAKAO_ID!,
-      clientSecret: process.env.AUTH_KAKAO_SECRET!,
+      clientId: kakaoClientId(),
+      clientSecret: kakaoClientSecret(),
       profile(profile) {
         const acc = profile.kakao_account;
         return {
@@ -44,7 +65,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       await prisma.user.update({
         where: { id: user.id },
         data: {
-          registrationApproved: registrationAutoApprove(),
+          registrationApproved: false,
           signupSource: "kakao",
         },
       });
@@ -66,32 +87,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user, account }) {
       if (account?.provider !== "kakao") return false;
 
-      if (registrationAutoApprove()) return true;
-
-      if (account.providerAccountId) {
-        const linked = await prisma.account.findUnique({
-          where: {
-            provider_providerAccountId: {
-              provider: "kakao",
-              providerAccountId: account.providerAccountId,
-            },
-          },
-          include: { user: { select: { registrationApproved: true } } },
-        });
-        if (linked) return linked.user.registrationApproved;
+      if (!devKakaoLoginAsAdmin() && account.providerAccountId) {
+        await detachKakaoFromAdminIfNeeded(account, user);
       }
 
-      if (user.email) {
-        const byEmail = await prisma.user.findUnique({
-          where: { email: user.email },
-          select: { registrationApproved: true },
-        });
-        if (byEmail) return byEmail.registrationApproved;
-      }
+      if (devKakaoLoginAsAdmin()) return true;
 
-      return false;
+      const userId = await kakaoLinkedUserId(account, user.id!);
+      const dbUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true },
+      });
+      return Boolean(dbUser);
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       const devEpoch = process.env.AUTH_DEV_SESSION_EPOCH;
       if (devEpoch) {
         if (user) {
@@ -100,20 +109,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return { devEpoch, exp: 0 };
         }
       }
-      if (user?.id) {
-        if (devKakaoLoginAsAdmin()) {
-          const admin = await getDevAdminUser();
-          token.sub = admin.id;
-          token.isAdmin = true;
-        } else {
-          const dbUser = await prisma.user.findUnique({
-            where: { id: user.id },
-            select: { email: true, isAdmin: true },
-          });
-          token.sub = user.id;
-          token.isAdmin =
-            dbUser?.email === ADMIN_USER_EMAIL || Boolean(dbUser?.isAdmin);
-        }
+
+      if (user?.id && devKakaoLoginAsAdmin()) {
+        const admin = await getDevAdminUser();
+        token.sub = admin.id;
+        token.isAdmin = true;
+        token.registrationApproved = true;
+        token.profileComplete = true;
+        return token;
+      }
+
+      if (user?.id && account?.provider === "kakao") {
+        const userId = await kakaoLinkedUserId(account, user.id);
+        await applyUserToToken(token, userId);
+        return token;
+      }
+
+      if (token.sub) {
+        await applyUserToToken(token, token.sub);
       }
       return token;
     },

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import {
   Black_Han_Sans,
   Caveat,
@@ -53,15 +54,13 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{if(localStorage.getItem('theme')==='dark')document.documentElement.classList.add('dark');}catch(e){}})();`,
-          }}
-        />
         <link rel="stylesheet" href="/css/chat.css" />
         <link rel="stylesheet" href="/css/meditation-bible.css" />
       </head>
       <body className="flex min-h-full flex-col font-sans">
+        <Script id="theme-init" strategy="beforeInteractive">
+          {`(function(){try{if(localStorage.getItem('theme')==='dark')document.documentElement.classList.add('dark');}catch(e){}})();`}
+        </Script>
         <AppProviders>
           <div className="flex-1">{children}</div>
           <SiteFooter />

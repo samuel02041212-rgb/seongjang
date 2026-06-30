@@ -37,6 +37,8 @@ export const authConfig = {
       if (session.user && token.sub) {
         session.user.id = token.sub;
         session.user.isAdmin = !!token.isAdmin;
+        session.user.registrationApproved = !!token.registrationApproved;
+        session.user.profileComplete = !!token.profileComplete;
       }
       return session;
     },

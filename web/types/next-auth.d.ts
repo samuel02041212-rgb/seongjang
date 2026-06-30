@@ -8,6 +8,8 @@ declare module "next-auth" {
     user: {
       id: string;
       isAdmin?: boolean;
+      registrationApproved?: boolean;
+      profileComplete?: boolean;
     } & DefaultSession["user"];
   }
 }
@@ -16,5 +18,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     isAdmin?: boolean;
     devEpoch?: string;
+    registrationApproved?: boolean;
+    profileComplete?: boolean;
   }
 }
