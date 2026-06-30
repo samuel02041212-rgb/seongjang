@@ -29,9 +29,11 @@ export default async function LoginPage({
   const authError =
     sp?.error === "AccessDenied"
       ? "로그인에 실패했습니다. 잠시 후 다시 시도해 주세요."
-      : sp?.error
-        ? "로그인에 실패했습니다. 다시 시도해 주세요."
-        : null;
+      : sp?.error === "OAuthAccountNotLinked"
+        ? "이미 다른 방식으로 가입된 이메일입니다. 관리자에게 문의해 주세요."
+        : sp?.error
+          ? "로그인에 실패했습니다. 다시 시도해 주세요."
+          : null;
 
   if (session?.user?.id) {
     if (!session.user.profileComplete) {

@@ -14,7 +14,7 @@ const noopCredentials = Credentials({
 export const authConfig = {
   trustHost: true,
   session: { strategy: "jwt", maxAge: 5 * 60 },
-  pages: { signIn: "/login" },
+  pages: { signIn: "/login", error: "/login", newUser: "/register/kakao" },
   providers: [noopCredentials],
   callbacks: {
     jwt({ token, user }) {

@@ -26,7 +26,12 @@ function kakaoProfileEmail(profile: {
 }
 
 async function applyUserToToken(
-  token: { sub?: string; isAdmin?: boolean; registrationApproved?: boolean; profileComplete?: boolean },
+  token: {
+    sub?: string;
+    isAdmin?: boolean;
+    registrationApproved?: boolean;
+    profileComplete?: boolean;
+  },
   userId: string,
 ) {
   const dbUser = await prisma.user.findUnique({
@@ -48,6 +53,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Kakao({
       clientId: kakaoClientId(),
       clientSecret: kakaoClientSecret(),
+      allowDangerousEmailAccountLinking: true,
       profile(profile) {
         const acc = profile.kakao_account;
         return {
@@ -62,8 +68,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   events: {
     async createUser({ user }) {
       if (!user.id) return;
-      await prisma.user.update({
-        where: { id: user.id },
+      await prisma.user.updateMany({
+        where: { id: user.id, signupSource: "" },
         data: {
           registrationApproved: false,
           signupSource: "kakao",
@@ -86,11 +92,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig.callbacks,
     async signIn({ user, account }) {
       if (account?.provider !== "kakao") return false;
-
-      if (!devKakaoLoginAsAdmin() && account.providerAccountId) {
-        await detachKakaoFromAdminIfNeeded(account, user);
+      try {
+        if (!devKakaoLoginAsAdmin() && account.providerAccountId) {
+          await detachKakaoFromAdminIfNeeded(account, user);
+        }
+      } catch (e) {
+        console.error("[auth] kakao signIn", e);
       }
-
       return true;
     },
     async jwt({ token, user, account }) {
