@@ -89,10 +89,9 @@ const RecordIcon = () => (
     <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h8" />
   </svg>
 );
-const ResourcesIcon = () => (
+const CommunityIcon = () => (
   <svg {...iconProps} aria-hidden>
-    <path d="M4 4h6l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" />
-    <path d="M8 12h8M8 16h5" />
+    <path d="M12 20.5s-6.5-4.2-8.5-8.2C1.5 8.6 4 5 7.5 5c2 0 3.2 1.2 4.5 2.5C13.3 6.2 14.5 5 16.5 5 20 5 22.5 8.6 20.5 12.3 18.5 16.3 12 20.5 12 20.5z" />
   </svg>
 );
 const UserIcon = () => (
@@ -242,18 +241,29 @@ function SnsFeedLayoutInner({
     setChatOpen,
   ]);
 
+  const onChatNavClick = useCallback(() => {
+    setProfileOpen(false);
+    if (chatOpen && viewMode === "split" && splitDockTop !== "chat") {
+      bringChatDockToFront();
+      return;
+    }
+    toggleChat();
+  }, [
+    chatOpen,
+    viewMode,
+    splitDockTop,
+    bringChatDockToFront,
+    toggleChat,
+  ]);
+
   const navItems = useMemo(() => {
-    const items: { label: string; href: string; icon: React.ReactNode }[] = [
+    return [
       { label: "게시글", href: "/feed", icon: <FeedIcon /> },
       { label: "말씀묵상", href: "/meditation", icon: <BookHeartIcon /> },
-      { label: "자료실", href: "/resources", icon: <ResourcesIcon /> },
       { label: "마이페이지", href: "/me", icon: <UserIcon /> },
+      { label: "커뮤니티", href: "/resources", icon: <CommunityIcon /> },
     ];
-    if (isAdmin) {
-      items.push({ label: "관리자", href: "/admin", icon: <ShieldIcon /> });
-    }
-    return items;
-  }, [isAdmin]);
+  }, []);
 
   const groupNavItems = useMemo(() => {
     if (!groupId) return [];
@@ -430,72 +440,63 @@ function SnsFeedLayoutInner({
             <div className="min-h-0 flex-1" />
             <nav className="flex flex-col items-center gap-2">
               {navItems.map((item) => (
-                <span key={`${item.label}-${item.href}`} className="contents">
-                  <Link
-                    href={item.href}
-                    className={navBtnClass}
-                    aria-label={item.label}
-                    data-tour={mainNavTourId(item.href)}
-                  >
-                    {item.icon}
-                    {navTip(item.label)}
-                  </Link>
-                  {item.href === "/me" && !isGroupContext ? (
-                    <PinnedNoticeNavButton
-                      navBtnClass={navBtnClass}
-                      navTip={navTip}
-                    />
-                  ) : null}
-                </span>
+                <Link
+                  key={`${item.label}-${item.href}`}
+                  href={item.href}
+                  className={navBtnClass}
+                  aria-label={item.label}
+                  data-tour={mainNavTourId(item.href)}
+                >
+                  {item.icon}
+                  {navTip(item.label)}
+                </Link>
               ))}
+              {isAuthenticated ? (
+                <div className="relative">
+                  {showGroupPlus ? (
+                    <div className="absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2">
+                      <GroupNavActions />
+                    </div>
+                  ) : null}
+                  <button
+                    type="button"
+                    data-tour="nav-chat"
+                    onClick={onChatNavClick}
+                    className={`${navBtnClass} focus:outline-none`}
+                    aria-label={chatOpen ? "채팅 닫기" : "채팅 열기"}
+                    aria-expanded={chatOpen}
+                  >
+                    <ChatIcon />
+                    {navTip("채팅")}
+                    {!chatOpen && totalUnread > 0 ? (
+                      <span className="absolute -right-0.5 -top-0.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[#e0245e] px-1 text-[10px] font-bold leading-none text-white">
+                        {totalUnread > 9 ? "9+" : totalUnread}
+                      </span>
+                    ) : null}
+                  </button>
+                </div>
+              ) : null}
+              {!isGroupContext ? (
+                <PinnedNoticeNavButton
+                  navBtnClass={navBtnClass}
+                  navTip={navTip}
+                />
+              ) : null}
+              {isAdmin ? (
+                <Link
+                  href="/admin"
+                  className={navBtnClass}
+                  aria-label="관리자"
+                  data-tour={mainNavTourId("/admin")}
+                >
+                  <ShieldIcon />
+                  {navTip("관리자")}
+                </Link>
+              ) : null}
             </nav>
             <div className="flex-1" />
           </>
         )}
-
-        {isAuthenticated ? (
-          <div className="relative flex justify-center pb-1">
-            {showGroupPlus ? (
-              <div className="absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2">
-                <GroupNavActions />
-              </div>
-            ) : null}
-            <button
-              type="button"
-              data-tour="nav-chat"
-              onClick={() => {
-                setProfileOpen(false);
-                if (chatOpen && viewMode === "split" && splitDockTop !== "chat") {
-                  bringChatDockToFront();
-                  return;
-                }
-                toggleChat();
-              }}
-              className={`${navBtnClass} focus:outline-none`}
-              aria-label={chatOpen ? "채팅 닫기" : "채팅 열기"}
-              aria-expanded={chatOpen}
-            >
-              <svg
-                width="22"
-                height="22"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-              >
-                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-              </svg>
-              {!chatOpen && totalUnread > 0 ? (
-                <span className="absolute -right-0.5 -top-0.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-[#e0245e] px-1 text-[10px] font-bold leading-none text-white">
-                  {totalUnread > 9 ? "9+" : totalUnread}
-                </span>
-              ) : null}
-            </button>
-          </div>
-        ) : null}
 
         <div
           className="relative flex justify-center pb-2"

@@ -70,7 +70,7 @@ export function LoginForm({
   }
 
   return (
-    <div className="flex aspect-square w-[min(100vw-2rem,20rem)] flex-col items-center justify-center overflow-hidden rounded-2xl border border-line/80 bg-surface p-6 shadow-lg shadow-ink/5">
+    <div className="flex aspect-square w-[min(100vw-2rem,20rem)] flex-col items-center justify-center overflow-hidden border border-line/80 bg-surface/80 p-6 shadow-lg shadow-ink/5">
       <div className="flex w-full flex-1 flex-col items-center justify-center text-center">
         <div className="mb-3 flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-line/60 bg-surface">
           {logoFailed ? (

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -40,14 +41,21 @@ export default async function LoginPage({
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-start overflow-hidden bg-bg px-4 pt-[min(7rem,16vh)]">
-      <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,var(--color-accent-soft),transparent)]"
-        aria-hidden
-      />
+    <div className="relative flex min-h-dvh flex-col items-center justify-start overflow-hidden px-4 pt-[min(7rem,16vh)]">
+      <div className="pointer-events-none absolute inset-0">
+        <Image
+          src="/login_background_img.jpg"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-black/20" aria-hidden />
+      </div>
       <Link
         href="/"
-        className="relative mb-6 text-sm font-medium text-muted transition hover:text-ink"
+        className="relative mb-6 text-sm font-medium text-white/90 drop-shadow-sm transition hover:text-white"
       >
         ← 처음으로
       </Link>

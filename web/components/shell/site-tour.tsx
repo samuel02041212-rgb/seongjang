@@ -50,7 +50,7 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     target: "nav-resources",
-    title: "자료실",
+    title: "커뮤니티",
     body: "공유 자료와 링크를 모아두는 곳입니다. 필요한 자료를 찾아볼 수 있어요.",
   },
   {

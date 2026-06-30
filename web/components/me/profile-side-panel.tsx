@@ -5,6 +5,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { UserTodoAddForm, UserTodoList } from "@/components/me/user-todo-list";
 import { useUserTodos } from "@/components/me/use-user-todos";
 import type { UserReadingStatusJson } from "@/lib/bible-reading-progress";
+import {
+  mePageSidePanelListHeightClass,
+  mePageSidePanelReadingMinHeightClass,
+} from "@/lib/feed-card-layout";
 import { feedTodayIso } from "@/lib/feed-date";
 
 type ProfileSidePanelProps = {
@@ -12,8 +16,7 @@ type ProfileSidePanelProps = {
   editable?: boolean;
 };
 
-const sidePanelListCardClass =
-  "flex h-[22.5rem] flex-col overflow-hidden rounded-lg border border-line bg-surface shadow-sm";
+const sidePanelListCardClass = `flex ${mePageSidePanelListHeightClass} flex-col overflow-hidden rounded-lg border border-line bg-surface shadow-sm`;
 const sidePanelListScrollClass =
   "min-h-0 flex-1 overflow-y-auto overscroll-contain";
 
@@ -74,7 +77,9 @@ export function ProfileSidePanel({
 
   return (
     <div className="flex flex-col gap-3">
-      <section className="overflow-hidden rounded-lg border border-line bg-surface shadow-sm">
+      <section
+        className={`overflow-hidden rounded-lg border border-line bg-surface shadow-sm ${mePageSidePanelReadingMinHeightClass}`}
+      >
         <div className="border-b border-line px-4 py-3">
           <h2 className="text-sm font-semibold text-ink">통독 현황</h2>
         </div>

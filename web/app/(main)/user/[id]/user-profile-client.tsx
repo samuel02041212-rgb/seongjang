@@ -9,6 +9,7 @@ import { ProfilePageShell } from "@/components/me/profile-page-shell";
 import { ProfilePostsPanel } from "@/components/me/profile-posts-panel";
 import { ProfileAvatar } from "@/components/me/profile-avatar";
 import { RecordPageClient } from "@/components/record/record-page-client";
+import { mePageMainShellMinHeightClass } from "@/lib/feed-card-layout";
 
 type UserJson = {
   id: string;
@@ -128,7 +129,9 @@ export function UserProfileClient({ userId }: { userId: string }) {
 
   return (
     <ProfilePageShell userId={userId}>
-      <section className="w-full overflow-visible rounded-xl border border-line bg-surface shadow-sm">
+      <section
+        className={`flex w-full flex-col overflow-visible rounded-xl border border-line bg-surface shadow-sm ${mePageMainShellMinHeightClass}`}
+      >
       <div className="border-b border-line p-5 sm:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
           <ProfileAvatar image={user.image} />
@@ -202,16 +205,20 @@ export function UserProfileClient({ userId }: { userId: string }) {
       </div>
 
       {tab === "posts" ? (
-        <ProfilePostsPanel
-          postsUrl={postsUrl}
-          emptyMessage="아직 작성한 글이 없습니다."
-        />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <ProfilePostsPanel
+            postsUrl={postsUrl}
+            emptyMessage="아직 작성한 글이 없습니다."
+          />
+        </div>
       ) : (
-        <RecordPageClient
-          postsUrl={postsUrl}
-          embedded
-          todoUserId={userId}
-        />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <RecordPageClient
+            postsUrl={postsUrl}
+            embedded
+            todoUserId={userId}
+          />
+        </div>
       )}
         </section>
     </ProfilePageShell>

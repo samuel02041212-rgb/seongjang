@@ -20,6 +20,10 @@ export const feedPostListWrapClass = `mx-auto w-full ${feedCardMaxWidthClass}`;
 export const mePagePostListWrapClass = `mx-auto w-full ${mePageFeedCardMaxWidthClass}`;
 export const mePageSidePanelWidthClass = "w-[295px] xl:w-[359px]";
 export const mePageRecordPanelWidthClass = "w-[315px] xl:w-[379px]";
+export const mePageSidePanelListHeightClass = "h-[22.5rem]";
+export const mePageSidePanelReadingMinHeightClass = "min-h-[13.75rem]";
+export const mePageMainShellMinHeightClass =
+  "min-h-[calc(13.75rem+22.5rem*2+0.75rem*2)]";
 
 export const cardShellClass = "rounded-lg";
 export const cardInnerClass = "rounded-md";

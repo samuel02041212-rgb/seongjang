@@ -221,23 +221,32 @@ export function PinnedNoticeNavButton({
 }) {
   const ctx = usePinnedAnnouncement();
 
-  if (!ctx?.hasPinned) return null;
-
   return (
-    <button
-      type="button"
-      data-tour="nav-pinned"
-      data-pinned-notice-ui
-      onClick={() => {
-        if (ctx.items.length === 1) void ctx.openPost(ctx.items[0].id);
-        else ctx.toggleList();
-      }}
-      className={navBtnClass}
-      aria-label="공지사항"
-      aria-expanded={ctx.listOpen}
-    >
-      <MegaphoneNavIcon />
-      {!ctx.listOpen ? navTip("공지사항") : null}
-    </button>
+    <div className="relative" data-pinned-notice-ui>
+      <button
+        type="button"
+        data-tour="nav-pinned"
+        onClick={() => {
+          if (!ctx) return;
+          if (ctx.items.length === 0) {
+            ctx.toggleList();
+            return;
+          }
+          if (ctx.items.length === 1) void ctx.openPost(ctx.items[0].id);
+          else ctx.toggleList();
+        }}
+        className={navBtnClass}
+        aria-label="공지사항"
+        aria-expanded={ctx?.listOpen ?? false}
+      >
+        <MegaphoneNavIcon />
+        {!ctx?.listOpen ? navTip("공지사항") : null}
+      </button>
+      {ctx?.listOpen && ctx.items.length === 0 ? (
+        <p className="absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded-md border border-line bg-surface px-3 py-2 text-xs font-medium text-muted shadow-md">
+          고정된 공지가 없습니다.
+        </p>
+      ) : null}
+    </div>
   );
 }

@@ -10,6 +10,7 @@ import { ProfilePageShell } from "@/components/me/profile-page-shell";
 import { ProfilePostsPanel } from "@/components/me/profile-posts-panel";
 import { ProfileAvatar } from "@/components/me/profile-avatar";
 import { RecordPageClient } from "@/components/record/record-page-client";
+import { mePageMainShellMinHeightClass } from "@/lib/feed-card-layout";
 
 type MeJson = {
   id: string;
@@ -88,7 +89,9 @@ export function MePageClient() {
 
   return (
     <ProfilePageShell userId={userId} sidePanelEditable>
-      <section className="w-full overflow-visible rounded-xl border border-line bg-surface shadow-sm">
+      <section
+        className={`flex w-full flex-col overflow-visible rounded-xl border border-line bg-surface shadow-sm ${mePageMainShellMinHeightClass}`}
+      >
       <div className="border-b border-line p-5 sm:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
           <ProfileAvatar
@@ -165,20 +168,24 @@ export function MePageClient() {
       </div>
 
       {tab === "posts" ? (
-        <ProfilePostsPanel
-          postsUrl="/api/posts?mine=1"
-          emptyMessage="아직 작성한 글이 없습니다."
-          emptyAction={{ href: "/meditation", label: "말씀묵상 쓰기" }}
-        />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <ProfilePostsPanel
+            postsUrl="/api/posts?mine=1"
+            emptyMessage="아직 작성한 글이 없습니다."
+            emptyAction={{ href: "/meditation", label: "말씀묵상 쓰기" }}
+          />
+        </div>
       ) : tab === "record" ? (
-        <RecordPageClient
-          postsUrl="/api/posts?mine=1"
-          embedded
-          todoUserId={userId}
-          todosEditable
-        />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <RecordPageClient
+            postsUrl="/api/posts?mine=1"
+            embedded
+            todoUserId={userId}
+            todosEditable
+          />
+        </div>
       ) : (
-        <div className="p-5 sm:p-8">
+        <div className="flex min-h-0 flex-1 flex-col p-5 sm:p-8">
           <BookmarksPanel />
         </div>
       )}
