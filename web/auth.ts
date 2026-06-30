@@ -10,20 +10,15 @@ import {
 } from "@/lib/dev-kakao-admin";
 import { kakaoClientId, kakaoClientSecret } from "@/lib/kakao-auth-env";
 import {
+  kakaoProfileFields,
+  syncKakaoUserProfile,
+} from "@/lib/kakao-profile";
+import {
   detachKakaoFromAdminIfNeeded,
   kakaoLinkedUserId,
 } from "@/lib/kakao-signup";
 import { prisma } from "@/lib/prisma";
 import { isProfileComplete, profileUserSelect } from "@/lib/user-profile";
-
-function kakaoProfileEmail(profile: {
-  id: number;
-  kakao_account?: { email?: string | null };
-}): string {
-  const email = profile.kakao_account?.email?.trim().toLowerCase();
-  if (email) return email;
-  return `kakao_${profile.id}@kakao.local`;
-}
 
 async function applyUserToToken(
   token: {
@@ -54,13 +49,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientId: kakaoClientId(),
       clientSecret: kakaoClientSecret(),
       allowDangerousEmailAccountLinking: true,
+      authorization: {
+        params: {
+          scope: "profile_nickname profile_image account_email",
+        },
+      },
       profile(profile) {
-        const acc = profile.kakao_account;
+        const fields = kakaoProfileFields(profile);
         return {
           id: String(profile.id),
-          name: acc?.profile?.nickname?.trim() || "회원",
-          email: kakaoProfileEmail(profile),
-          image: acc?.profile?.profile_image_url ?? null,
+          name: fields.name,
+          email: fields.email,
+          image: fields.image,
         };
       },
     }),
@@ -76,16 +76,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
       });
     },
-    async signIn({ user, account }) {
-      if (
-        !devKakaoLoginAsAdmin() ||
-        account?.provider !== "kakao" ||
-        !account.providerAccountId ||
-        !user.id
-      ) {
-        return;
+    async signIn({ user, account, profile }) {
+      if (account?.provider === "kakao" && user.id && profile) {
+        if (!devKakaoLoginAsAdmin()) {
+          await syncKakaoUserProfile(user.id, profile);
+        }
       }
-      await relinkKakaoAccountToAdmin(user.id, account);
+      if (
+        devKakaoLoginAsAdmin() &&
+        account?.provider === "kakao" &&
+        account.providerAccountId &&
+        user.id
+      ) {
+        await relinkKakaoAccountToAdmin(user.id, account);
+      }
     },
   },
   callbacks: {

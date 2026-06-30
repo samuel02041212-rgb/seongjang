@@ -2,11 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { auth } from "@/lib/server-auth";
+import { kakaoRegistrationAutoApprove } from "@/lib/registration-auto-approve";
 import { prisma } from "@/lib/prisma";
-import { registrationAutoApprove } from "@/lib/registration-auto-approve";
 
 const bodySchema = z.object({
-  name: z.string().trim().min(1, "이름을 입력해 주세요.").max(50),
   gender: z.enum(["M", "F"], { message: "성별을 선택해 주세요." }),
   birthDate: z
     .string()
@@ -37,7 +36,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: first }, { status: 400 });
   }
 
-  const { name, gender, birthDate, church, signupSource } = parsed.data;
+  const { gender, birthDate, church, signupSource } = parsed.data;
   const birth = new Date(birthDate);
   if (Number.isNaN(birth.getTime())) {
     return NextResponse.json(
@@ -57,12 +56,11 @@ export async function POST(req: Request) {
     );
   }
 
-  const autoApprove = registrationAutoApprove();
+  const autoApprove = kakaoRegistrationAutoApprove();
 
   await prisma.user.update({
     where: { id: session.user.id },
     data: {
-      name,
       gender,
       birthDate: birth,
       church,

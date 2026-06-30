@@ -12,6 +12,7 @@ export const profileUserSelect = {
   id: true,
   email: true,
   name: true,
+  image: true,
   isAdmin: true,
   registrationApproved: true,
   gender: true,

@@ -2,11 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { KakaoRegisterForm } from "../kakao-register-form";
 import { auth } from "@/lib/server-auth";
 import { isProfileComplete } from "@/lib/user-profile";
 import { prisma } from "@/lib/prisma";
-
-import { RegisterForm } from "../register-form";
 
 export const metadata: Metadata = {
   title: "카카오 회원가입 — 성장",
@@ -21,13 +20,26 @@ export default async function KakaoRegisterPage() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { name: true, gender: true, birthDate: true, church: true, registrationApproved: true },
+    select: {
+      name: true,
+      image: true,
+      gender: true,
+      birthDate: true,
+      church: true,
+      registrationApproved: true,
+    },
   });
   if (!user) redirect("/login");
 
   if (isProfileComplete(user)) {
     redirect(user.registrationApproved ? "/feed" : "/register/pending");
   }
+
+  const initialGender =
+    user.gender === "M" || user.gender === "F" ? user.gender : "";
+  const initialBirthDate = user.birthDate
+    ? user.birthDate.toISOString().slice(0, 10)
+    : "";
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-bg px-4 py-12">
@@ -37,7 +49,11 @@ export default async function KakaoRegisterPage() {
       >
         ← 로그인
       </Link>
-      <RegisterForm mode="kakao" initialName={user.name?.trim() ?? ""} />
+      <KakaoRegisterForm
+        preview={{ name: user.name, image: user.image }}
+        initialGender={initialGender}
+        initialBirthDate={initialBirthDate}
+      />
     </div>
   );
 }
