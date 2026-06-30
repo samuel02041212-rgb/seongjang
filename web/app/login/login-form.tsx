@@ -59,24 +59,10 @@ export function LoginForm({
   async function onKakaoLogin() {
     if (!kakaoConfigured) return;
     setKakaoPending(true);
+    setClientError("");
     setRememberPreference(remember);
     try {
-      const res = await signIn("kakao", { callbackUrl, redirect: false });
-      if (res?.error) {
-        setClientError(
-          res.error === "Configuration"
-            ? "로그인 설정 오류입니다. 서버 환경 변수를 확인해 주세요."
-            : "카카오 로그인을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.",
-        );
-        setKakaoPending(false);
-        return;
-      }
-      if (res?.url) {
-        window.location.href = res.url;
-        return;
-      }
-      setClientError("카카오 로그인을 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.");
-      setKakaoPending(false);
+      await signIn("kakao", { callbackUrl }, { prompt: "login" });
     } catch {
       setClientError("카카오 로그인을 시작하지 못했습니다.");
       setKakaoPending(false);

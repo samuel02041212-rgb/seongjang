@@ -110,16 +110,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
 
       if (user?.id && account?.provider === "kakao") {
-        const jar = await cookies();
-        const remember = readRememberFromCookie(
-          jar.get(AUTH_REMEMBER_COOKIE)?.value,
-        );
-        jar.delete(AUTH_REMEMBER_COOKIE);
+        let remember = true;
+        try {
+          const jar = await cookies();
+          remember = readRememberFromCookie(
+            jar.get(AUTH_REMEMBER_COOKIE)?.value,
+          );
+          try {
+            jar.delete(AUTH_REMEMBER_COOKIE);
+          } catch {
+            /* cookie delete optional */
+          }
+        } catch {
+          /* cookie read optional */
+        }
         token.remember = remember;
         token.exp = sessionExpirySec(remember);
 
-        const userId = await kakaoLinkedUserId(account, user.id);
-        await applyUserToToken(token, userId);
+        try {
+          const userId = await kakaoLinkedUserId(account, user.id);
+          await applyUserToToken(token, userId);
+        } catch (e) {
+          console.error("[auth] jwt kakao", e);
+        }
         return token;
       }
 

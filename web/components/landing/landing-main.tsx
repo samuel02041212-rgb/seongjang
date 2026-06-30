@@ -25,6 +25,7 @@ const nameHistory = [
   { date: "2023.12.10", name: "원주삼육 성장" },
   { date: "2023.12.16", name: "연합 성장" },
   { date: "2024.03.03", name: "신학 24 성장" },
+  { date: "2024.07.01", name: "연합 성경나눔장소" },
 ];
 
 const meditationRounds = [
@@ -184,7 +185,7 @@ export function LandingMain() {
             <div className="space-y-2">
               <SectionLabel>History</SectionLabel>
               <h2 className="text-[clamp(1.35rem,2.5vw,1.75rem)] font-semibold text-ink">
-                명칭
+                명칭 및 소그룹
               </h2>
               <p className="text-[15px] leading-relaxed text-muted sm:text-base">
                 현재 공식 명칭:{" "}

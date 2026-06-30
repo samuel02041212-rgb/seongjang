@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { kakaoSignOut } from "@/lib/kakao-sign-out";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useChatPanel } from "@/components/chat/chat-dock";
@@ -569,7 +569,7 @@ function SnsFeedLayoutInner({
                     role="menuitem"
                     onClick={() => {
                       closeProfile();
-                      void signOut({ callbackUrl: "/" });
+                      void kakaoSignOut();
                     }}
                   >
                     로그아웃

@@ -1,6 +1,6 @@
 "use client";
 
-import { signOut } from "next-auth/react";
+import { kakaoSignOut } from "@/lib/kakao-sign-out";
 
 export function PendingNotice() {
   return (
@@ -13,7 +13,7 @@ export function PendingNotice() {
       </p>
       <button
         type="button"
-        onClick={() => void signOut({ callbackUrl: "/login" })}
+        onClick={() => void kakaoSignOut()}
         className="mt-6 w-full rounded-md border border-line py-3 text-sm font-medium text-ink transition hover:bg-accent-soft/40"
       >
         로그아웃
